@@ -142,3 +142,30 @@ func (s *BillingService) ListPlans(ctx context.Context) ([]models.Plan, error) {
 	}
 	return plans, nil
 }
+
+func (s *BillingService) CreatePlan(ctx context.Context, plan *models.Plan) error {
+	_, err := s.db.Exec(ctx,
+		`INSERT INTO plans (id, name, daily_quota, monthly_quota, overage_buffer_pct, max_queue_depth,
+		        dedicated_pool, default_routing_strategy, price_per_sms, monthly_price)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+		plan.ID, plan.Name, plan.DailyQuota, plan.MonthlyQuota, plan.OverageBufferPct,
+		plan.MaxQueueDepth, plan.DedicatedPool, plan.DefaultRoutingStrategy,
+		plan.PricePerSMS, plan.MonthlyPrice)
+	return err
+}
+
+func (s *BillingService) UpdatePlan(ctx context.Context, plan *models.Plan) error {
+	_, err := s.db.Exec(ctx,
+		`UPDATE plans SET name=$2, daily_quota=$3, monthly_quota=$4, overage_buffer_pct=$5,
+		        max_queue_depth=$6, dedicated_pool=$7, default_routing_strategy=$8,
+		        price_per_sms=$9, monthly_price=$10 WHERE id=$1`,
+		plan.ID, plan.Name, plan.DailyQuota, plan.MonthlyQuota, plan.OverageBufferPct,
+		plan.MaxQueueDepth, plan.DedicatedPool, plan.DefaultRoutingStrategy,
+		plan.PricePerSMS, plan.MonthlyPrice)
+	return err
+}
+
+func (s *BillingService) DeletePlan(ctx context.Context, id string) error {
+	_, err := s.db.Exec(ctx, `DELETE FROM plans WHERE id=$1`, id)
+	return err
+}

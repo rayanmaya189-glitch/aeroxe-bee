@@ -88,6 +88,9 @@ func NewRouter(
 	// Billing routes
 	mux.Handle("GET /api/v1/plans", authMiddleware.JWTAuth(http.HandlerFunc(billingHandler.ListPlans)))
 	mux.Handle("GET /api/v1/plans/{id}", authMiddleware.JWTAuth(http.HandlerFunc(billingHandler.GetPlan)))
+	mux.Handle("POST /api/v1/plans", authMiddleware.AdminAuth(http.HandlerFunc(billingHandler.CreatePlan)))
+	mux.Handle("PUT /api/v1/plans/{id}", authMiddleware.AdminAuth(http.HandlerFunc(billingHandler.UpdatePlan)))
+	mux.Handle("DELETE /api/v1/plans/{id}", authMiddleware.AdminAuth(http.HandlerFunc(billingHandler.DeletePlan)))
 	mux.Handle("GET /api/v1/billing/invoice", authMiddleware.JWTAuth(http.HandlerFunc(billingHandler.GetInvoice)))
 	mux.Handle("GET /api/v1/billing/usage", authMiddleware.JWTAuth(http.HandlerFunc(billingHandler.GetUsage)))
 

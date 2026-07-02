@@ -99,6 +99,12 @@ export async function deleteTemplate(id: string): Promise<void> {
   if (!res.data.success) throw new Error(res.data.error ?? 'Failed to delete template')
 }
 
+export async function getPendingTemplates(): Promise<Template[]> {
+  const res = await api.get<ApiResponse<Template[]>>('/admin/templates/pending')
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load pending templates')
+  return res.data.data
+}
+
 export async function approveTemplate(id: string): Promise<void> {
   const res = await api.post(`/admin/templates/${id}/approve`)
   if (!res.data.success) throw new Error(res.data.error ?? 'Failed to approve template')
@@ -114,6 +120,23 @@ export async function getPlans(): Promise<Plan[]> {
   const res = await api.get<ApiResponse<Plan[]>>('/plans')
   if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load plans')
   return res.data.data
+}
+
+export async function createPlan(data: Plan): Promise<Plan> {
+  const res = await api.post<ApiResponse<Plan>>('/plans', data)
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to create plan')
+  return res.data.data
+}
+
+export async function updatePlan(id: string, data: Partial<Plan>): Promise<Plan> {
+  const res = await api.put<ApiResponse<Plan>>(`/plans/${id}`, data)
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to update plan')
+  return res.data.data
+}
+
+export async function deletePlan(id: string): Promise<void> {
+  const res = await api.delete(`/plans/${id}`)
+  if (!res.data.success) throw new Error(res.data.error ?? 'Failed to delete plan')
 }
 
 // Circuit breakers (admin)

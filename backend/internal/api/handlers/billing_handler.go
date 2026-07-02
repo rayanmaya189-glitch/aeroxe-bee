@@ -103,3 +103,44 @@ func (h *BillingHandler) GetUsage(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 }
+
+func (h *BillingHandler) CreatePlan(w http.ResponseWriter, r *http.Request) {
+	var plan models.Plan
+	if err := decodeJSON(r, &plan); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid request body"})
+		return
+	}
+	if plan.ID == "" || plan.Name == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "id and name are required"})
+		return
+	}
+	if err := h.billingService.CreatePlan(r.Context(), &plan); err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to create plan"})
+		return
+	}
+	writeJSON(w, http.StatusCreated, APIResponse{Success: true, Data: plan})
+}
+
+func (h *BillingHandler) UpdatePlan(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var plan models.Plan
+	if err := decodeJSON(r, &plan); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid request body"})
+		return
+	}
+	plan.ID = id
+	if err := h.billingService.UpdatePlan(r.Context(), &plan); err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to update plan"})
+		return
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: plan})
+}
+
+func (h *BillingHandler) DeletePlan(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if err := h.billingService.DeletePlan(r.Context(), id); err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to delete plan"})
+		return
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Success: true})
+}

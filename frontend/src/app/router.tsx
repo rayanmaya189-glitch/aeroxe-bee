@@ -25,6 +25,7 @@ const BillingPage = lazy(() => import('@/features/billing/pages/BillingPage').th
 const CircuitBreakersPage = lazy(() => import('@/features/circuit-breakers/pages/CircuitBreakersPage').then((m) => ({ default: m.CircuitBreakersPage })))
 const DeadLettersPage = lazy(() => import('@/features/dead-letters/pages/DeadLettersPage').then((m) => ({ default: m.DeadLettersPage })))
 const FraudFlagsPage = lazy(() => import('@/features/fraud/pages/FraudFlagsPage').then((m) => ({ default: m.FraudFlagsPage })))
+const PlansPage = lazy(() => import('@/features/billing/pages/PlansPage').then((m) => ({ default: m.PlansPage })))
 
 function LazyLoader({ children }: { children: React.ReactNode }) {
   return (
@@ -114,6 +115,7 @@ const routes: RouteObject[] = [
           { path: 'circuit-breakers', element: <LazyLoader><CircuitBreakersPage /></LazyLoader> },
           { path: 'dead-letters', element: <LazyLoader><DeadLettersPage /></LazyLoader> },
           { path: 'fraud-flags', element: <LazyLoader><FraudFlagsPage /></LazyLoader> },
+          { path: 'plans', element: <LazyLoader><PlansPage /></LazyLoader> },
         ],
       },
       // Shared routes (accessible to both admin and member)

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/services/api'
 import type { ApiResponse } from '@/types/api'
 import type { Webhook } from '@/types/models'
-import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -66,6 +66,13 @@ export function MemberWebhooksPage() {
     },
   })
 
+  const toggleActiveMutation = useMutation({
+    mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
+      await api.put(`/member/webhooks/${id}`, { active })
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['member-webhooks'] }),
+  })
+
   function openForm(webhook?: Webhook) {
     setEditing(webhook || null)
     setUrl(webhook?.url || '')
@@ -113,9 +120,17 @@ export function MemberWebhooksPage() {
                     ))}
                   </div>
                 </div>
-                <Badge variant={wh.active ? 'success' : 'default'} dot size="sm">
+                <button
+                  onClick={() => toggleActiveMutation.mutate({ id: wh.id, active: !wh.active })}
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                    wh.active
+                      ? 'bg-success-50 text-success-700 hover:bg-success-100 dark:bg-success-900/30 dark:text-success-300'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400'
+                  }`}
+                >
+                  <span className={`h-1.5 w-1.5 rounded-full ${wh.active ? 'bg-success-500' : 'bg-gray-400'}`} />
                   {wh.active ? 'Active' : 'Inactive'}
-                </Badge>
+                </button>
               </div>
               <div className="mt-4 flex gap-2 border-t border-gray-100 pt-4 dark:border-gray-800">
                 <Button variant="ghost" size="xs" onClick={() => openForm(wh)}>Edit</Button>
