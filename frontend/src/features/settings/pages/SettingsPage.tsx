@@ -14,10 +14,11 @@ export function SettingsPage() {
 
   useEffect(() => {
     getProfile()
-      .then((data: Record<string, unknown>) => {
+      .then((data) => {
         if (data) {
-          setName(String(data.name ?? ''))
-          setEmail(String(data.email ?? ''))
+          const profile = data as Record<string, unknown>
+          setName(String(profile.name ?? ''))
+          setEmail(String(profile.email ?? ''))
         }
       })
       .catch(() => {})

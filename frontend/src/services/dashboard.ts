@@ -1,6 +1,6 @@
 import api from './api'
 import type { ApiResponse, PaginatedResponse } from '@/types/api'
-import type { DashboardStats, DailyChartData, Account, AnalyticsDaily, Device, Webhook, Template, Plan, CircuitBreakerEvent, DeadLetter, FraudFlag } from '@/types/models'
+import type { DashboardStats, DailyChartData, Account, AnalyticsDaily, Webhook, Template, Plan, CircuitBreakerEvent, DeadLetter, FraudFlag } from '@/types/models'
 
 // Dashboard stats (admin)
 export async function getDashboardStats(): Promise<DashboardStats> {

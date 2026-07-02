@@ -188,7 +188,7 @@ function UserModal({ user, onClose, onSaved }: { user: User | null; onClose: () 
             <input type="password" placeholder="Password (min 8 chars)" value={password} onChange={(e) => setPassword(e.target.value)} required
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
           )}
-          <select value={role} onChange={(e) => setRole(e.target.value)}
+          <select value={role} onChange={(e) => setRole(e.target.value as User['role'])}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white">
             <option value="admin">Admin</option>
             <option value="staff">Staff</option>
