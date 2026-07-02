@@ -91,6 +91,18 @@ CREATE TABLE IF NOT EXISTS mqtt_credentials (
     revoked_at TIMESTAMPTZ
 );
 
+-- Templates must be created before messages reference them
+CREATE TABLE IF NOT EXISTS templates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    body TEXT NOT NULL,
+    variables TEXT[] NOT NULL DEFAULT '{}',
+    approval_status VARCHAR(50) NOT NULL DEFAULT 'pending',
+    approved_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Messages
 CREATE TABLE IF NOT EXISTS messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -131,18 +143,6 @@ CREATE TABLE IF NOT EXISTS otp_metadata (
     attempts INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     expires_at TIMESTAMPTZ NOT NULL
-);
-
--- Templates must be created before messages reference them
-CREATE TABLE IF NOT EXISTS templates (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    name VARCHAR(255) NOT NULL,
-    body TEXT NOT NULL,
-    variables TEXT[] NOT NULL DEFAULT '{}',
-    approval_status VARCHAR(50) NOT NULL DEFAULT 'pending',
-    approved_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Webhooks

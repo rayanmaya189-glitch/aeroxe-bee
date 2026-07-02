@@ -10,8 +10,8 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql
+      - pgdata:/var/lib/postgresql
+      - ./backend/migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U textbee"]
       interval: 5s
@@ -36,7 +36,7 @@ services:
       - "1883:1883"
       - "9001:9001"
     volumes:
-      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./backend/mosquitto.conf:/mosquitto/config/mosquitto.conf
       - mqttdata:/mosquitto/data
 
   backend:
