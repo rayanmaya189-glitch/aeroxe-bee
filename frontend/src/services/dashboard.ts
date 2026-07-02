@@ -222,3 +222,190 @@ export async function bulkUpdateUsers(ids: string[], data: Record<string, unknow
   const res = await api.post('/admin/users/bulk-update', { ids, data })
   if (!res.data.success) throw new Error(res.data.error ?? 'Bulk update failed')
 }
+
+// ─── Payment Configs (admin billing settings) ──────────────────────
+
+export interface PaymentConfig {
+  id: string
+  method: string
+  label: string
+  details: Record<string, unknown>
+  enabled: boolean
+  created_at: string
+  updated_at: string
+}
+
+export async function getPaymentConfigs(): Promise<PaymentConfig[]> {
+  const res = await api.get<ApiResponse<PaymentConfig[]>>('/admin/payment-configs')
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load payment configs')
+  return res.data.data
+}
+
+export async function getEnabledPaymentConfigs(): Promise<PaymentConfig[]> {
+  const res = await api.get<ApiResponse<PaymentConfig[]>>('/payment-configs')
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load payment configs')
+  return res.data.data
+}
+
+export async function upsertPaymentConfig(data: { method: string; label: string; details: Record<string, unknown>; enabled: boolean }): Promise<void> {
+  const res = await api.post('/admin/payment-configs', data)
+  if (!res.data.success) throw new Error(res.data.error ?? 'Failed to save payment config')
+}
+
+export async function updatePaymentConfig(id: string, data: { label: string; details: Record<string, unknown>; enabled: boolean }): Promise<void> {
+  const res = await api.put(`/admin/payment-configs/${id}`, data)
+  if (!res.data.success) throw new Error(res.data.error ?? 'Failed to update payment config')
+}
+
+// ─── Payment Requests (maker-checker) ──────────────────────────────
+
+export interface PaymentRequest {
+  id: string
+  account_id: string
+  account_name: string
+  plan_id: string
+  plan_name: string
+  billing_cycle: string
+  payment_method: string
+  amount: number
+  proof_url: string
+  status: string
+  reviewed_by: string | null
+  reviewed_by_name: string
+  reviewed_at: string | null
+  review_notes: string
+  created_at: string
+  updated_at: string
+}
+
+export async function getPaymentRequests(params: { page?: number; pageSize?: number; status?: string; account_id?: string; payment_method?: string; sort_by?: string; sort_order?: string } = {}): Promise<PaginatedResponse<PaymentRequest>> {
+  const res = await api.get<ApiResponse<PaginatedResponse<PaymentRequest>>>('/admin/payment-requests', { params })
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load payment requests')
+  return res.data.data
+}
+
+export async function getMyPaymentRequests(params: { page?: number; pageSize?: number; status?: string } = {}): Promise<PaginatedResponse<PaymentRequest>> {
+  const res = await api.get<ApiResponse<PaginatedResponse<PaymentRequest>>>('/member/payment-requests', { params })
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load payment requests')
+  return res.data.data
+}
+
+export async function createPaymentRequest(data: { plan_id: string; billing_cycle: string; payment_method: string; amount: number; proof_url?: string }): Promise<void> {
+  const res = await api.post('/member/payment-requests', data)
+  if (!res.data.success) throw new Error(res.data.error ?? 'Failed to create payment request')
+}
+
+export async function approvePaymentRequest(id: string, notes?: string): Promise<void> {
+  const res = await api.post(`/admin/payment-requests/${id}/approve`, { notes: notes || '' })
+  if (!res.data.success) throw new Error(res.data.error ?? 'Failed to approve')
+}
+
+export async function rejectPaymentRequest(id: string, notes?: string): Promise<void> {
+  const res = await api.post(`/admin/payment-requests/${id}/reject`, { notes: notes || '' })
+  if (!res.data.success) throw new Error(res.data.error ?? 'Failed to reject')
+}
+
+// ─── Subscription Requests (member upgrade + admin approve) ─────────
+
+export interface SubscriptionRequest {
+  id: string
+  account_id: string
+  account_name: string
+  requested_plan: string
+  requested_plan_name: string
+  requested_billing_cycle: string
+  current_plan: string
+  current_plan_name: string
+  reason: string
+  status: string
+  reviewed_by: string | null
+  reviewed_by_name: string
+  reviewed_at: string | null
+  review_notes: string
+  created_at: string
+  updated_at: string
+}
+
+export async function getSubscriptionRequests(params: { page?: number; pageSize?: number; status?: string; account_id?: string } = {}): Promise<PaginatedResponse<SubscriptionRequest>> {
+  const res = await api.get<ApiResponse<PaginatedResponse<SubscriptionRequest>>>('/admin/subscription-requests', { params })
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load subscription requests')
+  return res.data.data
+}
+
+export async function getMySubscriptionRequests(params: { page?: number; pageSize?: number; status?: string } = {}): Promise<PaginatedResponse<SubscriptionRequest>> {
+  const res = await api.get<ApiResponse<PaginatedResponse<SubscriptionRequest>>>('/member/subscription-requests', { params })
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load subscription requests')
+  return res.data.data
+}
+
+export async function createSubscriptionRequest(data: { requested_plan: string; requested_billing_cycle: string; reason: string }): Promise<void> {
+  const res = await api.post('/member/subscription-requests', data)
+  if (!res.data.success) throw new Error(res.data.error ?? 'Failed to create subscription request')
+}
+
+export async function approveSubscriptionRequest(id: string, notes?: string): Promise<void> {
+  const res = await api.post(`/admin/subscription-requests/${id}/approve`, { notes: notes || '' })
+  if (!res.data.success) throw new Error(res.data.error ?? 'Failed to approve')
+}
+
+export async function rejectSubscriptionRequest(id: string, notes?: string): Promise<void> {
+  const res = await api.post(`/admin/subscription-requests/${id}/reject`, { notes: notes || '' })
+  if (!res.data.success) throw new Error(res.data.error ?? 'Failed to reject')
+}
+
+// ─── Member Preferences & KYC ─────────────────────────────────────
+
+export interface UserPreferences {
+  email_notifications: boolean
+  sms_notifications: boolean
+  webhook_notifications: boolean
+  billing_alerts: boolean
+  security_alerts: boolean
+  two_fa_enabled: boolean
+}
+
+export async function getPreferences(): Promise<UserPreferences> {
+  const res = await api.get<ApiResponse<UserPreferences>>('/member/preferences')
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load preferences')
+  return res.data.data
+}
+
+export async function updatePreferences(data: Partial<UserPreferences>): Promise<void> {
+  const res = await api.put('/member/preferences', data)
+  if (!res.data.success) throw new Error(res.data.error ?? 'Failed to update preferences')
+}
+
+export async function getKycStatus(): Promise<{ status: string; full_name?: string; document_type?: string }> {
+  const res = await api.get<ApiResponse<{ status: string; full_name?: string; document_type?: string }>>('/member/kyc')
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load KYC status')
+  return res.data.data
+}
+
+export async function submitKyc(data: { full_name: string; document_type: string; document_number: string; document_url: string }): Promise<void> {
+  const res = await api.post('/member/kyc', data)
+  if (!res.data.success) throw new Error(res.data.error ?? 'Failed to submit KYC')
+}
+
+// ─── 2FA ──────────────────────────────────────────────────────────
+
+export async function get2FAStatus(): Promise<{ enabled: boolean }> {
+  const res = await api.get<ApiResponse<{ enabled: boolean }>>('/auth/2fa/status')
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load 2FA status')
+  return res.data.data
+}
+
+export async function setup2FA(): Promise<{ secret: string; url: string; enabled: boolean }> {
+  const res = await api.post<ApiResponse<{ secret: string; url: string; enabled: boolean }>>('/auth/2fa/setup')
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to setup 2FA')
+  return res.data.data
+}
+
+export async function verify2FA(code: string): Promise<void> {
+  const res = await api.post('/auth/2fa/verify', { code })
+  if (!res.data.success) throw new Error(res.data.error ?? 'Failed to verify 2FA')
+}
+
+export async function disable2FA(code: string): Promise<void> {
+  const res = await api.post('/auth/2fa/disable', { code })
+  if (!res.data.success) throw new Error(res.data.error ?? 'Failed to disable 2FA')
+}

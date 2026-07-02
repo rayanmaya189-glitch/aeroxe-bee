@@ -26,6 +26,9 @@ const CircuitBreakersPage = lazy(() => import('@/features/circuit-breakers/pages
 const DeadLettersPage = lazy(() => import('@/features/dead-letters/pages/DeadLettersPage').then((m) => ({ default: m.DeadLettersPage })))
 const FraudFlagsPage = lazy(() => import('@/features/fraud/pages/FraudFlagsPage').then((m) => ({ default: m.FraudFlagsPage })))
 const PlansPage = lazy(() => import('@/features/billing/pages/PlansPage').then((m) => ({ default: m.PlansPage })))
+const BillingSettingsPage = lazy(() => import('@/features/billing/pages/BillingSettingsPage').then((m) => ({ default: m.BillingSettingsPage })))
+const AdminSubscriptionsPage = lazy(() => import('@/features/billing/pages/AdminSubscriptionsPage').then((m) => ({ default: m.AdminSubscriptionsPage })))
+const MemberUpgradePage = lazy(() => import('@/features/member/pages/MemberUpgradePage').then((m) => ({ default: m.MemberUpgradePage })))
 
 function LazyLoader({ children }: { children: React.ReactNode }) {
   return (
@@ -116,6 +119,8 @@ const routes: RouteObject[] = [
           { path: 'dead-letters', element: <LazyLoader><DeadLettersPage /></LazyLoader> },
           { path: 'fraud-flags', element: <LazyLoader><FraudFlagsPage /></LazyLoader> },
           { path: 'plans', element: <LazyLoader><PlansPage /></LazyLoader> },
+          { path: 'billing-settings', element: <LazyLoader><BillingSettingsPage /></LazyLoader> },
+          { path: 'admin/subscriptions', element: <LazyLoader><AdminSubscriptionsPage /></LazyLoader> },
         ],
       },
       // Shared routes (accessible to both admin and member)
@@ -131,6 +136,7 @@ const routes: RouteObject[] = [
           { path: 'member/analytics', element: <LazyLoader><MemberAnalyticsPage /></LazyLoader> },
           { path: 'member/templates', element: <LazyLoader><MemberTemplatesPage /></LazyLoader> },
           { path: 'member/webhooks', element: <LazyLoader><MemberWebhooksPage /></LazyLoader> },
+          { path: 'member/upgrade', element: <LazyLoader><MemberUpgradePage /></LazyLoader> },
         ],
       },
     ],

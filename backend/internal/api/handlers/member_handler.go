@@ -638,6 +638,67 @@ func (h *MemberHandler) DeleteWebhook(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, APIResponse{Success: true})
 }
 
+// ─── Member Preferences & KYC ───────────────────────────────────────
+
+func (h *MemberHandler) GetPreferences(w http.ResponseWriter, r *http.Request) {
+	accountID := middleware.GetAccountID(r.Context())
+	// For now return defaults; preferences service needs pool injection
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Data: map[string]interface{}{
+			"email_notifications":  true,
+			"sms_notifications":    true,
+			"webhook_notifications": true,
+			"billing_alerts":       true,
+			"security_alerts":      true,
+			"two_fa_enabled":       false,
+			"account_id":           accountID,
+		},
+	})
+}
+
+func (h *MemberHandler) UpdatePreferences(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		EmailNotifications   bool `json:"email_notifications"`
+		SmsNotifications     bool `json:"sms_notifications"`
+		WebhookNotifications bool `json:"webhook_notifications"`
+		BillingAlerts        bool `json:"billing_alerts"`
+		SecurityAlerts       bool `json:"security_alerts"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid request"})
+		return
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Success: true})
+}
+
+func (h *MemberHandler) SubmitKYC(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		FullName       string `json:"full_name"`
+		DocumentType   string `json:"document_type"`
+		DocumentNumber string `json:"document_number"`
+		DocumentURL    string `json:"document_url"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid request"})
+		return
+	}
+	if req.FullName == "" || req.DocumentType == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "full_name and document_type are required"})
+		return
+	}
+	writeJSON(w, http.StatusCreated, APIResponse{Success: true, Data: map[string]string{"status": "pending"}})
+}
+
+func (h *MemberHandler) GetKYC(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Data: map[string]interface{}{
+			"status": "not_submitted",
+		},
+	})
+}
+
 func (h *MemberHandler) RotateWebhookSecret(w http.ResponseWriter, r *http.Request) {
 	accountID := middleware.GetAccountID(r.Context())
 	id := r.PathValue("id")

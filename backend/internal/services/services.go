@@ -28,6 +28,12 @@ type ServiceRegistry struct {
 	CostTracking      *CostTrackingService
 	Billing           *BillingService
 	Admin             *AdminService
+	TwoFA             *TwoFAService
+	PaymentConfigs    *PaymentConfigService
+	PaymentRequests   *PaymentRequestService
+	SubscriptionRequests *SubscriptionRequestService
+	Kyc               *KycService
+	Preferences       *UserPreferencesService
 }
 
 func NewServiceRegistry(db DatabaseQuerier, rdb *redis.Client, otpCfg config.OTPConfig) *ServiceRegistry {
@@ -44,5 +50,11 @@ func NewServiceRegistry(db DatabaseQuerier, rdb *redis.Client, otpCfg config.OTP
 		CostTracking:      NewCostTrackingService(db),
 		Billing:           NewBillingService(db),
 		Admin:             NewAdminService(db),
+		TwoFA:             NewTwoFAService(db),
+		PaymentConfigs:    NewPaymentConfigService(db),
+		PaymentRequests:   NewPaymentRequestService(db),
+		SubscriptionRequests: NewSubscriptionRequestService(db),
+		Kyc:               NewKycService(db),
+		Preferences:       NewUserPreferencesService(db),
 	}
 }

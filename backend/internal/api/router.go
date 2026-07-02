@@ -22,6 +22,10 @@ func NewRouter(
 	billingHandler *handlers.BillingHandler,
 	fraudHandler *handlers.FraudHandler,
 	memberHandler *handlers.MemberHandler,
+	twoFAHandler *handlers.TwoFAHandler,
+	paymentConfigHandler *handlers.PaymentConfigHandler,
+	paymentRequestHandler *handlers.PaymentRequestHandler,
+	subscriptionRequestHandler *handlers.SubscriptionRequestHandler,
 	authMiddleware *middleware.AuthMiddleware,
 	metrics *telemetry.Metrics,
 	pg *database.PostgresDB,
@@ -36,10 +40,17 @@ func NewRouter(
 	// Auth routes
 	mux.HandleFunc("POST /api/v1/auth/register", authHandler.Register)
 	mux.HandleFunc("POST /api/v1/auth/login", authHandler.Login)
+	mux.HandleFunc("POST /api/v1/auth/login/2fa", authHandler.Login2FA)
 	mux.HandleFunc("POST /api/v1/auth/refresh", authHandler.RefreshToken)
 	mux.Handle("GET /api/v1/auth/profile", authMiddleware.JWTAuth(http.HandlerFunc(authHandler.GetProfile)))
 	mux.Handle("PUT /api/v1/auth/profile", authMiddleware.JWTAuth(http.HandlerFunc(authHandler.UpdateProfile)))
 	mux.Handle("POST /api/v1/auth/change-password", authMiddleware.JWTAuth(http.HandlerFunc(authHandler.ChangePassword)))
+
+	// 2FA routes
+	mux.Handle("POST /api/v1/auth/2fa/setup", authMiddleware.JWTAuth(http.HandlerFunc(twoFAHandler.Setup)))
+	mux.Handle("POST /api/v1/auth/2fa/verify", authMiddleware.JWTAuth(http.HandlerFunc(twoFAHandler.Verify)))
+	mux.Handle("GET /api/v1/auth/2fa/status", authMiddleware.JWTAuth(http.HandlerFunc(twoFAHandler.Status)))
+	mux.Handle("POST /api/v1/auth/2fa/disable", authMiddleware.JWTAuth(http.HandlerFunc(twoFAHandler.Disable)))
 
 	// Message routes
 	mux.Handle("POST /api/v1/send", authMiddleware.APIKeyAuth(http.HandlerFunc(messageHandler.Send)))
@@ -150,6 +161,33 @@ func NewRouter(
 	mux.Handle("DELETE /api/v1/admin/users/{id}", authMiddleware.AdminAuth(http.HandlerFunc(userHandler.Delete)))
 	mux.Handle("POST /api/v1/admin/users/bulk-delete", authMiddleware.AdminAuth(http.HandlerFunc(userHandler.BulkDelete)))
 	mux.Handle("POST /api/v1/admin/users/bulk-update", authMiddleware.AdminAuth(http.HandlerFunc(userHandler.BulkUpdate)))
+
+	// Payment config routes (admin settings)
+	mux.Handle("GET /api/v1/admin/payment-configs", authMiddleware.AdminAuth(http.HandlerFunc(paymentConfigHandler.List)))
+	mux.Handle("GET /api/v1/payment-configs", authMiddleware.JWTAuth(http.HandlerFunc(paymentConfigHandler.ListEnabled)))
+	mux.Handle("PUT /api/v1/admin/payment-configs/{id}", authMiddleware.AdminAuth(http.HandlerFunc(paymentConfigHandler.Update)))
+	mux.Handle("POST /api/v1/admin/payment-configs", authMiddleware.AdminAuth(http.HandlerFunc(paymentConfigHandler.Upsert)))
+
+	// Payment request routes (member creates, admin approves)
+	mux.Handle("GET /api/v1/admin/payment-requests", authMiddleware.AdminAuth(http.HandlerFunc(paymentRequestHandler.List)))
+	mux.Handle("GET /api/v1/admin/payment-requests/{id}", authMiddleware.AdminAuth(http.HandlerFunc(paymentRequestHandler.GetByID)))
+	mux.Handle("POST /api/v1/admin/payment-requests/{id}/approve", authMiddleware.AdminAuth(http.HandlerFunc(paymentRequestHandler.Approve)))
+	mux.Handle("POST /api/v1/admin/payment-requests/{id}/reject", authMiddleware.AdminAuth(http.HandlerFunc(paymentRequestHandler.Reject)))
+	mux.Handle("POST /api/v1/member/payment-requests", authMiddleware.JWTAuth(http.HandlerFunc(paymentRequestHandler.Create)))
+	mux.Handle("GET /api/v1/member/payment-requests", authMiddleware.JWTAuth(http.HandlerFunc(paymentRequestHandler.ListByAccount)))
+
+	// Subscription request routes (member upgrade, admin approve/reject)
+	mux.Handle("GET /api/v1/admin/subscription-requests", authMiddleware.AdminAuth(http.HandlerFunc(subscriptionRequestHandler.List)))
+	mux.Handle("POST /api/v1/admin/subscription-requests/{id}/approve", authMiddleware.AdminAuth(http.HandlerFunc(subscriptionRequestHandler.Approve)))
+	mux.Handle("POST /api/v1/admin/subscription-requests/{id}/reject", authMiddleware.AdminAuth(http.HandlerFunc(subscriptionRequestHandler.Reject)))
+	mux.Handle("POST /api/v1/member/subscription-requests", authMiddleware.JWTAuth(http.HandlerFunc(subscriptionRequestHandler.Create)))
+	mux.Handle("GET /api/v1/member/subscription-requests", authMiddleware.JWTAuth(http.HandlerFunc(subscriptionRequestHandler.ListByAccount)))
+
+	// Member preferences routes
+	mux.Handle("GET /api/v1/member/preferences", authMiddleware.JWTAuth(http.HandlerFunc(memberHandler.GetPreferences)))
+	mux.Handle("PUT /api/v1/member/preferences", authMiddleware.JWTAuth(http.HandlerFunc(memberHandler.UpdatePreferences)))
+	mux.Handle("POST /api/v1/member/kyc", authMiddleware.JWTAuth(http.HandlerFunc(memberHandler.SubmitKYC)))
+	mux.Handle("GET /api/v1/member/kyc", authMiddleware.JWTAuth(http.HandlerFunc(memberHandler.GetKYC)))
 
 	return mux
 }

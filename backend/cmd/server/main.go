@@ -64,6 +64,7 @@ func main() {
 
 	svc := services.NewServiceRegistry(postgres.Pool, redisDB.Client, cfg.OTP)
 	userService := services.NewUserService(postgres.Pool)
+	twoFAService := services.NewTwoFAService(postgres.Pool)
 
 	// Seed admin user on startup
 	seedAdminUser(context.Background(), postgres.Pool, logger)
@@ -198,7 +199,8 @@ func main() {
 
 	authMiddleware := middleware.NewAuthMiddleware(svc.APIKeys, svc.Accounts, cfg.JWT.Secret)
 
-	authHandler := handlers.NewAuthHandler(svc.Accounts, svc.Admin, userService, authMiddleware)
+	authHandler := handlers.NewAuthHandler(svc.Accounts, svc.Admin, userService, authMiddleware, twoFAService)
+	twoFAHandler := handlers.NewTwoFAHandler(twoFAService)
 	messageHandler := handlers.NewMessageHandler(svc.Messages, svc.Devices, svc.Accounts,
 		idempotencyStore, queue, encMgr, cfg.App, metrics)
 	deviceHandler := handlers.NewDeviceHandler(svc.Devices, svc.Messages, svc.APIKeys, svc.MQTTCredentials, svc.Accounts, encMgr, cfg.MQTT.BrokerURL(), authMiddleware)
@@ -212,9 +214,14 @@ func main() {
 	fraudHandler := handlers.NewFraudHandler(fraudDetector)
 	memberHandler := handlers.NewMemberHandler(svc.Accounts, svc.Devices, svc.Messages, svc.Billing, svc.Subscriptions, svc.Templates, svc.Webhooks)
 
+	paymentConfigHandler := handlers.NewPaymentConfigHandler(svc.PaymentConfigs)
+	paymentRequestHandler := handlers.NewPaymentRequestHandler(svc.PaymentRequests, svc.PaymentConfigs)
+	subscriptionRequestHandler := handlers.NewSubscriptionRequestHandler(svc.SubscriptionRequests, svc.Subscriptions, svc.Billing)
+
 	router := api.NewRouter(authHandler, messageHandler, deviceHandler, accountHandler,
 		adminHandler, userHandler, templateHandler, webhookHandler, otpHandler, billingHandler,
-		fraudHandler, memberHandler, authMiddleware, metrics, postgres, redisDB)
+		fraudHandler, memberHandler, twoFAHandler, paymentConfigHandler, paymentRequestHandler,
+		subscriptionRequestHandler, authMiddleware, metrics, postgres, redisDB)
 
 	promMux := http.NewServeMux()
 	promMux.Handle("/metrics", promhttp.Handler())

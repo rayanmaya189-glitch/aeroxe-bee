@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/textbee/backend/internal/api/middleware"
+	"github.com/textbee/backend/internal/models"
 	"github.com/textbee/backend/internal/services"
 )
 
@@ -128,7 +129,7 @@ func (h *BillingHandler) UpdatePlan(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid request body"})
 		return
 	}
-	plan.ID = id
+	plan.ID = models.PlanType(id)
 	if err := h.billingService.UpdatePlan(r.Context(), &plan); err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to update plan"})
 		return

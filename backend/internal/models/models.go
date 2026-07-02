@@ -447,9 +447,8 @@ type CircuitBreakerEvent struct {
 	OpenedAt    time.Time          `db:"opened_at" json:"opened_at"`
 	ClosedAt    *time.Time         `db:"closed_at" json:"closed_at,omitempty"`
 	Reason      string             `db:"reason" json:"reason"`
-}
+}// QueueDeadLetter stores failed queue messages
 
-// QueueDeadLetter stores failed queue messages
 type QueueDeadLetter struct {
 	ID          string    `db:"id" json:"id"`
 	Stream      string    `db:"stream" json:"stream"`
@@ -458,4 +457,115 @@ type QueueDeadLetter struct {
 	FailReason  string    `db:"fail_reason" json:"fail_reason"`
 	FailedAt    time.Time `db:"failed_at" json:"failed_at"`
 	RetryCount  int       `db:"retry_count" json:"retry_count"`
+}
+
+// PaymentConfig represents an admin-configurable payment method
+
+type PaymentConfig struct {
+	ID        string    `db:"id" json:"id"`
+	Method    string    `db:"method" json:"method"`
+	Label     string    `db:"label" json:"label"`
+	Details   []byte    `db:"details" json:"details"` // JSONB
+	Enabled   bool      `db:"enabled" json:"enabled"`
+	CreatedBy *string   `db:"created_by" json:"created_by,omitempty"`
+	CreatedAt time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
+}
+
+// PaymentRequest represents a member's payment/recharge request
+
+type PaymentRequest struct {
+	ID             string     `db:"id" json:"id"`
+	AccountID      string     `db:"account_id" json:"account_id"`
+	AccountName    string     `db:"account_name" json:"account_name"` // joined from accounts
+	PlanID         string     `db:"plan_id" json:"plan_id"`
+	PlanName       string     `db:"plan_name" json:"plan_name"` // joined from plans
+	BillingCycle   string     `db:"billing_cycle" json:"billing_cycle"`
+	PaymentMethod  string     `db:"payment_method" json:"payment_method"`
+	Amount         float64    `db:"amount" json:"amount"`
+	ProofURL       string     `db:"proof_url" json:"proof_url"`
+	Status         string     `db:"status" json:"status"`
+	ReviewedBy     *string    `db:"reviewed_by" json:"reviewed_by,omitempty"`
+	ReviewedByName string     `db:"reviewed_by_name" json:"reviewed_by_name"` // joined from users
+	ReviewedAt     *time.Time `db:"reviewed_at" json:"reviewed_at,omitempty"`
+	ReviewNotes    string     `db:"review_notes" json:"review_notes"`
+	CreatedAt      time.Time  `db:"created_at" json:"created_at"`
+	UpdatedAt      time.Time  `db:"updated_at" json:"updated_at"`
+}
+
+// SubscriptionRequest represents a member-initiated subscription change
+
+type SubscriptionRequest struct {
+	ID                    string     `db:"id" json:"id"`
+	AccountID             string     `db:"account_id" json:"account_id"`
+	AccountName           string     `db:"account_name" json:"account_name"` // joined
+	RequestedPlan         string     `db:"requested_plan" json:"requested_plan"`
+	RequestedPlanName     string     `db:"requested_plan_name" json:"requested_plan_name"` // joined
+	RequestedBillingCycle string     `db:"requested_billing_cycle" json:"requested_billing_cycle"`
+	CurrentPlan           string     `db:"current_plan" json:"current_plan"`
+	CurrentPlanName       string     `db:"current_plan_name" json:"current_plan_name"` // joined
+	Reason                string     `db:"reason" json:"reason"`
+	Status                string     `db:"status" json:"status"`
+	ReviewedBy            *string    `db:"reviewed_by" json:"reviewed_by,omitempty"`
+	ReviewedByName        string     `db:"reviewed_by_name" json:"reviewed_by_name"` // joined
+	ReviewedAt            *time.Time `db:"reviewed_at" json:"reviewed_at,omitempty"`
+	ReviewNotes           string     `db:"review_notes" json:"review_notes"`
+	CreatedAt             time.Time  `db:"created_at" json:"created_at"`
+	UpdatedAt             time.Time  `db:"updated_at" json:"updated_at"`
+}
+
+// KycRecord tracks KYC verification for an account
+
+type KycRecord struct {
+	ID             string     `db:"id" json:"id"`
+	AccountID      string     `db:"account_id" json:"account_id"`
+	FullName       string     `db:"full_name" json:"full_name"`
+	DocumentType   string     `db:"document_type" json:"document_type"`
+	DocumentNumber string     `db:"document_number" json:"document_number"`
+	DocumentURL    string     `db:"document_url" json:"document_url"`
+	Status         string     `db:"status" json:"status"`
+	ReviewedBy     *string    `db:"reviewed_by" json:"reviewed_by,omitempty"`
+	ReviewedAt     *time.Time `db:"reviewed_at" json:"reviewed_at,omitempty"`
+	ReviewNotes    string     `db:"review_notes" json:"review_notes"`
+	CreatedAt      time.Time  `db:"created_at" json:"created_at"`
+	UpdatedAt      time.Time  `db:"updated_at" json:"updated_at"`
+}
+
+// UserPreferences stores per-user notification and security preferences
+
+type UserPreferences struct {
+	ID                  string    `db:"id" json:"id"`
+	UserID              *string   `db:"user_id" json:"user_id,omitempty"`
+	AccountID           *string   `db:"account_id" json:"account_id,omitempty"`
+	EmailNotifications  bool      `db:"email_notifications" json:"email_notifications"`
+	SmsNotifications    bool      `db:"sms_notifications" json:"sms_notifications"`
+	WebhookNotifications bool     `db:"webhook_notifications" json:"webhook_notifications"`
+	BillingAlerts       bool      `db:"billing_alerts" json:"billing_alerts"`
+	SecurityAlerts      bool      `db:"security_alerts" json:"security_alerts"`
+	TwoFAEnabled        bool      `db:"two_fa_enabled" json:"two_fa_enabled"`
+	Force2FA            bool      `db:"force_2fa" json:"force_2fa"`
+	CreatedAt           time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt           time.Time `db:"updated_at" json:"updated_at"`
+}
+
+// WebhookWithAccount is a webhook enriched with account name (for admin views)
+
+type WebhookWithAccount struct {
+	Webhook
+	AccountName string `db:"account_name" json:"account_name"`
+}
+
+// TemplateWithAccount is a template enriched with account name (for admin views)
+
+type TemplateWithAccount struct {
+	Template
+	AccountName string `db:"account_name" json:"account_name"`
+}
+
+// SubscriptionWithAccount is a subscription enriched with account+plan names
+
+type SubscriptionWithAccount struct {
+	Subscription
+	AccountName string `db:"account_name" json:"account_name"`
+	PlanName    string `db:"plan_name" json:"plan_name"`
 }

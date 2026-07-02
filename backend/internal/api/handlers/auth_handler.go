@@ -17,14 +17,16 @@ type AuthHandler struct {
 	adminService   *services.AdminService
 	userService    *services.UserService
 	authMiddleware *middleware.AuthMiddleware
+	twoFAService   *services.TwoFAService
 }
 
-func NewAuthHandler(accountService *services.AccountService, adminService *services.AdminService, userService *services.UserService, authMiddleware *middleware.AuthMiddleware) *AuthHandler {
+func NewAuthHandler(accountService *services.AccountService, adminService *services.AdminService, userService *services.UserService, authMiddleware *middleware.AuthMiddleware, twoFAService *services.TwoFAService) *AuthHandler {
 	return &AuthHandler{
 		accountService: accountService,
 		adminService:   adminService,
 		userService:    userService,
 		authMiddleware: authMiddleware,
+		twoFAService:   twoFAService,
 	}
 }
 
@@ -513,4 +515,103 @@ func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(data)
+}
+
+// Login2FA handles POST /api/v1/auth/login/2fa — second step after password
+func (h *AuthHandler) Login2FA(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Token string `json:"token"` // temporary token from first login step
+		Code  string `json:"code"`  // 6-digit TOTP code
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid request body"})
+		return
+	}
+
+	if req.Token == "" || req.Code == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "token and code are required"})
+		return
+	}
+
+	// Parse the temporary 2FA token
+	claims, err := h.authMiddleware.ParseToken(req.Token)
+	if err != nil || claims == nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Error: "invalid or expired 2FA token"})
+		return
+	}
+
+	// Check this is a 2FA pending token
+	purpose, _ := claims["purpose"].(string)
+	if purpose != "2fa_pending" {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Error: "invalid token type"})
+		return
+	}
+
+	userID, _ := claims["sub"].(string)
+	isStaff, _ := claims["admin"].(bool)
+
+	// Verify the TOTP code
+	if isStaff {
+		user, err := h.userService.GetByID(r.Context(), userID)
+		if err != nil || user == nil {
+			writeJSON(w, http.StatusUnauthorized, APIResponse{Error: "user not found"})
+			return
+		}
+
+		valid, err := h.twoFAService.VerifyCode(r.Context(), user.ID, req.Code)
+		if err != nil || !valid {
+			writeJSON(w, http.StatusUnauthorized, APIResponse{Error: "invalid 2FA code"})
+			return
+		}
+
+		// Issue full tokens
+		token, _ := h.authMiddleware.GenerateToken(user.ID, user.Email, true, 15*time.Minute)
+		refresh, _ := h.authMiddleware.GenerateToken(user.ID, user.Email, true, 7*24*time.Hour)
+
+		_ = h.userService.UpdateLastLogin(r.Context(), user.ID)
+
+		writeJSON(w, http.StatusOK, APIResponse{
+			Success: true,
+			Data: map[string]interface{}{
+				"token":        token,
+				"refreshToken": refresh,
+				"user": map[string]interface{}{
+					"id":    user.ID,
+					"email": user.Email,
+					"name":  user.Name,
+					"role":  user.Role,
+				},
+			},
+		})
+		return
+	}
+
+	account, err := h.accountService.GetByID(r.Context(), userID)
+	if err != nil || account == nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Error: "account not found"})
+		return
+	}
+
+	valid, err := h.twoFAService.VerifyCode(r.Context(), account.ID, req.Code)
+	if err != nil || !valid {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Error: "invalid 2FA code"})
+		return
+	}
+
+	token, _ := h.authMiddleware.GenerateToken(account.ID, account.Email, false, 15*time.Minute)
+	refresh, _ := h.authMiddleware.GenerateToken(account.ID, account.Email, false, 7*24*time.Hour)
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Data: map[string]interface{}{
+			"token":        token,
+			"refreshToken": refresh,
+			"user": map[string]interface{}{
+				"id":    account.ID,
+				"email": account.Email,
+				"name":  account.Name,
+				"role":  "member",
+			},
+		},
+	})
 }
