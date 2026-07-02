@@ -2,6 +2,8 @@ package services
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -189,5 +191,83 @@ func (s *MessageService) CountByAccount(ctx context.Context, accountID string) (
 	err := s.db.QueryRow(ctx,
 		`SELECT COUNT(*) FROM messages m JOIN api_keys ak ON m.api_key_id = ak.id WHERE ak.account_id = $1`,
 		accountID).Scan(&count)
+	return count, err
+}
+
+// DB returns the underlying database querier for raw queries
+func (s *MessageService) DB() DatabaseQuerier {
+	return s.db
+}
+
+// ListByAccountFiltered returns paginated messages with optional status and type filters
+func (s *MessageService) ListByAccountFiltered(ctx context.Context, accountID string, offset, limit int, statusFilter, typeFilter string) ([]models.Message, error) {
+	conditions := []string{"ak.account_id = $1"}
+	args := []interface{}{accountID}
+	argIdx := 2
+
+	if statusFilter != "" {
+		conditions = append(conditions, "m.delivery_status = "+fmt.Sprintf("$%d", argIdx))
+		args = append(args, statusFilter)
+		argIdx++
+	}
+	if typeFilter != "" {
+		conditions = append(conditions, "m.message_type = "+fmt.Sprintf("$%d", argIdx))
+		args = append(args, typeFilter)
+		argIdx++
+	}
+
+	whereClause := strings.Join(conditions, " AND ")
+	args = append(args, limit, offset)
+
+	rows, err := s.db.Query(ctx,
+		fmt.Sprintf(`SELECT m.id, m.device_id, m.api_key_id, m.direction, m.recipient, m.sender, m.encrypted_message,
+	        m.message_type, m.priority_lane, m.template_id, m.status, m.delivery_status, m.confidence_score,
+	        m.error_reason, m.created_at, m.delivered_at, m.purge_after, m.idempotency_key, m.routing_strategy_used
+	 FROM messages m
+	 JOIN api_keys ak ON m.api_key_id = ak.id
+	 WHERE %s
+	 ORDER BY m.created_at DESC LIMIT $%d OFFSET $%d`, whereClause, argIdx, argIdx+1),
+		args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var msgs []models.Message
+	for rows.Next() {
+		var m models.Message
+		if err := rows.Scan(&m.ID, &m.DeviceID, &m.APIKeyID, &m.Direction, &m.Recipient, &m.Sender,
+			&m.EncryptedMessage, &m.MessageType, &m.PriorityLane, &m.TemplateID,
+			&m.Status, &m.DeliveryStatus, &m.ConfidenceScore, &m.ErrorReason,
+			&m.CreatedAt, &m.DeliveredAt, &m.PurgeAfter, &m.IdempotencyKey, &m.RoutingStrategyUsed); err != nil {
+			return nil, err
+		}
+		msgs = append(msgs, m)
+	}
+	return msgs, nil
+}
+
+// CountByAccountFiltered returns count with optional filters
+func (s *MessageService) CountByAccountFiltered(ctx context.Context, accountID string, statusFilter, typeFilter string) (int, error) {
+	conditions := []string{"ak.account_id = $1"}
+	args := []interface{}{accountID}
+	argIdx := 2
+
+	if statusFilter != "" {
+		conditions = append(conditions, "m.delivery_status = "+fmt.Sprintf("$%d", argIdx))
+		args = append(args, statusFilter)
+		argIdx++
+	}
+	if typeFilter != "" {
+		conditions = append(conditions, "m.message_type = "+fmt.Sprintf("$%d", argIdx))
+		args = append(args, typeFilter)
+		argIdx++
+	}
+
+	whereClause := strings.Join(conditions, " AND ")
+	var count int
+	err := s.db.QueryRow(ctx,
+		fmt.Sprintf(`SELECT COUNT(*) FROM messages m JOIN api_keys ak ON m.api_key_id = ak.id WHERE %s`, whereClause),
+		args...).Scan(&count)
 	return count, err
 }

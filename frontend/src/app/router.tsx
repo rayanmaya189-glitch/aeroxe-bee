@@ -11,6 +11,16 @@ const AnalyticsPage = lazy(() => import('@/features/analytics/pages/AnalyticsPag
 const SettingsPage = lazy(() => import('@/features/settings/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })))
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })))
 const MemberDashboardPage = lazy(() => import('@/features/member/pages/MemberDashboardPage').then((m) => ({ default: m.MemberDashboardPage })))
+const MemberDevicesPage = lazy(() => import('@/features/member/pages/MemberDevicesPage').then((m) => ({ default: m.MemberDevicesPage })))
+const MemberMessagesPage = lazy(() => import('@/features/member/pages/MemberMessagesPage').then((m) => ({ default: m.MemberMessagesPage })))
+const MemberAnalyticsPage = lazy(() => import('@/features/member/pages/MemberAnalyticsPage').then((m) => ({ default: m.MemberAnalyticsPage })))
+const AccountsPage = lazy(() => import('@/features/accounts/pages/AccountsPage').then((m) => ({ default: m.AccountsPage })))
+const WebhooksPage = lazy(() => import('@/features/webhooks/pages/WebhooksPage').then((m) => ({ default: m.WebhooksPage })))
+const TemplatesPage = lazy(() => import('@/features/templates/pages/TemplatesPage').then((m) => ({ default: m.TemplatesPage })))
+const BillingPage = lazy(() => import('@/features/billing/pages/BillingPage').then((m) => ({ default: m.BillingPage })))
+const CircuitBreakersPage = lazy(() => import('@/features/circuit-breakers/pages/CircuitBreakersPage').then((m) => ({ default: m.CircuitBreakersPage })))
+const DeadLettersPage = lazy(() => import('@/features/dead-letters/pages/DeadLettersPage').then((m) => ({ default: m.DeadLettersPage })))
+const FraudFlagsPage = lazy(() => import('@/features/fraud/pages/FraudFlagsPage').then((m) => ({ default: m.FraudFlagsPage })))
 
 function LazyLoader({ children }: { children: React.ReactNode }) {
   return (
@@ -68,10 +78,20 @@ const routes: RouteObject[] = [
     children: [
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: 'dashboard', element: <LazyLoader><DashboardPage /></LazyLoader> },
+      { path: 'accounts', element: <LazyLoader><AccountsPage /></LazyLoader> },
       { path: 'users', element: <LazyLoader><UsersPage /></LazyLoader> },
       { path: 'analytics', element: <LazyLoader><AnalyticsPage /></LazyLoader> },
+      { path: 'webhooks', element: <LazyLoader><WebhooksPage /></LazyLoader> },
+      { path: 'templates', element: <LazyLoader><TemplatesPage /></LazyLoader> },
+      { path: 'billing', element: <LazyLoader><BillingPage /></LazyLoader> },
+      { path: 'circuit-breakers', element: <LazyLoader><CircuitBreakersPage /></LazyLoader> },
+      { path: 'dead-letters', element: <LazyLoader><DeadLettersPage /></LazyLoader> },
+      { path: 'fraud-flags', element: <LazyLoader><FraudFlagsPage /></LazyLoader> },
       { path: 'settings', element: <LazyLoader><SettingsPage /></LazyLoader> },
       { path: 'member', element: <LazyLoader><MemberDashboardPage /></LazyLoader> },
+      { path: 'member/devices', element: <LazyLoader><MemberDevicesPage /></LazyLoader> },
+      { path: 'member/messages', element: <LazyLoader><MemberMessagesPage /></LazyLoader> },
+      { path: 'member/analytics', element: <LazyLoader><MemberAnalyticsPage /></LazyLoader> },
     ],
   },
   {

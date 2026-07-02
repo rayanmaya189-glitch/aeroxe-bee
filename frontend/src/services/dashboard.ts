@@ -57,13 +57,6 @@ export async function getAnalytics(params?: { start?: string; end?: string }): P
   return res.data.data
 }
 
-// Devices (admin)
-export async function getDevices(params?: { page?: number; pageSize?: number }): Promise<PaginatedResponse<Device>> {
-  const res = await api.get<ApiResponse<PaginatedResponse<Device>>>('/admin/accounts', { params })
-  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load devices')
-  return res.data.data
-}
-
 // Webhooks (admin)
 export async function getWebhooks(): Promise<Webhook[]> {
   const res = await api.get<ApiResponse<Webhook[]>>('/webhooks')

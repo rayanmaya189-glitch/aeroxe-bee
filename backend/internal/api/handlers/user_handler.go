@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/textbee/backend/internal/api/middleware"
 	"github.com/textbee/backend/internal/models"
@@ -89,6 +91,12 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate email format
+	if !strings.Contains(req.Email, "@") || !strings.Contains(req.Email, ".") {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid email format"})
+		return
+	}
+
 	// Check duplicate email
 	existing, err := h.userService.GetByEmail(r.Context(), req.Email)
 	if err != nil {
@@ -109,6 +117,12 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 	role := req.Role
 	if role == "" {
 		role = "staff"
+	}
+	// Validate role
+	validRoles := map[string]bool{"admin": true, "staff": true, "viewer": true}
+	if !validRoles[role] {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "role must be one of: admin, staff, viewer"})
+		return
 	}
 
 	user := &models.User{
@@ -167,9 +181,19 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 		user.Name = req.Name
 	}
 	if req.Role != "" {
+		validRoles := map[string]bool{"admin": true, "staff": true, "viewer": true}
+		if !validRoles[req.Role] {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Error: "role must be one of: admin, staff, viewer"})
+			return
+		}
 		user.Role = req.Role
 	}
 	if req.Status != "" {
+		validStatuses := map[string]bool{"active": true, "inactive": true, "suspended": true}
+		if !validStatuses[req.Status] {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Error: "status must be one of: active, inactive, suspended"})
+			return
+		}
 		user.Status = req.Status
 	}
 	if req.Avatar != "" {
@@ -256,29 +280,42 @@ func (h *UserHandler) BulkUpdate(w http.ResponseWriter, r *http.Request) {
 
 // GetActivityLog handles GET /admin/activity
 func (h *UserHandler) GetActivityLog(w http.ResponseWriter, r *http.Request) {
-	// Query recent activity from the activity_log table
 	page := parseIntOrDefault(r.URL.Query().Get("page"), 1)
 	pageSize := parseIntOrDefault(r.URL.Query().Get("pageSize"), 20)
 	if pageSize > 100 {
 		pageSize = 100
 	}
+	offset := (page - 1) * pageSize
 
-	// Return empty activity list for now - activity_log table is new
+	activities, total, err := h.userService.ListActivityLog(r.Context(), offset, pageSize)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to get activity log"})
+		return
+	}
+
+	totalPages := total / pageSize
+	if total%pageSize > 0 {
+		totalPages++
+	}
+
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
 		Data: map[string]interface{}{
-			"data":       []interface{}{},
-			"total":      0,
-			"page":       page,
-			"page_size":  pageSize,
-			"total_pages": 0,
+			"data":        activities,
+			"total":       total,
+			"page":        page,
+			"page_size":   pageSize,
+			"total_pages": totalPages,
 		},
 	})
 }
 
-// logActivity is a placeholder for activity logging
-func logActivity(_ interface{}, _ *services.UserService, _, _, _, _, _ string) {
-	// Best effort activity logging
+// logActivity writes an entry to the activity_log table (best effort)
+func logActivity(ctx context.Context, svc *services.UserService, userID, action, resourceType, resourceID, description string) {
+	if svc == nil {
+		return
+	}
+	_ = svc.LogActivity(ctx, userID, action, resourceType, resourceID, description)
 }
 
 func parseIntOrDefault(s string, defaultVal int) int {

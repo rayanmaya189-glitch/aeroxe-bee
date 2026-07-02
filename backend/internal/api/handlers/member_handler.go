@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -141,7 +142,7 @@ func (h *MemberHandler) GetDevices(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: devices})
 }
 
-// GetMessages returns paginated messages for the member's account
+// GetMessages returns paginated messages for the member's account with optional filters
 func (h *MemberHandler) GetMessages(w http.ResponseWriter, r *http.Request) {
 	accountID := middleware.GetAccountID(r.Context())
 
@@ -152,14 +153,16 @@ func (h *MemberHandler) GetMessages(w http.ResponseWriter, r *http.Request) {
 	}
 	offset := (page - 1) * pageSize
 
-	msgs, err := h.messageService.ListByAccount(r.Context(), accountID, offset, pageSize)
+	statusFilter := r.URL.Query().Get("status")
+	typeFilter := r.URL.Query().Get("type")
+
+	msgs, err := h.messageService.ListByAccountFiltered(r.Context(), accountID, offset, pageSize, statusFilter, typeFilter)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to get messages"})
 		return
 	}
 
-	// Get total count
-	total, err := h.messageService.CountByAccount(r.Context(), accountID)
+	total, err := h.messageService.CountByAccountFiltered(r.Context(), accountID, statusFilter, typeFilter)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to count messages"})
 		return
@@ -182,59 +185,45 @@ func (h *MemberHandler) GetMessages(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GetAnalytics returns analytics data for the member's account
+// GetAnalytics returns server-side aggregated analytics for the member's account
 func (h *MemberHandler) GetAnalytics(w http.ResponseWriter, r *http.Request) {
 	accountID := middleware.GetAccountID(r.Context())
 
-	// Get recent messages for analytics
-	msgs, err := h.messageService.ListByAccount(r.Context(), accountID, 0, 1000)
+	// Aggregate directly from the messages table for accuracy
+	rows, err := h.messageService.DB().Query(r.Context(),
+		`SELECT DATE(created_at) as date,
+		       COUNT(*) as total,
+		       COUNT(*) FILTER (WHERE delivery_status IN ('CARRIER_ACCEPTED','PROBABLE_DELIVERED')) as delivered,
+		       COUNT(*) FILTER (WHERE delivery_status = 'FAILED') as failed,
+		       COUNT(*) FILTER (WHERE message_type = 'otp') as otp,
+		       COUNT(*) FILTER (WHERE message_type = 'transactional') as transactional,
+		       COUNT(*) FILTER (WHERE message_type = 'marketing') as marketing
+		 FROM messages
+		 WHERE api_key_id IN (SELECT id FROM api_keys WHERE account_id = $1)
+		   AND created_at >= NOW() - INTERVAL '30 days'
+		 GROUP BY DATE(created_at)
+		 ORDER BY date DESC`, accountID)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to get analytics"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: fmt.Sprintf("failed to get analytics: %s", err.Error())})
 		return
 	}
+	defer rows.Close()
 
-	// Group by date
-	byDate := make(map[string]map[string]int64)
-	for _, m := range msgs {
-		date := m.CreatedAt.Format("2006-01-02")
-		if _, ok := byDate[date]; !ok {
-			byDate[date] = map[string]int64{
-				"total":      0,
-				"delivered":  0,
-				"failed":     0,
-				"otp":        0,
-				"transactional": 0,
-				"marketing":  0,
-			}
-		}
-		byDate[date]["total"]++
-		if m.DeliveryStatus == models.DeliveryStatusCarrierAccepted || m.DeliveryStatus == models.DeliveryStatusProbableDelivered {
-			byDate[date]["delivered"]++
-		}
-		if m.DeliveryStatus == models.DeliveryStatusFailed {
-			byDate[date]["failed"]++
-		}
-		switch m.MessageType {
-		case models.MessageTypeOTP:
-			byDate[date]["otp"]++
-		case models.MessageTypeTransactional:
-			byDate[date]["transactional"]++
-		case models.MessageTypeMarketing:
-			byDate[date]["marketing"]++
-		}
-	}
-
-	// Convert to array
 	var chartData []map[string]interface{}
-	for date, counts := range byDate {
+	for rows.Next() {
+		var date string
+		var total, delivered, failed, otp, transactional, marketing int64
+		if err := rows.Scan(&date, &total, &delivered, &failed, &otp, &transactional, &marketing); err != nil {
+			continue
+		}
 		chartData = append(chartData, map[string]interface{}{
 			"date":          date,
-			"total":         counts["total"],
-			"delivered":     counts["delivered"],
-			"failed":        counts["failed"],
-			"otp":           counts["otp"],
-			"transactional": counts["transactional"],
-			"marketing":     counts["marketing"],
+			"total":         total,
+			"delivered":     delivered,
+			"failed":        failed,
+			"otp":           otp,
+			"transactional": transactional,
+			"marketing":     marketing,
 		})
 	}
 

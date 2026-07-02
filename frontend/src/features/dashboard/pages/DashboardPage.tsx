@@ -1,7 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuthStore } from '@/store/authStore'
-import { getUsers, createUser, updateUser, deleteUser, bulkDeleteUsers } from '@/services/dashboard'
-import type { User } from '@/types/models'
 
 export function DashboardPage() {
   const [stats, setStats] = useState<Record<string, unknown> | null>(null)

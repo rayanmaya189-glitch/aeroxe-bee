@@ -36,7 +36,7 @@ func NewRouter(
 	// Auth routes
 	mux.HandleFunc("POST /api/v1/auth/register", authHandler.Register)
 	mux.HandleFunc("POST /api/v1/auth/login", authHandler.Login)
-	mux.Handle("POST /api/v1/auth/refresh", authMiddleware.JWTAuth(http.HandlerFunc(authHandler.RefreshToken)))
+	mux.HandleFunc("POST /api/v1/auth/refresh", authHandler.RefreshToken)
 	mux.Handle("GET /api/v1/auth/profile", authMiddleware.JWTAuth(http.HandlerFunc(authHandler.GetProfile)))
 	mux.Handle("PUT /api/v1/auth/profile", authMiddleware.JWTAuth(http.HandlerFunc(authHandler.UpdateProfile)))
 	mux.Handle("POST /api/v1/auth/change-password", authMiddleware.JWTAuth(http.HandlerFunc(authHandler.ChangePassword)))

@@ -238,3 +238,42 @@ func (s *UserService) BulkUpdate(ctx context.Context, ids []string, updates map[
 	_, err := s.db.Exec(ctx, query, args...)
 	return err
 }
+
+// LogActivity writes an entry to the activity_log table
+func (s *UserService) LogActivity(ctx context.Context, userID, action, resourceType, resourceID, description string) error {
+	_, err := s.db.Exec(ctx,
+		`INSERT INTO activity_log (user_id, action, resource_type, resource_id, description)
+		 VALUES ($1, $2, $3, $4, $5)`,
+		userID, action, resourceType, resourceID, description)
+	return err
+}
+
+// ListActivityLog returns paginated activity log entries
+func (s *UserService) ListActivityLog(ctx context.Context, offset, limit int) ([]models.ActivityLog, int, error) {
+	var total int64
+	err := s.db.QueryRow(ctx, `SELECT COUNT(*) FROM activity_log`).Scan(&total)
+	if err != nil {
+		return nil, 0, fmt.Errorf("count activity_log: %w", err)
+	}
+
+	rows, err := s.db.Query(ctx,
+		`SELECT id, user_id, action, resource_type, resource_id, description, created_at
+		 FROM activity_log ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+		limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("query activity_log: %w", err)
+	}
+	defer rows.Close()
+
+	var entries []models.ActivityLog
+	for rows.Next() {
+		var entry models.ActivityLog
+		if err := rows.Scan(&entry.ID, &entry.UserID, &entry.Action, &entry.Resource,
+			&entry.ResourceID, &entry.Details, &entry.CreatedAt); err != nil {
+			return nil, 0, fmt.Errorf("scan activity_log: %w", err)
+		}
+		entries = append(entries, entry)
+	}
+
+	return entries, int(total), nil
+}
