@@ -25,6 +25,7 @@ class WatchdogReceiver : BroadcastReceiver() {
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun isServiceRunning(context: Context, className: String): Boolean {
         val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
         for (service in manager.getRunningServices(Integer.MAX_VALUE)) {

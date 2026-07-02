@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION")
 package com.textbee.client.util
 
 import android.content.Context

@@ -4,7 +4,6 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.os.SystemClock
 import com.textbee.client.util.ExactAlarmHandler
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -29,7 +28,7 @@ class WatchdogScheduler @Inject constructor(
 
         val triggerAt = SystemClock.elapsedRealtime() + WatchdogReceiver.INTERVAL_MS
 
-        if (exactAlarmHandler.canScheduleExactAlarms() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        if (exactAlarmHandler.canScheduleExactAlarms()) {
             alarmManager.setExactAndAllowWhileIdle(
                 AlarmManager.ELAPSED_REALTIME_WAKEUP,
                 triggerAt,

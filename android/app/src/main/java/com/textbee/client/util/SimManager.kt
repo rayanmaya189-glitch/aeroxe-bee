@@ -17,19 +17,17 @@ class SimManager @Inject constructor(
     @SuppressLint("MissingPermission")
     fun getAvailableSlots(): List<SimSlot> {
         val slots = mutableListOf<SimSlot>()
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-            val subManager = context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as SubscriptionManager
-            for (sub in subManager.activeSubscriptionInfoList ?: return slots) {
-                slots.add(
-                    SimSlot(
-                        slotId = sub.simSlotIndex,
-                        subscriptionId = sub.subscriptionId,
-                        carrierName = sub.carrierName?.toString() ?: "Unknown",
-                        displayName = sub.displayName?.toString() ?: "",
-                        isActive = true,
-                    )
+        val subManager = context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as SubscriptionManager
+        for (sub in subManager.activeSubscriptionInfoList ?: return slots) {
+            slots.add(
+                SimSlot(
+                    slotId = sub.simSlotIndex,
+                    subscriptionId = sub.subscriptionId,
+                    carrierName = sub.carrierName?.toString() ?: "Unknown",
+                    displayName = sub.displayName?.toString() ?: "",
+                    isActive = true,
                 )
-            }
+            )
         }
         if (slots.isEmpty()) {
             slots.add(
@@ -46,11 +44,9 @@ class SimManager @Inject constructor(
 
     @SuppressLint("MissingPermission")
     fun getDefaultSubscriptionId(slot: Int): Int {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-            val subManager = context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as SubscriptionManager
-            subManager.activeSubscriptionInfoList?.forEach { sub ->
-                if (sub.simSlotIndex == slot) return sub.subscriptionId
-            }
+        val subManager = context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as SubscriptionManager
+        subManager.activeSubscriptionInfoList?.forEach { sub ->
+            if (sub.simSlotIndex == slot) return sub.subscriptionId
         }
         return SubscriptionManager.getDefaultSubscriptionId()
     }

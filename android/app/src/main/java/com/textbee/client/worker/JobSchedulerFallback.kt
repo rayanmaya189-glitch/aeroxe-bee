@@ -28,6 +28,7 @@ class JobSchedulerFallback : JobService() {
 
     override fun onStopJob(params: JobParameters?): Boolean = true
 
+    @Suppress("DEPRECATION")
     private fun isServiceRunning(className: String): Boolean {
         val manager = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
         for (service in manager.getRunningServices(Integer.MAX_VALUE)) {

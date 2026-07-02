@@ -78,11 +78,13 @@ class SMSEngine @Inject constructor(
     }
 
     private fun getSmsManager(slot: Int): SmsManager {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
-            val subId = simManager.getDefaultSubscriptionId(slot)
-            return SmsManager.getSmsManagerForSubscriptionId(subId)
+        val subId = simManager.getDefaultSubscriptionId(slot)
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            context.getSystemService(SmsManager::class.java).createForSubscriptionId(subId)
+        } else {
+            @Suppress("DEPRECATION")
+            SmsManager.getSmsManagerForSubscriptionId(subId)
         }
-        return SmsManager.getDefault()
     }
 
     private fun hasSmsPermission(): Boolean {

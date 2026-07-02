@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
 package com.textbee.client.fcm
 
 import android.app.Notification

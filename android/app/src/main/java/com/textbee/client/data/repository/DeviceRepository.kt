@@ -27,6 +27,7 @@ class DeviceRepository @Inject constructor(
     private val tokenManager: TokenManager,
 ) {
     @SuppressLint("MissingPermission")
+    @Suppress("DEPRECATION")
     suspend fun registerDevice(apiKey: String, simSlot: Int = 0): Result<Unit> = runCatching {
         val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
         val deviceId = tm.imei ?: Settings.Secure.getString(
@@ -72,25 +73,24 @@ class DeviceRepository @Inject constructor(
     }
 
     @SuppressLint("MissingPermission", "NewApi")
+    @Suppress("DEPRECATION")
     fun getDeviceInfo(): DeviceInfo {
         val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
         val slots = mutableListOf<SimSlotInfo>()
 
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-            val subManager = context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as SubscriptionManager
-            val subs = subManager.activeSubscriptionInfoList ?: emptyList()
-            for (i in 0 until tm.activeModemCount) {
-                try {
-                    val info = subs.find { it.simSlotIndex == i }
-                    slots.add(
-                        SimSlotInfo(
-                            slot = i, carrier = info?.carrierName?.toString() ?: "",
-                            phoneNumber = info?.number ?: "", isAvailable = info != null,
-                        )
+        val subManager = context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as SubscriptionManager
+        val subs = subManager.activeSubscriptionInfoList ?: emptyList()
+        for (i in 0 until tm.activeModemCount) {
+            try {
+                val info = subs.find { it.simSlotIndex == i }
+                slots.add(
+                    SimSlotInfo(
+                        slot = i, carrier = info?.carrierName?.toString() ?: "",
+                        phoneNumber = info?.number ?: "", isAvailable = info != null,
                     )
-                } catch (_: Exception) {
-                    slots.add(SimSlotInfo(slot = i, isAvailable = false))
-                }
+                )
+            } catch (_: Exception) {
+                slots.add(SimSlotInfo(slot = i, isAvailable = false))
             }
         }
 
