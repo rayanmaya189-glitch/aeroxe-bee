@@ -40,7 +40,7 @@ services:
       - mqttdata:/mosquitto/data
 
   backend:
-    build: .
+    build: ./backend
     ports:
       - "8080:8080"
       - "9090:9090"
