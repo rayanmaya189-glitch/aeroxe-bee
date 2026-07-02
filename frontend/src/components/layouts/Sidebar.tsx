@@ -105,7 +105,6 @@ const adminItems: NavItem[] = [
   { label: 'Fraud Flags', path: '/fraud-flags', icon: IconFraudFlags },
 ]
 
-// Shared items – accessible to both admins and members
 const sharedItems: NavItem[] = [
   { label: 'Billing', path: '/billing', icon: IconBilling },
   { label: 'Settings', path: '/settings', icon: IconSettings },
@@ -130,8 +129,8 @@ function NavItemLink({ item, isCollapsed }: { item: NavItem; isCollapsed: boolea
         cn(
           'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200',
           isActive
-            ? 'bg-primary-50 text-primary-700 dark:bg-primary-500/10 dark:text-primary-400'
-            : 'text-surface-600 hover:bg-surface-100 hover:text-surface-900 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-200',
+            ? 'bg-primary-400/15 text-primary-700 dark:bg-primary-400/10 dark:text-primary-400'
+            : 'text-surface-600 hover:bg-surface-100/80 hover:text-surface-900 dark:text-surface-400 dark:hover:bg-primary-400/[0.06] dark:hover:text-surface-200',
           isCollapsed && 'justify-center px-2',
         )
       }
@@ -177,8 +176,7 @@ function NavSection({
 function Divider({ isCollapsed }: { isCollapsed: boolean }) {
   return (
     <div
-      className={cn('my-3', isCollapsed ? 'mx-auto h-px w-6' : 'mx-3 h-px')}
-      style={{ backgroundColor: 'var(--color-surface-200, #e5e7eb)' }}
+      className={cn('my-3', isCollapsed ? 'mx-auto h-px w-6' : 'mx-3 h-px bg-surface-200 dark:bg-surface-700')}
     />
   )
 }
@@ -203,15 +201,16 @@ export function Sidebar() {
 
       <aside
         className={cn(
-          'fixed left-0 top-0 z-50 flex h-full flex-col border-r bg-white transition-all duration-300 dark:bg-surface-900 dark:border-surface-700',
+          'glass-sidebar fixed left-0 top-0 z-50 flex h-full flex-col transition-all duration-300',
           showSidebar ? 'translate-x-0' : '-translate-x-full',
           isMobile ? 'w-64' : sidebarOpen ? 'w-64' : 'w-16',
         )}
       >
-        <div className={cn('flex h-16 items-center border-b border-surface-100 px-4 dark:border-surface-700', sidebarOpen || isMobile ? 'justify-between' : 'justify-center')}>
+        {/* ─── Logo ──────────────────────────────────────── */}
+        <div className={cn('flex h-16 items-center border-b border-surface-200/50 px-4 dark:border-surface-700/50', sidebarOpen || isMobile ? 'justify-between' : 'justify-center')}>
           {(sidebarOpen || isMobile) && (
             <span className="text-xl font-bold text-surface-900 dark:text-white">
-              <span className="text-primary-600">AeroXe</span> Bee
+              <span className="text-primary-600 dark:text-primary-400">AeroXe</span> Bee
             </span>
           )}
           {isMobile && (
@@ -226,8 +225,8 @@ export function Sidebar() {
           )}
         </div>
 
+        {/* ─── Navigation ────────────────────────────────── */}
         <nav className="flex-1 overflow-y-auto p-3">
-          {/* Admin Section — only shown to admin/staff users */}
           {isAdmin && (
             <>
               <NavSection label="Admin" items={adminItems} isCollapsed={isCollapsed} />
@@ -235,15 +234,14 @@ export function Sidebar() {
             </>
           )}
 
-          {/* Member Section — shown to all authenticated users */}
           <NavSection label="Member Portal" items={memberItems} isCollapsed={isCollapsed} />
 
-          {/* Shared Section — accessible to all users */}
           <Divider isCollapsed={isCollapsed} />
           <NavSection label="Account" items={sharedItems} isCollapsed={isCollapsed} />
         </nav>
 
-        <div className={cn('border-t border-surface-100 p-3 dark:border-surface-700', isCollapsed && 'text-center')}>
+        {/* ─── Footer ────────────────────────────────────── */}
+        <div className={cn('border-t border-surface-200/50 p-3 dark:border-primary-400/[0.06]', isCollapsed && 'text-center')}>
           {(sidebarOpen || isMobile) && (
             <p className="text-xs text-surface-400 dark:text-surface-500">&copy; 2026 Aeroxe Enterprises Pvt. Ltd.</p>
           )}

@@ -60,7 +60,8 @@ export function SettingsPage() {
       <h1 className="text-2xl font-bold text-surface-900 dark:text-white">Settings</h1>
 
       <div className="max-w-lg space-y-6">
-        <div className="rounded-2xl border border-surface-100 bg-white p-6 shadow-sm dark:border-surface-700 dark:bg-surface-800">
+        {/* ─── Profile ─────────────────────────────────── */}
+        <div className="glass-card rounded-2xl p-6">
           <h2 className="mb-4 text-lg font-semibold text-surface-900 dark:text-white">Profile</h2>
           <form onSubmit={handleProfileUpdate} className="space-y-4">
             {profileMsg && (
@@ -74,7 +75,7 @@ export function SettingsPage() {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="mt-1.5 w-full rounded-xl border border-surface-300 bg-surface-50 px-4 py-2.5 text-sm text-surface-900 transition-colors focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-surface-600 dark:bg-surface-900 dark:text-white dark:focus:bg-surface-800"
+                className="mt-1.5 w-full rounded-xl border border-surface-300 bg-surface-50 px-4 py-2.5 text-sm text-surface-900 transition-colors focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-[#1a2038] dark:bg-[#0d1220] dark:text-white dark:focus:border-primary-400/40 dark:focus:bg-[#111828] dark:focus:ring-primary-400/20"
               />
             </div>
             <div>
@@ -96,7 +97,8 @@ export function SettingsPage() {
           </form>
         </div>
 
-        <div className="rounded-2xl border border-surface-100 bg-white p-6 shadow-sm dark:border-surface-700 dark:bg-surface-800">
+        {/* ─── Password ────────────────────────────────── */}
+        <div className="glass-card rounded-2xl p-6">
           <h2 className="mb-4 text-lg font-semibold text-surface-900 dark:text-white">Change Password</h2>
           <form onSubmit={handlePasswordChange} className="space-y-4">
             {passwordMsg && (
@@ -111,7 +113,7 @@ export function SettingsPage() {
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 required
-                className="mt-1.5 w-full rounded-xl border border-surface-300 bg-surface-50 px-4 py-2.5 text-sm text-surface-900 transition-colors focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-surface-600 dark:bg-surface-900 dark:text-white dark:focus:bg-surface-800"
+                className="mt-1.5 w-full rounded-xl border border-surface-300 bg-surface-50 px-4 py-2.5 text-sm text-surface-900 transition-colors focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-[#1a2038] dark:bg-[#0d1220] dark:text-white dark:focus:border-primary-400/40 dark:focus:bg-[#111828] dark:focus:ring-primary-400/20"
               />
             </div>
             <div>
@@ -122,7 +124,7 @@ export function SettingsPage() {
                 onChange={(e) => setNewPassword(e.target.value)}
                 required
                 minLength={8}
-                className="mt-1.5 w-full rounded-xl border border-surface-300 bg-surface-50 px-4 py-2.5 text-sm text-surface-900 transition-colors focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-surface-600 dark:bg-surface-900 dark:text-white dark:focus:bg-surface-800"
+                className="mt-1.5 w-full rounded-xl border border-surface-300 bg-surface-50 px-4 py-2.5 text-sm text-surface-900 transition-colors focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-[#1a2038] dark:bg-[#0d1220] dark:text-white dark:focus:border-primary-400/40 dark:focus:bg-[#111828] dark:focus:ring-primary-400/20"
               />
             </div>
             <button

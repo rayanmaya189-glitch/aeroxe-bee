@@ -49,8 +49,8 @@ export function RegisterPage() {
   }, [name, email, password, confirmPassword, storeLogin, navigate])
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface-50 dark:bg-surface-950">
-      <div className="w-full max-w-md space-y-8 rounded-2xl border border-surface-100 bg-white p-8 shadow-xl dark:border-surface-700 dark:bg-surface-800">
+    <div className="flex min-h-screen items-center justify-center bg-primary-50 dark:bg-[#0a0e1a]">
+      <div className="glass-card relative w-full max-w-md space-y-8 rounded-2xl p-8">
         <div className="text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-600 shadow-lg shadow-primary-600/25">
             <svg className="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -70,7 +70,7 @@ export function RegisterPage() {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="mt-1.5 block w-full rounded-xl border border-surface-300 bg-surface-50 px-4 py-3 text-surface-900 shadow-sm transition-colors placeholder:text-surface-400 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-surface-600 dark:bg-surface-900 dark:text-white dark:focus:bg-surface-800"
+              className="mt-1.5 block w-full rounded-xl border border-surface-300 bg-surface-50 px-4 py-3 text-surface-900 shadow-sm transition-colors placeholder:text-surface-400 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-[#1a2038] dark:bg-[#0d1220] dark:text-white dark:focus:border-primary-400/40 dark:focus:bg-[#111828] dark:focus:ring-primary-400/20"
               required
             />
           </div>
@@ -80,7 +80,7 @@ export function RegisterPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1.5 block w-full rounded-xl border border-surface-300 bg-surface-50 px-4 py-3 text-surface-900 shadow-sm transition-colors placeholder:text-surface-400 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-surface-600 dark:bg-surface-900 dark:text-white dark:focus:bg-surface-800"
+              className="mt-1.5 block w-full rounded-xl border border-surface-300 bg-surface-50 px-4 py-3 text-surface-900 shadow-sm transition-colors placeholder:text-surface-400 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-[#1a2038] dark:bg-[#0d1220] dark:text-white dark:focus:border-primary-400/40 dark:focus:bg-[#111828] dark:focus:ring-primary-400/20"
               required
             />
           </div>
@@ -91,7 +91,7 @@ export function RegisterPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               minLength={8}
-              className="mt-1.5 block w-full rounded-xl border border-surface-300 bg-surface-50 px-4 py-3 text-surface-900 shadow-sm transition-colors placeholder:text-surface-400 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-surface-600 dark:bg-surface-900 dark:text-white dark:focus:bg-surface-800"
+              className="mt-1.5 block w-full rounded-xl border border-surface-300 bg-surface-50 px-4 py-3 text-surface-900 shadow-sm transition-colors placeholder:text-surface-400 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-[#1a2038] dark:bg-[#0d1220] dark:text-white dark:focus:border-primary-400/40 dark:focus:bg-[#111828] dark:focus:ring-primary-400/20"
               required
             />
             <p className="mt-1 text-xs text-surface-400">Minimum 8 characters</p>
@@ -103,7 +103,7 @@ export function RegisterPage() {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               minLength={8}
-              className="mt-1.5 block w-full rounded-xl border border-surface-300 bg-surface-50 px-4 py-3 text-surface-900 shadow-sm transition-colors placeholder:text-surface-400 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-surface-600 dark:bg-surface-900 dark:text-white dark:focus:bg-surface-800"
+              className="mt-1.5 block w-full rounded-xl border border-surface-300 bg-surface-50 px-4 py-3 text-surface-900 shadow-sm transition-colors placeholder:text-surface-400 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-[#1a2038] dark:bg-[#0d1220] dark:text-white dark:focus:border-primary-400/40 dark:focus:bg-[#111828] dark:focus:ring-primary-400/20"
               required
             />
           </div>
