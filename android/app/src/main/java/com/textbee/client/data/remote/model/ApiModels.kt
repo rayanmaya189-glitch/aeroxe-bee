@@ -34,6 +34,7 @@ data class SMSCommand(
     @SerializedName("recipient") val recipient: String,
     @SerializedName("message") val message: String,
     @SerializedName("priority") val priority: String = "NORMAL",
+    @SerializedName("sim_slot") val simSlot: Int = -1,
 )
 
 data class StatusUpdateRequest(

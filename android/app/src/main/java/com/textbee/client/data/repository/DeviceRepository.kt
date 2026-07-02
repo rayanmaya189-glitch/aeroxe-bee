@@ -50,6 +50,7 @@ class DeviceRepository @Inject constructor(
             val data = body.data
             tokenManager.saveToken(data.token)
             tokenManager.saveDeviceId(data.deviceId)
+            tokenManager.saveSimSlot(simSlot)
             data.mqttBrokerUrl?.let { tokenManager.saveMqttBrokerUrl(it) }
             data.mqttUsername?.let { tokenManager.saveMqttUsername(it) }
             data.mqttPassword?.let { tokenManager.saveMqttPassword(it) }

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -39,8 +38,8 @@ func NewDeviceHandler(
 	}
 }
 
-// RegisterRequest matches the Android RegisterRequest model
-type RegisterRequest struct {
+// DeviceRegisterRequest matches the Android RegisterRequest model
+type DeviceRegisterRequest struct {
 	PhysicalDeviceID string `json:"physical_device_id"`
 	PhoneNumber      string `json:"phone_number"`
 	Carrier          string `json:"carrier"`
@@ -55,7 +54,7 @@ type RegisterRequest struct {
 // Validates the API key from the request body, registers the device,
 // generates MQTT credentials and a JWT token, returns them to the client.
 func (h *DeviceHandler) Register(w http.ResponseWriter, r *http.Request) {
-	var req RegisterRequest
+	var req DeviceRegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid request body"})
 		return
@@ -141,7 +140,7 @@ type StatusUpdateRequest struct {
 
 // HandleStatusUpdate handles POST /api/v1/devices/status
 func (h *DeviceHandler) HandleStatusUpdate(w http.ResponseWriter, r *http.Request) {
-	accountID := middleware.GetAccountID(r.Context())
+	_ = middleware.GetAccountID(r.Context())
 
 	var req StatusUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -357,13 +356,6 @@ func detectCountryFromPhone(phone string) (string, string) {
 	return "", ""
 }
 
-func uuidV4() string {
-	b := make([]byte, 16)
-	_, _ = rand.Read(b)
-	b[6] = (b[6] & 0x0f) | 0x40
-	b[8] = (b[8] & 0x3f) | 0x80
-	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
-		b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
-}
+
 
 

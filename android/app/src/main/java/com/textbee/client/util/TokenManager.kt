@@ -62,6 +62,9 @@ class TokenManager @Inject constructor(
 
     fun clear() = prefs.edit().clear().apply()
 
+    fun saveSimSlot(slot: Int) = prefs.edit().putInt(KEY_SIM_SLOT, slot).apply()
+    fun getSimSlot(): Int = prefs.getInt(KEY_SIM_SLOT, 0)
+
     companion object {
         private const val KEY_TOKEN = "auth_token"
         private const val KEY_REFRESH_TOKEN = "refresh_token"
@@ -69,6 +72,7 @@ class TokenManager @Inject constructor(
         private const val KEY_SERVER_URL = "server_url"
         private const val KEY_API_KEY = "api_key"
         private const val KEY_REGISTERED = "registered"
+        private const val KEY_SIM_SLOT = "sim_slot"
         private const val KEY_MQTT_BROKER_URL = "mqtt_broker_url"
         private const val KEY_MQTT_USERNAME = "mqtt_username"
         private const val KEY_MQTT_PASSWORD = "mqtt_password"
