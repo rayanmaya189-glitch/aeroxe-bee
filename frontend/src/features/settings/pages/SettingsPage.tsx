@@ -56,47 +56,80 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="space-y-8 p-6">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Settings</h1>
+    <div className="space-y-8">
+      <h1 className="text-2xl font-bold text-surface-900 dark:text-white">Settings</h1>
 
       <div className="max-w-lg space-y-6">
-        <div className="rounded-2xl border border-gray-200 p-6 dark:border-gray-700">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Profile</h2>
+        <div className="rounded-2xl border border-surface-100 bg-white p-6 shadow-sm dark:border-surface-700 dark:bg-surface-800">
+          <h2 className="mb-4 text-lg font-semibold text-surface-900 dark:text-white">Profile</h2>
           <form onSubmit={handleProfileUpdate} className="space-y-4">
-            {profileMsg && <div className={`rounded-lg p-2 text-sm ${profileMsg.includes('success') ? 'bg-green-50 text-green-600 dark:bg-green-900/20' : 'bg-red-50 text-red-600 dark:bg-red-900/20'}`}>{profileMsg}</div>}
+            {profileMsg && (
+              <div className={`rounded-xl border p-3 text-sm ${profileMsg.includes('success') ? 'border-success/20 bg-success/5 text-success' : 'border-danger/20 bg-danger/5 text-danger'}`}>
+                {profileMsg}
+              </div>
+            )}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+              <label className="block text-sm font-medium text-surface-700 dark:text-surface-300">Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="mt-1.5 w-full rounded-xl border border-surface-300 bg-surface-50 px-4 py-2.5 text-sm text-surface-900 transition-colors focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-surface-600 dark:bg-surface-900 dark:text-white dark:focus:bg-surface-800"
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
-              <input type="email" value={email} disabled
-                className="mt-1 w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-500 dark:border-gray-600 dark:bg-gray-800" />
+              <label className="block text-sm font-medium text-surface-700 dark:text-surface-300">Email</label>
+              <input
+                type="email"
+                value={email}
+                disabled
+                className="mt-1.5 w-full rounded-xl border border-surface-200 bg-surface-100 px-4 py-2.5 text-sm text-surface-500 dark:border-surface-700 dark:bg-surface-900 dark:text-surface-400"
+              />
             </div>
-            <button type="submit" disabled={loading}
-              className="rounded-lg bg-primary-600 px-4 py-2 text-sm text-white hover:bg-primary-700 disabled:opacity-50">
+            <button
+              type="submit"
+              disabled={loading}
+              className="rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-primary-700 hover:shadow-md disabled:opacity-50"
+            >
               {loading ? 'Saving...' : 'Save Changes'}
             </button>
           </form>
         </div>
 
-        <div className="rounded-2xl border border-gray-200 p-6 dark:border-gray-700">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Change Password</h2>
+        <div className="rounded-2xl border border-surface-100 bg-white p-6 shadow-sm dark:border-surface-700 dark:bg-surface-800">
+          <h2 className="mb-4 text-lg font-semibold text-surface-900 dark:text-white">Change Password</h2>
           <form onSubmit={handlePasswordChange} className="space-y-4">
-            {passwordMsg && <div className={`rounded-lg p-2 text-sm ${passwordMsg.includes('success') ? 'bg-green-50 text-green-600 dark:bg-green-900/20' : 'bg-red-50 text-red-600 dark:bg-red-900/20'}`}>{passwordMsg}</div>}
+            {passwordMsg && (
+              <div className={`rounded-xl border p-3 text-sm ${passwordMsg.includes('success') ? 'border-success/20 bg-success/5 text-success' : 'border-danger/20 bg-danger/5 text-danger'}`}>
+                {passwordMsg}
+              </div>
+            )}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Current Password</label>
-              <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+              <label className="block text-sm font-medium text-surface-700 dark:text-surface-300">Current Password</label>
+              <input
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                required
+                className="mt-1.5 w-full rounded-xl border border-surface-300 bg-surface-50 px-4 py-2.5 text-sm text-surface-900 transition-colors focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-surface-600 dark:bg-surface-900 dark:text-white dark:focus:bg-surface-800"
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">New Password</label>
-              <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required minLength={8}
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+              <label className="block text-sm font-medium text-surface-700 dark:text-surface-300">New Password</label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                minLength={8}
+                className="mt-1.5 w-full rounded-xl border border-surface-300 bg-surface-50 px-4 py-2.5 text-sm text-surface-900 transition-colors focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-surface-600 dark:bg-surface-900 dark:text-white dark:focus:bg-surface-800"
+              />
             </div>
-            <button type="submit" disabled={loading}
-              className="rounded-lg bg-primary-600 px-4 py-2 text-sm text-white hover:bg-primary-700 disabled:opacity-50">
+            <button
+              type="submit"
+              disabled={loading}
+              className="rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-primary-700 hover:shadow-md disabled:opacity-50"
+            >
               {loading ? 'Changing...' : 'Change Password'}
             </button>
           </form>
