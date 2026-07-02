@@ -5,10 +5,10 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -20,10 +20,12 @@ fun SettingsScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var serverUrl by remember { mutableStateOf(state.serverUrl) }
-    var apiKey by remember { mutableStateOf(state.apiKey) }
+    var email by remember { mutableStateOf(state.email) }
+    var password by remember { mutableStateOf(state.password) }
 
     LaunchedEffect(state.serverUrl) { serverUrl = state.serverUrl }
-    LaunchedEffect(state.apiKey) { apiKey = state.apiKey }
+    LaunchedEffect(state.email) { email = state.email }
+    LaunchedEffect(state.password) { password = state.password }
 
     Scaffold(
         topBar = {
@@ -63,20 +65,39 @@ fun SettingsScreen(
             Spacer(Modifier.height(12.dp))
 
             OutlinedTextField(
-                value = apiKey,
-                onValueChange = { apiKey = it },
-                label = { Text("API Key") },
+                value = email,
+                onValueChange = { email = it },
+                label = { Text("Email") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { viewModel.save(serverUrl, apiKey) }),
-                visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Email,
+                    imeAction = ImeAction.Next,
+                ),
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = password,
+                onValueChange = { password = it },
+                label = { Text("Password") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password,
+                    imeAction = ImeAction.Done,
+                ),
+                keyboardActions = KeyboardActions(
+                    onDone = { viewModel.save(serverUrl, email, password) }
+                ),
+                visualTransformation = PasswordVisualTransformation(),
             )
 
             Spacer(Modifier.height(24.dp))
 
             Button(
-                onClick = { viewModel.save(serverUrl, apiKey) },
+                onClick = { viewModel.save(serverUrl, email, password) },
                 modifier = Modifier.fillMaxWidth().height(50.dp),
                 enabled = !state.isLoading,
             ) {

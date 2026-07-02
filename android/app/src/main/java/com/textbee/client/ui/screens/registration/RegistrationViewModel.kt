@@ -23,11 +23,14 @@ import javax.inject.Inject
 
 data class RegistrationState(
     val serverUrl: String = "http://10.0.2.2:8080",
-    val apiKey: String = "",
+    val email: String = "",
+    val password: String = "",
     val isLoading: Boolean = false,
     val isRegistered: Boolean = false,
     val error: String? = null,
     val serverUrlError: String? = null,
+    val emailError: String? = null,
+    val passwordError: String? = null,
 
     val availableSlots: List<SimManager.SimSlot> = emptyList(),
     val selectedSlotIndex: Int = 0,
@@ -59,8 +62,12 @@ class RegistrationViewModel @Inject constructor(
         _state.update { it.copy(serverUrl = url, serverUrlError = null, error = null) }
     }
 
-    fun onApiKeyChange(key: String) {
-        _state.update { it.copy(apiKey = key, error = null) }
+    fun onEmailChange(email: String) {
+        _state.update { it.copy(email = email, emailError = null, error = null) }
+    }
+
+    fun onPasswordChange(password: String) {
+        _state.update { it.copy(password = password, passwordError = null, error = null) }
     }
 
     fun onSlotSelected(index: Int) {
@@ -72,10 +79,21 @@ class RegistrationViewModel @Inject constructor(
         when (current) {
             RegistrationStep.CREDENTIALS -> {
                 val s = _state.value
+                var hasError = false
                 if (s.serverUrl.isBlank()) {
                     _state.update { it.copy(serverUrlError = "Server URL is required") }
-                    return
+                    hasError = true
                 }
+                if (s.email.isBlank()) {
+                    _state.update { it.copy(emailError = "Email is required") }
+                    hasError = true
+                }
+                if (s.password.isBlank()) {
+                    _state.update { it.copy(passwordError = "Password is required") }
+                    hasError = true
+                }
+                if (hasError) return
+
                 val slots = simManager.getAvailableSlots()
                 _state.update {
                     it.copy(
@@ -83,6 +101,8 @@ class RegistrationViewModel @Inject constructor(
                         availableSlots = slots,
                         error = null,
                         serverUrlError = null,
+                        emailError = null,
+                        passwordError = null,
                     )
                 }
             }
@@ -146,17 +166,20 @@ class RegistrationViewModel @Inject constructor(
 
         viewModelScope.launch {
             tokenManager.saveServerUrl(s.serverUrl.trimEnd('/'))
-            tokenManager.saveApiKey(s.apiKey.trim())
 
             try {
-                deviceRepository.registerDevice(s.apiKey, s.selectedSlotIndex)
+                deviceRepository.loginDevice(
+                    email = s.email.trim(),
+                    password = s.password,
+                    simSlot = s.selectedSlotIndex,
+                )
                 MqttService.start(appContext)
                 _state.update { it.copy(isLoading = false, isRegistered = true) }
             } catch (e: Exception) {
                 _state.update {
                     it.copy(
                         isLoading = false,
-                        error = "Registration failed: ${e.message}",
+                        error = "Login failed: ${e.message}",
                     )
                 }
             }

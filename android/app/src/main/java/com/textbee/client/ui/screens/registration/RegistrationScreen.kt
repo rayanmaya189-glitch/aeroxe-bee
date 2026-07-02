@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -103,14 +104,35 @@ private fun CredentialsStep(state: RegistrationState, viewModel: RegistrationVie
     Spacer(Modifier.height(16.dp))
 
     OutlinedTextField(
-        value = state.apiKey,
-        onValueChange = viewModel::onApiKeyChange,
-        label = { Text("API Key") },
+        value = state.email,
+        onValueChange = viewModel::onEmailChange,
+        label = { Text("Email") },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Email,
+            imeAction = ImeAction.Next,
+        ),
+        isError = state.emailError != null,
+        supportingText = state.emailError?.let { { Text(it) } },
+    )
+
+    Spacer(Modifier.height(12.dp))
+
+    OutlinedTextField(
+        value = state.password,
+        onValueChange = viewModel::onPasswordChange,
+        label = { Text("Password") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Password,
+            imeAction = ImeAction.Done,
+        ),
         keyboardActions = KeyboardActions(onDone = { viewModel.nextStep() }),
-        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+        visualTransformation = PasswordVisualTransformation(),
+        isError = state.passwordError != null,
+        supportingText = state.passwordError?.let { { Text(it) } },
     )
 
     Spacer(Modifier.height(24.dp))
@@ -265,6 +287,7 @@ private fun ConfirmStep(state: RegistrationState, viewModel: RegistrationViewMod
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text("Server: ${state.serverUrl}", style = MaterialTheme.typography.bodyMedium)
+            Text("Email: ${state.email}", style = MaterialTheme.typography.bodyMedium)
             Text("SIM Slot: ${state.selectedSlotIndex + 1}", style = MaterialTheme.typography.bodyMedium)
             Text(
                 if (state.isBatteryOptimized) "Battery opt: Disabled"

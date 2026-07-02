@@ -26,40 +26,53 @@ class DeviceRepository @Inject constructor(
     private val api: TextBeeApi,
     private val tokenManager: TokenManager,
 ) {
-    @SuppressLint("MissingPermission")
-    @Suppress("DEPRECATION")
-    suspend fun registerDevice(apiKey: String, simSlot: Int = 0): Result<Unit> = runCatching {
-        val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
-        val deviceId = tm.imei ?: Settings.Secure.getString(
+    /**
+     * Login to the server with email+password and register/authenticate this device.
+     * Stores all credentials (token, MQTT details, device info) in TokenManager on success.
+     */
+    suspend fun loginDevice(email: String, password: String, simSlot: Int = 0): Result<Unit> = runCatching {
+        val androidId = Settings.Secure.getString(
             context.contentResolver, Settings.Secure.ANDROID_ID
-        )
-        val phoneNumber = tm.line1Number ?: ""
-        val carrier = tm.networkOperatorName ?: ""
+        ) ?: throw Exception("Unable to get device ID")
+        val deviceId = androidId
 
-        val request = RegisterRequest(
-            physicalDeviceId = deviceId,
-            phoneNumber = phoneNumber,
-            carrier = carrier,
-            simSlot = simSlot,
-            appVersion = "1.0.0",
-            model = Build.MODEL,
-            osVersion = Build.VERSION.RELEASE,
-            apiKey = apiKey,
+        val request = DeviceLoginRequest(
+            email = email,
+            password = password,
+            deviceId = deviceId,
+            simSlot = simSlot + 1, // Backend expects 1-based sim slot
         )
-        val response = api.registerDevice(request)
+        val response = api.deviceLogin(request)
         val body = response.body()
 
         if (response.isSuccessful && body?.success == true && body.data != null) {
             val data = body.data
+
+            // Save auth token
             tokenManager.saveToken(data.token)
+
+            // Save device info — use backend-returned device ID (e.g. "androidid-sim1")
             tokenManager.saveDeviceId(data.deviceId)
             tokenManager.saveSimSlot(simSlot)
-            data.mqttBrokerUrl?.let { tokenManager.saveMqttBrokerUrl(it) }
-            data.mqttUsername?.let { tokenManager.saveMqttUsername(it) }
-            data.mqttPassword?.let { tokenManager.saveMqttPassword(it) }
-            data.mqttCredentialId?.let { tokenManager.saveMqttCredentialId(it) }
+
+            // Save account info
+            tokenManager.saveAccountEmail(email)
+            tokenManager.saveAccountPassword(password)
+            tokenManager.saveAccountName(data.account?.name ?: email)
+            tokenManager.saveAccountId(data.account?.id ?: "")
+
+            // Save MQTT connection details
+            data.mqtt?.let { mqtt ->
+                tokenManager.saveMqttBrokerUrl(mqtt.brokerUrl)
+                tokenManager.saveMqttUsername(mqtt.username)
+                tokenManager.saveMqttPassword(mqtt.password)
+                tokenManager.saveMqttCredentialId(mqtt.credentialId)
+            }
+
+            // Mark as registered
+            tokenManager.saveRegistered(true)
         } else {
-            throw Exception(body?.error ?: "Registration failed")
+            throw Exception(body?.error ?: "Login failed")
         }
     }
 
@@ -94,8 +107,12 @@ class DeviceRepository @Inject constructor(
             }
         }
 
+        val androidId = Settings.Secure.getString(
+            context.contentResolver, Settings.Secure.ANDROID_ID
+        ) ?: ""
+
         return DeviceInfo(
-            deviceId = tokenManager.getDeviceId() ?: "",
+            deviceId = tokenManager.getDeviceId() ?: androidId,
             phoneNumber = tm.line1Number ?: "",
             simSlots = slots,
             batteryLevel = getBatteryLevel(),

@@ -5,6 +5,9 @@ import retrofit2.Response
 import retrofit2.http.*
 
 interface TextBeeApi {
+    @POST("devices/login")
+    suspend fun deviceLogin(@Body request: DeviceLoginRequest): Response<ApiResponse<DeviceLoginResponse>>
+
     @POST("devices/register")
     suspend fun registerDevice(@Body request: RegisterRequest): Response<ApiResponse<RegisterResponse>>
 

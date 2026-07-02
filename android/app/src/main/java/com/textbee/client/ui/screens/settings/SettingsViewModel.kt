@@ -16,7 +16,8 @@ import javax.inject.Inject
 
 data class SettingsState(
     val serverUrl: String = "",
-    val apiKey: String = "",
+    val email: String = "",
+    val password: String = "",
     val isOnline: Boolean = false,
     val isLoading: Boolean = false,
     val saved: Boolean = false,
@@ -36,18 +37,24 @@ class SettingsViewModel @Inject constructor(
         _state.update {
             it.copy(
                 serverUrl = tokenManager.getServerUrl() ?: "",
-                apiKey = tokenManager.getApiKey() ?: "",
+                email = tokenManager.getAccountEmail() ?: "",
+                password = tokenManager.getAccountPassword() ?: "",
             )
         }
     }
 
-    fun save(serverUrl: String, apiKey: String) {
+    fun save(serverUrl: String, email: String, password: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
             tokenManager.saveServerUrl(serverUrl.trimEnd('/'))
-            tokenManager.saveApiKey(apiKey.trim())
+            tokenManager.saveAccountEmail(email.trim())
+            tokenManager.saveAccountPassword(password)
             try {
-                deviceRepository.registerDevice(apiKey.trim())
+                deviceRepository.loginDevice(
+                    email = email.trim(),
+                    password = password,
+                    simSlot = tokenManager.getSimSlot(),
+                )
                 MqttService.start(appContext)
                 _state.update { it.copy(isLoading = false, saved = true) }
             } catch (e: Exception) {

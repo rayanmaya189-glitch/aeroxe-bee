@@ -61,3 +61,40 @@ data class TokenRefreshResponse(
 data class DeregisterRequest(
     @SerializedName("device_id") val deviceId: String,
 )
+
+data class DeviceLoginRequest(
+    @SerializedName("email") val email: String,
+    @SerializedName("password") val password: String,
+    @SerializedName("device_id") val deviceId: String,
+    @SerializedName("sim_slot") val simSlot: Int = 1,
+)
+
+data class DeviceLoginResponse(
+    @SerializedName("device_id") val deviceId: String,
+    @SerializedName("is_new_device") val isNewDevice: Boolean,
+    @SerializedName("token") val token: String,
+    @SerializedName("mqtt") val mqtt: MqttConnectionInfo?,
+    @SerializedName("device") val device: DeviceInfoData?,
+    @SerializedName("account") val account: AccountInfo?,
+)
+
+data class MqttConnectionInfo(
+    @SerializedName("broker_url") val brokerUrl: String,
+    @SerializedName("username") val username: String,
+    @SerializedName("password") val password: String,
+    @SerializedName("credential_id") val credentialId: String,
+)
+
+data class DeviceInfoData(
+    @SerializedName("id") val id: String,
+    @SerializedName("name") val name: String?,
+    @SerializedName("sim_slot") val simSlot: Int,
+    @SerializedName("status") val status: String?,
+    @SerializedName("carrier") val carrier: String?,
+)
+
+data class AccountInfo(
+    @SerializedName("id") val id: String,
+    @SerializedName("email") val email: String,
+    @SerializedName("name") val name: String?,
+)

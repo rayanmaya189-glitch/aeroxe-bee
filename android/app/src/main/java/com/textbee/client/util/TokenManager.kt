@@ -26,29 +26,37 @@ class TokenManager @Inject constructor(
     )
 
     fun saveToken(token: String) = prefs.edit().putString(KEY_TOKEN, token).apply()
-
     fun getToken(): String? = prefs.getString(KEY_TOKEN, null)
 
     fun saveRefreshToken(token: String) = prefs.edit().putString(KEY_REFRESH_TOKEN, token).apply()
-
     fun getRefreshToken(): String? = prefs.getString(KEY_REFRESH_TOKEN, null)
 
     fun saveDeviceId(deviceId: String) = prefs.edit().putString(KEY_DEVICE_ID, deviceId).apply()
-
     fun getDeviceId(): String? = prefs.getString(KEY_DEVICE_ID, null)
 
     fun saveRegistered(registered: Boolean) = prefs.edit().putBoolean(KEY_REGISTERED, registered).apply()
-
     fun isRegistered(): Boolean = prefs.getBoolean(KEY_REGISTERED, false)
 
     fun saveServerUrl(url: String) = prefs.edit().putString(KEY_SERVER_URL, url).apply()
-
     fun getServerUrl(): String? = prefs.getString(KEY_SERVER_URL, null)
 
     fun saveApiKey(key: String) = prefs.edit().putString(KEY_API_KEY, key).apply()
-
     fun getApiKey(): String? = prefs.getString(KEY_API_KEY, null)
 
+    // Account credentials for device login
+    fun saveAccountEmail(email: String) = prefs.edit().putString(KEY_ACCOUNT_EMAIL, email).apply()
+    fun getAccountEmail(): String? = prefs.getString(KEY_ACCOUNT_EMAIL, null)
+
+    fun saveAccountPassword(password: String) = prefs.edit().putString(KEY_ACCOUNT_PASSWORD, password).apply()
+    fun getAccountPassword(): String? = prefs.getString(KEY_ACCOUNT_PASSWORD, null)
+
+    fun saveAccountName(name: String) = prefs.edit().putString(KEY_ACCOUNT_NAME, name).apply()
+    fun getAccountName(): String? = prefs.getString(KEY_ACCOUNT_NAME, null)
+
+    fun saveAccountId(id: String) = prefs.edit().putString(KEY_ACCOUNT_ID, id).apply()
+    fun getAccountId(): String? = prefs.getString(KEY_ACCOUNT_ID, null)
+
+    // MQTT connection details
     fun saveMqttBrokerUrl(url: String) = prefs.edit().putString(KEY_MQTT_BROKER_URL, url).apply()
     fun getMqttBrokerUrl(): String? = prefs.getString(KEY_MQTT_BROKER_URL, null)
 
@@ -78,5 +86,9 @@ class TokenManager @Inject constructor(
         private const val KEY_MQTT_USERNAME = "mqtt_username"
         private const val KEY_MQTT_PASSWORD = "mqtt_password"
         private const val KEY_MQTT_CREDENTIAL_ID = "mqtt_credential_id"
+        private const val KEY_ACCOUNT_EMAIL = "account_email"
+        private const val KEY_ACCOUNT_PASSWORD = "account_password"
+        private const val KEY_ACCOUNT_NAME = "account_name"
+        private const val KEY_ACCOUNT_ID = "account_id"
     }
 }
