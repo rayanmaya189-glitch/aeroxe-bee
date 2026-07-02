@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getPaymentConfigs, upsertPaymentConfig, type PaymentConfig } from '@/services/dashboard'
+import { getPaymentConfigs, upsertPaymentConfig } from '@/services/dashboard'
+import type { PaymentConfig } from '@/services/dashboard'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -88,7 +89,7 @@ export function BillingSettingsPage() {
                     ) : null
                   ))}
                 </div>
-                <Button variant="outline" size="sm" onClick={() => handleEdit(config)}>
+                <Button variant="secondary" size="sm" onClick={() => handleEdit(config)}>
                   Configure
                 </Button>
               </CardContent>
@@ -97,7 +98,7 @@ export function BillingSettingsPage() {
         </div>
       )}
 
-      <Modal isOpen={!!editingConfig} onClose={() => setEditingConfig(null)} title={`Configure ${editingConfig?.label || ''}`}>
+      <Modal open={!!editingConfig} onClose={() => setEditingConfig(null)} title={`Configure ${editingConfig?.label || ''}`}>
         {editingConfig && (
           <div className="space-y-4">
             <div>
@@ -128,7 +129,7 @@ export function BillingSettingsPage() {
               </div>
             ))}
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setEditingConfig(null)}>Cancel</Button>
+              <Button variant="secondary" onClick={() => setEditingConfig(null)}>Cancel</Button>
               <Button onClick={handleSave} loading={saveMutation.isPending}>Save</Button>
             </div>
           </div>

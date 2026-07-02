@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getDeadLetters, retryDeadLetter } from '@/services/dashboard'
-import type { DeadLetter } from '@/types/models'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { PageSkeleton } from '@/components/ui/Skeleton'

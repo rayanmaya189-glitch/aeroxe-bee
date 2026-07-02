@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getCircuitBreakers, resetCircuitBreaker } from '@/services/dashboard'
-import type { CircuitBreakerEvent } from '@/types/models'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { PageSkeleton } from '@/components/ui/Skeleton'

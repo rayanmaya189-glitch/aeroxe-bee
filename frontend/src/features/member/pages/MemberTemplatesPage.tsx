@@ -103,7 +103,7 @@ export function MemberTemplatesPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {templates.map((t) => {
-            const sc = statusColors[t.approval_status] || statusColors.pending
+            const sc = statusColors[t.approval_status] ?? statusColors.pending
             return (
               <Card key={t.id} hover>
                 <div className="flex items-start justify-between">
@@ -115,7 +115,7 @@ export function MemberTemplatesPage() {
                 <p className="mt-2 line-clamp-3 text-xs text-gray-500 dark:text-gray-400">{t.body}</p>
 
                 {/* Status message */}
-                <div className={`mt-3 rounded-lg border p-2.5 text-xs ${sc.border} ${sc.bg} ${sc.text}`}>
+                <div className={`mt-3 rounded-lg border p-2.5 text-xs ${sc?.border ?? ''} ${sc?.bg ?? ''} ${sc?.text ?? ''}`}>
                   {t.approval_status === 'pending' && (
                     <span>⏳ Waiting for admin approval. You can still edit or delete this template.</span>
                   )}

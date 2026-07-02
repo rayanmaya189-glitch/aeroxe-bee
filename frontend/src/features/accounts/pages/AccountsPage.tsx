@@ -5,8 +5,6 @@ import { DataTable, type Column } from '@/components/ui/DataTable'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Input } from '@/components/ui/Input'
-import { Card } from '@/components/ui/Card'
-import { PageSkeleton } from '@/components/ui/Skeleton'
 import { useDebounce } from '@/hooks/useDebounce'
 
 const statusVariant: Record<string, 'success' | 'warning' | 'danger'> = {
@@ -16,7 +14,7 @@ const statusVariant: Record<string, 'success' | 'warning' | 'danger'> = {
 }
 
 const planVariant: Record<string, 'primary' | 'info' | 'success' | 'warning'> = {
-  free: 'default',
+  free: 'warning',
   pro: 'primary',
   scale: 'info',
   enterprise: 'success',
@@ -27,7 +25,7 @@ export function AccountsPage() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [pageSize] = useState(20)
-  const [totalPages, setTotalPages] = useState(1)
+  const [, setTotalPages] = useState(1)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [loading, setLoading] = useState(true)

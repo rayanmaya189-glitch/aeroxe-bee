@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getPlans, getEnabledPaymentConfigs, createSubscriptionRequest, createPaymentRequest, type Plan, type PaymentConfig } from '@/services/dashboard'
+import { getPlans, getEnabledPaymentConfigs, createSubscriptionRequest, createPaymentRequest } from '@/services/dashboard'
+import type { Plan } from '@/types/models'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
 
 export function MemberUpgradePage() {
   const queryClient = useQueryClient()
@@ -11,7 +11,7 @@ export function MemberUpgradePage() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly')
   const [paymentMethod, setPaymentMethod] = useState('')
   const [proofUrl, setProofUrl] = useState('')
-  const [showConfirm, setShowConfirm] = useState(false)
+
 
   const { data: plans = [], isLoading: plansLoading } = useQuery({
     queryKey: ['plans'],
@@ -35,7 +35,6 @@ export function MemberUpgradePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-subscription-requests'] })
       setSelectedPlan(null)
-      setShowConfirm(false)
     },
   })
 
@@ -54,7 +53,6 @@ export function MemberUpgradePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-payment-requests'] })
       setSelectedPlan(null)
-      setShowConfirm(false)
       setPaymentMethod('')
       setProofUrl('')
     },
@@ -103,12 +101,12 @@ export function MemberUpgradePage() {
       {/* Plan Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {plans.map((plan) => (
-          <Card
+          <button
             key={plan.id}
-            className={`cursor-pointer transition-all hover:shadow-lg ${
-              selectedPlan?.id === plan.id ? 'ring-2 ring-primary-600' : ''
-            }`}
             onClick={() => setSelectedPlan(plan)}
+            className={`cursor-pointer rounded-xl border bg-white p-5 text-left shadow-xs transition-all hover:shadow-lg dark:border-gray-800 dark:bg-gray-900 ${
+              selectedPlan?.id === plan.id ? 'ring-2 ring-primary-600' : 'border-gray-200'
+            }`}
           >
             <CardHeader>
               <CardTitle>{plan.name}</CardTitle>
@@ -119,15 +117,14 @@ export function MemberUpgradePage() {
             </CardHeader>
             <CardContent>
               <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                <li>{plan.dailyQuota.toLocaleString()} SMS/day</li>
-                <li>{plan.monthlyQuota.toLocaleString()} SMS/month</li>
-                <li>{plan.maxQueueDepth.toLocaleString()} queue depth</li>
-                {plan.dedicatedPool && <li className="text-primary-600">Dedicated pool</li>}
-                <li>{plan.defaultRoutingStrategy.replace(/_/g, ' ')}</li>
-                {plan.pricePerSms > 0 && <li>${plan.pricePerSms}/SMS overage</li>}
+                <li>{plan.daily_quota.toLocaleString()} SMS/day</li>
+                <li>{plan.monthly_quota.toLocaleString()} SMS/month</li>
+                <li>{plan.max_queue_depth.toLocaleString()} queue depth</li>
+                {plan.dedicated_pool && <li className="text-primary-600">Dedicated pool</li>}
+                <li>{plan.default_routing_strategy.replace(/_/g, ' ')}</li>
+                {plan.price_per_sms > 0 && <li>${plan.price_per_sms}/SMS overage</li>}
               </ul>
-            </CardContent>
-          </Card>
+            </CardContent>            </button>
         ))}
       </div>
 
@@ -177,7 +174,7 @@ export function MemberUpgradePage() {
                 )}
 
                 <div className="flex justify-end gap-2 pt-4">
-                  <Button variant="outline" onClick={() => { setSelectedPlan(null); setPaymentMethod('') }}>Cancel</Button>
+                  <Button variant="secondary" onClick={() => { setSelectedPlan(null); setPaymentMethod('') }}>Cancel</Button>
                   <Button
                     disabled={!paymentMethod}
                     loading={upgradeMutation.isPending || payMutation.isPending}

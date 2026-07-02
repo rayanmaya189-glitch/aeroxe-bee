@@ -31,6 +31,7 @@ export function ConfirmDialog({
       title={title}
       description={description}
       size="sm"
+      children={<div />}
       footer={
         <>
           <Button variant="ghost" size="sm" onClick={onClose} disabled={loading}>

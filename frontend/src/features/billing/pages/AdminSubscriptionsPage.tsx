@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getSubscriptionRequests, approveSubscriptionRequest, rejectSubscriptionRequest, type SubscriptionRequest } from '@/services/dashboard'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
+import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Modal } from '@/components/ui/Modal'
@@ -116,14 +116,14 @@ export function AdminSubscriptionsPage() {
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-500">Page {page} of {totalPages}</span>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</Button>
-            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Next</Button>
+            <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</Button>
+            <Button variant="secondary" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Next</Button>
           </div>
         </div>
       )}
 
       {/* Review Modal */}
-      <Modal isOpen={!!reviewTarget} onClose={() => setReviewTarget(null)} title="Review Subscription Request">
+      <Modal open={!!reviewTarget} onClose={() => setReviewTarget(null)} title="Review Subscription Request">
         {reviewTarget && (
           <div className="space-y-4">
             <div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
@@ -143,7 +143,7 @@ export function AdminSubscriptionsPage() {
               />
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setReviewTarget(null)}>Cancel</Button>
+              <Button variant="secondary" onClick={() => setReviewTarget(null)}>Cancel</Button>
               <Button
                 variant="danger"
                 loading={rejectMutation.isPending}
