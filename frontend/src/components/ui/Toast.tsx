@@ -1,70 +1,108 @@
-import { motion, AnimatePresence } from 'framer-motion'
-import { useUIStore, type Toast as ToastType } from '@/store/uiStore'
+import { useState, useCallback, useEffect } from 'react'
 import { cn } from '@/utils/cn'
 
-const icons: Record<ToastType['type'], React.ReactNode> = {
+type ToastVariant = 'success' | 'error' | 'warning' | 'info'
+
+interface ToastItem {
+  id: string
+  message: string
+  variant: ToastVariant
+}
+
+interface ToastContextValue {
+  addToast: (message: string, variant?: ToastVariant) => void
+  removeToast: (id: string) => void
+}
+
+let _context: ToastContextValue | null = null
+
+export function useToast() {
+  if (!_context) {
+    throw new Error('useToast must be used within ToastProvider')
+  }
+  return _context
+}
+
+const variantStyles: Record<ToastVariant, string> = {
+  success: 'bg-success-600 text-white',
+  error: 'bg-danger-600 text-white',
+  warning: 'bg-warning-600 text-white',
+  info: 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900',
+}
+
+const icons: Record<ToastVariant, React.ReactNode> = {
   success: (
-    <svg className="h-5 w-5 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
     </svg>
   ),
   error: (
-    <svg className="h-5 w-5 text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
     </svg>
   ),
   warning: (
-    <svg className="h-5 w-5 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
     </svg>
   ),
   info: (
-    <svg className="h-5 w-5 text-info" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
     </svg>
   ),
 }
 
-function ToastItem({ toast }: { toast: ToastType }) {
-  const removeToast = useUIStore((s) => s.removeToast)
+export function ToastProvider({ children }: { children: React.ReactNode }) {
+  const [toasts, setToasts] = useState<ToastItem[]>([])
+
+  const addToast = useCallback((message: string, variant: ToastVariant = 'info') => {
+    const id = Math.random().toString(36).slice(2)
+    setToasts((prev) => [...prev, { id, message, variant }])
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id))
+    }, 4000)
+  }, [])
+
+  const removeToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id))
+  }, [])
+
+  useEffect(() => {
+    _context = { addToast, removeToast }
+  }, [addToast, removeToast])
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 100, scale: 0.95 }}
-      animate={{ opacity: 1, x: 0, scale: 1 }}
-      exit={{ opacity: 0, x: 100, scale: 0.95 }}
-      className={cn(
-        'pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-xl border bg-white p-4 shadow-lg',
-        'dark:bg-surface-800 dark:border-surface-700',
+    <>
+      {children}
+      {toasts.length > 0 && (
+        <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+          {toasts.map((toast) => (
+            <div
+              key={toast.id}
+              className={cn(
+                'animate-slideUp flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium shadow-lg',
+                variantStyles[toast.variant],
+              )}
+            >
+              {icons[toast.variant]}
+              <span>{toast.message}</span>
+              <button
+                onClick={() => removeToast(toast.id)}
+                className="ml-2 rounded p-0.5 hover:bg-white/20"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          ))}
+        </div>
       )}
-    >
-      <div className="shrink-0">{icons[toast.type]}</div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-surface-900 dark:text-surface-100">{toast.title}</p>
-        {toast.message && <p className="mt-0.5 text-xs text-surface-500 dark:text-surface-400">{toast.message}</p>}
-      </div>
-      <button
-        onClick={() => removeToast(toast.id)}
-        className="shrink-0 rounded-lg p-1 text-surface-400 hover:bg-surface-100 hover:text-surface-600 dark:hover:bg-surface-700"
-      >
-        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
-    </motion.div>
+    </>
   )
 }
 
 export function ToastContainer() {
-  const toasts = useUIStore((s) => s.toasts)
-
-  return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-[100] flex flex-col gap-2">
-      <AnimatePresence mode="popLayout">
-        {toasts.map((toast) => (
-          <ToastItem key={toast.id} toast={toast} />
-        ))}
-      </AnimatePresence>
-    </div>
-  )
+  return null
 }

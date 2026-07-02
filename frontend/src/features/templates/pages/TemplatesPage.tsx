@@ -1,98 +1,120 @@
-import { useState, useEffect } from 'react'
-import { getTemplates, createTemplate, deleteTemplate, approveTemplate, rejectTemplate } from '@/services/dashboard'
+import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { getTemplates, createTemplate, deleteTemplate } from '@/services/dashboard'
 import type { Template } from '@/types/models'
+import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Badge } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { Modal } from '@/components/ui/Modal'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { PageSkeleton } from '@/components/ui/Skeleton'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 export function TemplatesPage() {
-  const [templates, setTemplates] = useState<Template[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [showCreate, setShowCreate] = useState(false)
+  const queryClient = useQueryClient()
+  const [showForm, setShowForm] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Template | null>(null)
   const [name, setName] = useState('')
   const [body, setBody] = useState('')
+  const [error, setError] = useState('')
 
-  useEffect(() => { load() }, [])
+  const { data: templates = [], isLoading } = useQuery({
+    queryKey: ['admin-templates'],
+    queryFn: getTemplates,
+  })
 
-  async function load() {
-    try { setLoading(true); setTemplates(await getTemplates()) }
-    catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed') }
-    finally { setLoading(false) }
-  }
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      await createTemplate({ name, body, variables: [] })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-templates'] })
+      setShowForm(false); setName(''); setBody('')
+    },
+    onError: (err: Error) => setError(err.message),
+  })
 
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault()
-    try { await createTemplate({ name, body, variables: [] }); setShowCreate(false); setName(''); setBody(''); load() }
-    catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed') }
-  }
+  const deleteMutation = useMutation({
+    mutationFn: async () => { if (deleteTarget) await deleteTemplate(deleteTarget.id) },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-templates'] })
+      setDeleteTarget(null)
+    },
+  })
 
-  async function handleDelete(id: string) {
-    if (!confirm('Delete template?')) return
-    try { await deleteTemplate(id); load() } catch { setError('Failed') }
-  }
-
-  async function handleApprove(id: string) {
-    try { await approveTemplate(id); load() } catch { setError('Failed') }
-  }
-
-  async function handleReject(id: string) {
-    try { await rejectTemplate(id); load() } catch { setError('Failed') }
-  }
-
-  const statusColor = (s: string) => s === 'approved' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-    s === 'rejected' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-    'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+  if (isLoading) return <PageSkeleton />
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Templates</h1>
-        <button onClick={() => setShowCreate(true)} className="rounded-lg bg-primary-600 px-4 py-2 text-sm text-white hover:bg-primary-700">Add Template</button>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Templates</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Manage message templates for your platform</p>
+        </div>
+        <Button size="sm" onClick={() => { setError(''); setShowForm(true) }}>New template</Button>
       </div>
-      {error && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/20">{error}</div>}
-      <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-            <tr><th className="px-4 py-3">Name</th><th className="px-4 py-3">Body</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Created</th><th className="px-4 py-3">Actions</th></tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-            {loading ? <tr><td colSpan={5} className="px-4 py-8 text-center">Loading...</td></tr> :
-              templates.length === 0 ? <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-500">No templates</td></tr> :
-              templates.map((t) => (
-                <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                  <td className="px-4 py-3 font-medium">{t.name}</td>
-                  <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400 max-w-xs truncate">{t.body}</td>
-                  <td className="px-4 py-3"><span className={`rounded-full px-2 py-1 text-xs font-medium ${statusColor(t.approval_status)}`}>{t.approval_status}</span></td>
-                  <td className="px-4 py-3 text-gray-500">{new Date(t.created_at).toLocaleDateString()}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-1">
-                      {t.approval_status === 'pending' && <>
-                        <button onClick={() => handleApprove(t.id)} className="rounded p-1 text-green-600 hover:bg-green-50">Approve</button>
-                        <button onClick={() => handleReject(t.id)} className="rounded p-1 text-red-600 hover:bg-red-50">Reject</button>
-                      </>}
-                      <button onClick={() => handleDelete(t.id)} className="rounded p-1 text-red-600 hover:bg-red-50">Delete</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
-      </div>
-      {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowCreate(false)}>
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-800" onClick={(e) => e.stopPropagation()}>
-            <h2 className="mb-4 text-lg font-bold">Create Template</h2>
-            <form onSubmit={handleCreate} className="space-y-4">
-              <input type="text" placeholder="Template name" value={name} onChange={(e) => setName(e.target.value)} required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
-              <textarea placeholder="Template body" value={body} onChange={(e) => setBody(e.target.value)} required rows={4}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
-              <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => setShowCreate(false)} className="rounded-lg border px-4 py-2 text-sm">Cancel</button>
-                <button type="submit" className="rounded-lg bg-primary-600 px-4 py-2 text-sm text-white">Create</button>
+
+      {templates.length === 0 ? (
+        <EmptyState
+          title="No templates yet"
+          description="Create a template to standardize message content."
+          action={<Button size="sm" onClick={() => { setError(''); setShowForm(true) }}>Create template</Button>}
+        />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {templates.map((t) => (
+            <Card key={t.id} hover>
+              <div className="flex items-start justify-between">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t.name}</h3>
+                <Badge variant={t.approval_status === 'approved' ? 'success' : t.approval_status === 'rejected' ? 'danger' : 'warning'} size="sm">
+                  {t.approval_status}
+                </Badge>
               </div>
-            </form>
-          </div>
+              <p className="mt-2 line-clamp-3 text-xs text-gray-500 dark:text-gray-400">{t.body}</p>
+              <div className="mt-4 flex gap-2 border-t border-gray-100 pt-4 dark:border-gray-800">
+                <Button variant="ghost" size="xs" className="text-danger-600" onClick={() => setDeleteTarget(t)}>Delete</Button>
+              </div>
+            </Card>
+          ))}
         </div>
       )}
+
+      <Modal
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        title="New template"
+        footer={
+          <>
+            <Button variant="ghost" size="sm" onClick={() => setShowForm(false)} disabled={saveMutation.isPending}>Cancel</Button>
+            <Button size="sm" onClick={() => saveMutation.mutate()} loading={saveMutation.isPending}>Create</Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          {error && <div className="rounded-lg border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700">{error}</div>}
+          <Input label="Template name" value={name} onChange={(e) => setName(e.target.value)} required />
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Body</label>
+            <textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              rows={5}
+              className="block w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-4 focus:ring-primary-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+              required
+            />
+          </div>
+        </div>
+      </Modal>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => deleteMutation.mutate()}
+        title="Delete template"
+        description={`Are you sure you want to delete "${deleteTarget?.name}"?`}
+        loading={deleteMutation.isPending}
+      />
     </div>
   )
 }

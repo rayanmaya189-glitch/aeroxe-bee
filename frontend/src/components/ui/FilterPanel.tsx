@@ -1,127 +1,94 @@
-import { useCallback } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useState, useCallback, type ReactNode } from 'react'
 import { cn } from '@/utils/cn'
+import { Button } from './Button'
+import { Input } from './Input'
 
-interface FilterOption {
+interface FilterField {
+  key: string
   label: string
-  value: string
+  type?: 'text' | 'select' | 'date'
+  options?: Array<{ label: string; value: string }>
+  placeholder?: string
 }
 
 interface FilterPanelProps {
-  searchPlaceholder?: string
-  statusOptions?: FilterOption[]
-  roleOptions?: FilterOption[]
-  showDateRange?: boolean
-  filters: {
-    search: string
-    status?: string
-    role?: string
-    dateFrom?: string
-    dateTo?: string
-  }
-  onFilterChange: (key: string, value: string) => void
-  onReset: () => void
+  fields: FilterField[]
+  values: Record<string, string>
+  onChange: (key: string, value: string) => void
+  onReset?: () => void
   className?: string
+  children?: ReactNode
 }
 
-export function FilterPanel({
-  searchPlaceholder = 'Search...',
-  statusOptions,
-  roleOptions,
-  showDateRange,
-  filters,
-  onFilterChange,
-  onReset,
-  className,
-}: FilterPanelProps) {
-  const [, setSearchParams] = useSearchParams()
-
-  const handleSearchChange = useCallback(
-    (value: string) => {
-      onFilterChange('search', value)
-      setSearchParams((prev) => {
-        if (value) prev.set('search', value)
-        else prev.delete('search')
-        return prev
-      }, { replace: true })
-    },
-    [onFilterChange, setSearchParams],
-  )
-
-  const hasFilters = filters.search || filters.status || filters.role || filters.dateFrom || filters.dateTo
+export function FilterPanel({ fields, values, onChange, onReset, className, children }: FilterPanelProps) {
+  const [expanded, setExpanded] = useState(false)
+  const hasActiveFilters = Object.values(values).some((v) => v !== '' && v !== undefined)
 
   return (
-    <div className={cn('flex flex-wrap items-center gap-3', className)}>
-      <div className="relative flex-1 min-w-[200px] max-w-sm">
-        <svg
-          className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
-        <input
-          type="text"
-          placeholder={searchPlaceholder}
-          value={filters.search}
-          onChange={(e) => handleSearchChange(e.target.value)}
-          className="h-10 w-full rounded-xl border border-surface-300 bg-white pl-10 pr-4 text-sm text-surface-900 placeholder:text-surface-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-surface-600 dark:bg-surface-800 dark:text-surface-100 dark:placeholder:text-surface-500"
-        />
+    <div className={cn('rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900', className)}>
+      <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
+          >
+            <svg className={cn('h-4 w-4 transition-transform', expanded && 'rotate-180')} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+            </svg>
+            Filters
+          </button>
+          {hasActiveFilters && (
+            <span className="rounded-full bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
+              Active
+            </span>
+          )}
+        </div>
+        {children}
       </div>
 
-      {statusOptions && (
-        <select
-          value={filters.status ?? ''}
-          onChange={(e) => onFilterChange('status', e.target.value)}
-          className="h-10 rounded-xl border border-surface-300 bg-white px-3 text-sm text-surface-700 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-surface-600 dark:bg-surface-800 dark:text-surface-300"
-        >
-          <option value="">All Status</option>
-          {statusOptions.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-      )}
-
-      {roleOptions && (
-        <select
-          value={filters.role ?? ''}
-          onChange={(e) => onFilterChange('role', e.target.value)}
-          className="h-10 rounded-xl border border-surface-300 bg-white px-3 text-sm text-surface-700 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-surface-600 dark:bg-surface-800 dark:text-surface-300"
-        >
-          <option value="">All Roles</option>
-          {roleOptions.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-      )}
-
-      {showDateRange && (
-        <>
-          <input
-            type="date"
-            value={filters.dateFrom ?? ''}
-            onChange={(e) => onFilterChange('dateFrom', e.target.value)}
-            className="h-10 rounded-xl border border-surface-300 bg-white px-3 text-sm text-surface-700 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-surface-600 dark:bg-surface-800 dark:text-surface-300"
-          />
-          <span className="text-surface-400">—</span>
-          <input
-            type="date"
-            value={filters.dateTo ?? ''}
-            onChange={(e) => onFilterChange('dateTo', e.target.value)}
-            className="h-10 rounded-xl border border-surface-300 bg-white px-3 text-sm text-surface-700 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-surface-600 dark:bg-surface-800 dark:text-surface-300"
-          />
-        </>
-      )}
-
-      {hasFilters && (
-        <button
-          onClick={onReset}
-          className="h-10 whitespace-nowrap rounded-xl px-4 text-sm font-medium text-surface-500 hover:text-surface-700 dark:text-surface-400 dark:hover:text-surface-200"
-        >
-          Clear filters
-        </button>
+      {expanded && (
+        <div className="animate-slideDown border-t border-gray-200 px-4 py-4 dark:border-gray-800">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {fields.map((field) => (
+              <div key={field.key}>
+                {field.type === 'select' ? (
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {field.label}
+                    </label>
+                    <select
+                      value={values[field.key] || ''}
+                      onChange={(e) => onChange(field.key, e.target.value)}
+                      className="block w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-4 focus:ring-primary-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                    >
+                      <option value="">All</option>
+                      {field.options?.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <Input
+                    label={field.label}
+                    type={field.type || 'text'}
+                    placeholder={field.placeholder}
+                    value={values[field.key] || ''}
+                    onChange={(e) => onChange(field.key, e.target.value)}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+          {hasActiveFilters && onReset && (
+            <div className="mt-4 flex justify-end">
+              <Button variant="ghost" size="sm" onClick={onReset}>
+                Clear all
+              </Button>
+            </div>
+          )}
+        </div>
       )}
     </div>
   )

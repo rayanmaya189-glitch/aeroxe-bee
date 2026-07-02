@@ -10,13 +10,13 @@ export function AppLayout() {
   const isMobile = useIsMobile()
 
   return (
-    <div className="min-h-screen bg-primary-50 dark:bg-[#0a0e1a]">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <Sidebar />
       <Header />
       <main
         className={cn(
-          'relative z-10 pt-16 transition-all duration-300',
-          isMobile ? 'ml-0' : sidebarOpen ? 'ml-64' : 'ml-16',
+          'relative z-10 pt-16 transition-all duration-200',
+          isMobile ? 'ml-0' : sidebarOpen ? 'ml-60' : 'ml-16',
         )}
       >
         <div className="p-6">

@@ -1,4 +1,4 @@
-import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { Component, type ReactNode } from 'react'
 import { Button } from './Button'
 
 interface Props {
@@ -8,47 +8,41 @@ interface Props {
 
 interface State {
   hasError: boolean
-  error?: Error
+  error: Error | null
 }
 
 export class ErrorBoundary extends Component<Props, State> {
-  constructor(props: Props) {
-    super(props)
-    this.state = { hasError: false }
-  }
+  state: State = { hasError: false, error: null }
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error }
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ErrorBoundary caught:', error, errorInfo)
-  }
-
   render() {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback
-
       return (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <svg className="mb-4 h-16 w-16 text-danger/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-          </svg>
-          <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Something went wrong</h3>
-          <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
-            {this.state.error?.message ?? 'An unexpected error occurred'}
+        <div className="flex min-h-[400px] flex-col items-center justify-center p-8 text-center">
+          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-danger-100 dark:bg-danger-900/30">
+            <svg className="h-6 w-6 text-danger-600 dark:text-danger-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+            </svg>
+          </div>
+          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Something went wrong</h2>
+          <p className="mt-1 max-w-sm text-sm text-gray-500 dark:text-gray-400">
+            {this.state.error?.message || 'An unexpected error occurred.'}
           </p>
           <Button
-            variant="outline"
+            variant="secondary"
+            size="sm"
             className="mt-4"
-            onClick={() => this.setState({ hasError: false, error: undefined })}
+            onClick={() => this.setState({ hasError: false, error: null })}
           >
             Try again
           </Button>
         </div>
       )
     }
-
     return this.props.children
   }
 }

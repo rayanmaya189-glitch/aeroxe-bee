@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { getProfile, updateProfile, changePassword } from '@/services/auth'
+import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 
 export function SettingsPage() {
   const { user, setUser } = useAuthStore()
@@ -8,8 +11,8 @@ export function SettingsPage() {
   const [email, setEmail] = useState(user?.email ?? '')
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
-  const [profileMsg, setProfileMsg] = useState('')
-  const [passwordMsg, setPasswordMsg] = useState('')
+  const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [passwordMsg, setPasswordMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
@@ -27,13 +30,13 @@ export function SettingsPage() {
   async function handleProfileUpdate(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
-    setProfileMsg('')
+    setProfileMsg(null)
     try {
       const data = await updateProfile({ name }) as Record<string, unknown>
       if (data && user) setUser({ ...user, name: String(data.name ?? name) })
-      setProfileMsg('Profile updated successfully')
+      setProfileMsg({ type: 'success', text: 'Profile updated successfully' })
     } catch (err: unknown) {
-      setProfileMsg(err instanceof Error ? err.message : 'Failed to update profile')
+      setProfileMsg({ type: 'error', text: err instanceof Error ? err.message : 'Failed to update profile' })
     } finally {
       setLoading(false)
     }
@@ -42,100 +45,60 @@ export function SettingsPage() {
   async function handlePasswordChange(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
-    setPasswordMsg('')
+    setPasswordMsg(null)
     try {
       await changePassword({ currentPassword, newPassword })
-      setPasswordMsg('Password changed successfully')
+      setPasswordMsg({ type: 'success', text: 'Password changed successfully' })
       setCurrentPassword('')
       setNewPassword('')
     } catch (err: unknown) {
-      setPasswordMsg(err instanceof Error ? err.message : 'Failed to change password')
+      setPasswordMsg({ type: 'error', text: err instanceof Error ? err.message : 'Failed to change password' })
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-2xl font-bold text-surface-900 dark:text-white">Settings</h1>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Settings</h1>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          Manage your account settings and preferences
+        </p>
+      </div>
 
       <div className="max-w-lg space-y-6">
-        {/* ─── Profile ─────────────────────────────────── */}
-        <div className="glass-card rounded-2xl p-6">
-          <h2 className="mb-4 text-lg font-semibold text-surface-900 dark:text-white">Profile</h2>
+        <Card>
+          <CardHeader className="mb-4">
+            <CardTitle>Profile</CardTitle>
+          </CardHeader>
           <form onSubmit={handleProfileUpdate} className="space-y-4">
             {profileMsg && (
-              <div className={`rounded-xl border p-3 text-sm ${profileMsg.includes('success') ? 'border-success/20 bg-success/5 text-success' : 'border-danger/20 bg-danger/5 text-danger'}`}>
-                {profileMsg}
+              <div className={`rounded-lg border p-3 text-sm ${profileMsg.type === 'success' ? 'border-success-200 bg-success-50 text-success-700 dark:border-success-800/50 dark:bg-success-900/20 dark:text-success-300' : 'border-danger-200 bg-danger-50 text-danger-700 dark:border-danger-800/50 dark:bg-danger-900/20 dark:text-danger-300'}`}>
+                {profileMsg.text}
               </div>
             )}
-            <div>
-              <label className="block text-sm font-medium text-surface-700 dark:text-surface-300">Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="mt-1.5 w-full rounded-xl border border-surface-300 bg-surface-50 px-4 py-2.5 text-sm text-surface-900 transition-colors focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-[#1a2038] dark:bg-[#0d1220] dark:text-white dark:focus:border-primary-400/40 dark:focus:bg-[#111828] dark:focus:ring-primary-400/20"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-surface-700 dark:text-surface-300">Email</label>
-              <input
-                type="email"
-                value={email}
-                disabled
-                className="mt-1.5 w-full rounded-xl border border-surface-200 bg-surface-100 px-4 py-2.5 text-sm text-surface-500 dark:border-surface-700 dark:bg-surface-900 dark:text-surface-400"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-primary-700 hover:shadow-md disabled:opacity-50"
-            >
-              {loading ? 'Saving...' : 'Save Changes'}
-            </button>
+            <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} />
+            <Input label="Email" value={email} disabled hint="Contact support to change your email" />
+            <Button type="submit" loading={loading}>Save changes</Button>
           </form>
-        </div>
+        </Card>
 
-        {/* ─── Password ────────────────────────────────── */}
-        <div className="glass-card rounded-2xl p-6">
-          <h2 className="mb-4 text-lg font-semibold text-surface-900 dark:text-white">Change Password</h2>
+        <Card>
+          <CardHeader className="mb-4">
+            <CardTitle>Change password</CardTitle>
+          </CardHeader>
           <form onSubmit={handlePasswordChange} className="space-y-4">
             {passwordMsg && (
-              <div className={`rounded-xl border p-3 text-sm ${passwordMsg.includes('success') ? 'border-success/20 bg-success/5 text-success' : 'border-danger/20 bg-danger/5 text-danger'}`}>
-                {passwordMsg}
+              <div className={`rounded-lg border p-3 text-sm ${passwordMsg.type === 'success' ? 'border-success-200 bg-success-50 text-success-700 dark:border-success-800/50 dark:bg-success-900/20 dark:text-success-300' : 'border-danger-200 bg-danger-50 text-danger-700 dark:border-danger-800/50 dark:bg-danger-900/20 dark:text-danger-300'}`}>
+                {passwordMsg.text}
               </div>
             )}
-            <div>
-              <label className="block text-sm font-medium text-surface-700 dark:text-surface-300">Current Password</label>
-              <input
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                required
-                className="mt-1.5 w-full rounded-xl border border-surface-300 bg-surface-50 px-4 py-2.5 text-sm text-surface-900 transition-colors focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-[#1a2038] dark:bg-[#0d1220] dark:text-white dark:focus:border-primary-400/40 dark:focus:bg-[#111828] dark:focus:ring-primary-400/20"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-surface-700 dark:text-surface-300">New Password</label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                required
-                minLength={8}
-                className="mt-1.5 w-full rounded-xl border border-surface-300 bg-surface-50 px-4 py-2.5 text-sm text-surface-900 transition-colors focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-[#1a2038] dark:bg-[#0d1220] dark:text-white dark:focus:border-primary-400/40 dark:focus:bg-[#111828] dark:focus:ring-primary-400/20"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-primary-700 hover:shadow-md disabled:opacity-50"
-            >
-              {loading ? 'Changing...' : 'Change Password'}
-            </button>
+            <Input label="Current password" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required />
+            <Input label="New password" type="password" hint="Minimum 8 characters" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} minLength={8} required />
+            <Button type="submit" loading={loading}>Change password</Button>
           </form>
-        </div>
+        </Card>
       </div>
     </div>
   )

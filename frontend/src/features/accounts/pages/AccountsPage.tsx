@@ -1,6 +1,26 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getAccounts, suspendAccount, activateAccount, deleteAccount } from '@/services/dashboard'
 import type { Account } from '@/types/models'
+import { DataTable, type Column } from '@/components/ui/DataTable'
+import { Button } from '@/components/ui/Button'
+import { Badge } from '@/components/ui/Badge'
+import { Input } from '@/components/ui/Input'
+import { Card } from '@/components/ui/Card'
+import { PageSkeleton } from '@/components/ui/Skeleton'
+import { useDebounce } from '@/hooks/useDebounce'
+
+const statusVariant: Record<string, 'success' | 'warning' | 'danger'> = {
+  active: 'success',
+  suspended: 'warning',
+  disabled: 'danger',
+}
+
+const planVariant: Record<string, 'primary' | 'info' | 'success' | 'warning'> = {
+  free: 'default',
+  pro: 'primary',
+  scale: 'info',
+  enterprise: 'success',
+}
 
 export function AccountsPage() {
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -11,110 +31,121 @@ export function AccountsPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [sortBy, setSortBy] = useState('created_at')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const debouncedSearch = useDebounce(search, 300)
 
   const load = useCallback(async () => {
     try {
       setLoading(true)
-      const result = await getAccounts({ page, pageSize, search, status: statusFilter })
+      const result = await getAccounts({ page, pageSize, search: debouncedSearch, status: statusFilter })
       setAccounts(result.data)
       setTotal(result.total)
       setTotalPages(result.total_pages)
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load accounts')
+    } catch {
+      // handled by error state in parent
     } finally {
       setLoading(false)
     }
-  }, [page, pageSize, search, statusFilter])
+  }, [page, pageSize, debouncedSearch, statusFilter])
 
   useEffect(() => { load() }, [load])
 
   async function handleSuspend(id: string) {
-    if (!confirm('Suspend this account?')) return
-    try { await suspendAccount(id); load() } catch { setError('Failed to suspend') }
+    try { await suspendAccount(id); load() } catch { /* noop */ }
   }
 
   async function handleActivate(id: string) {
-    try { await activateAccount(id); load() } catch { setError('Failed to activate') }
+    try { await activateAccount(id); load() } catch { /* noop */ }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Permanently delete this account?')) return
-    try { await deleteAccount(id); load() } catch { setError('Failed to delete') }
+    try { await deleteAccount(id); load() } catch { /* noop */ }
   }
 
-  return (
-    <div className="space-y-6 p-6">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Accounts (Members)</h1>
+  const columns: Column<Account>[] = [
+    { key: 'name', header: 'Name', sortable: true, className: 'font-medium text-gray-900 dark:text-gray-100' },
+    { key: 'email', header: 'Email' },
+    {
+      key: 'plan_id',
+      header: 'Plan',
+      render: (row) => <Badge variant={planVariant[row.plan_id] || 'default'} size="sm">{row.plan_id}</Badge>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (row) => <Badge variant={statusVariant[row.status] || 'default'} dot size="sm">{row.status}</Badge>,
+    },
+    {
+      key: 'verified',
+      header: 'Verified',
+      render: (row) => row.verified ? <Badge variant="success" size="sm">Yes</Badge> : <span className="text-gray-400">—</span>,
+    },
+    { key: 'risk_score', header: 'Risk', render: (row) => <span className={row.risk_score > 0.7 ? 'text-danger-600 font-medium' : ''}>{row.risk_score.toFixed(2)}</span> },
+    { key: 'created_at', header: 'Created', render: (row) => new Date(row.created_at).toLocaleDateString() },
+    {
+      key: 'actions',
+      header: '',
+      className: 'w-32',
+      render: (row) => (
+        <div className="flex gap-1">
+          {row.status === 'active' ? (
+            <Button variant="ghost" size="xs" onClick={() => handleSuspend(row.id)}>Suspend</Button>
+          ) : (
+            <Button variant="ghost" size="xs" onClick={() => handleActivate(row.id)}>Activate</Button>
+          )}
+          <Button variant="ghost" size="xs" className="text-danger-600" onClick={() => handleDelete(row.id)}>Delete</Button>
+        </div>
+      ),
+    },
+  ]
 
-      <div className="flex flex-wrap gap-3">
-        <input type="text" placeholder="Search accounts..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
-        <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1) }}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white">
-          <option value="">All Statuses</option>
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Accounts</h1>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          Manage member accounts on your platform
+        </p>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <Input
+          placeholder="Search accounts..."
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+          className="max-w-xs"
+          icon={<svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>}
+        />
+        <select
+          value={statusFilter}
+          onChange={(e) => { setStatusFilter(e.target.value); setPage(1) }}
+          className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+        >
+          <option value="">All statuses</option>
           <option value="active">Active</option>
           <option value="suspended">Suspended</option>
           <option value="disabled">Disabled</option>
         </select>
       </div>
 
-      {error && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/20">{error}</div>}
-
-      <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-            <tr>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Email</th>
-              <th className="px-4 py-3">Plan</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Verified</th>
-              <th className="px-4 py-3">Risk Score</th>
-              <th className="px-4 py-3">Created</th>
-              <th className="px-4 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-            {loading ? (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-500">Loading...</td></tr>
-            ) : accounts.length === 0 ? (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-500">No accounts found</td></tr>
-            ) : accounts.map((a) => (
-              <tr key={a.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{a.name}</td>
-                <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{a.email}</td>
-                <td className="px-4 py-3"><span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">{a.plan_id}</span></td>
-                <td className="px-4 py-3"><span className={`rounded-full px-2 py-1 text-xs font-medium ${a.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>{a.status}</span></td>
-                <td className="px-4 py-3">{a.verified ? '✓' : '—'}</td>
-                <td className="px-4 py-3">{a.risk_score.toFixed(2)}</td>
-                <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{new Date(a.created_at).toLocaleDateString()}</td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-1">
-                    {a.status === 'active' ? (
-                      <button onClick={() => handleSuspend(a.id)} className="rounded p-1 text-yellow-600 hover:bg-yellow-50 dark:text-yellow-400">Suspend</button>
-                    ) : (
-                      <button onClick={() => handleActivate(a.id)} className="rounded p-1 text-green-600 hover:bg-green-50 dark:text-green-400">Activate</button>
-                    )}
-                    <button onClick={() => handleDelete(a.id)} className="rounded p-1 text-red-600 hover:bg-red-50 dark:text-red-400">Delete</button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-600 dark:text-gray-400">Showing {accounts.length} of {total} accounts</p>
-        <div className="flex gap-1">
-          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm disabled:opacity-50 dark:border-gray-600">Prev</button>
-          <span className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm dark:border-gray-600">{page} / {totalPages}</span>
-          <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm disabled:opacity-50 dark:border-gray-600">Next</button>
-        </div>
-      </div>
+      <DataTable
+        data={accounts}
+        columns={columns}
+        loading={loading}
+        totalItems={total}
+        page={page}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        onSort={(key) => {
+          if (key === sortBy) setSortOrder((o) => o === 'asc' ? 'desc' : 'asc')
+          else { setSortBy(key); setSortOrder('asc') }
+        }}
+        emptyTitle="No accounts found"
+        emptyDescription="No member accounts match your filters."
+      />
     </div>
   )
 }

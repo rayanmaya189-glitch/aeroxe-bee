@@ -1,48 +1,71 @@
-import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { getPlans } from '@/services/dashboard'
 import type { Plan } from '@/types/models'
+import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Badge } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
+import { PageSkeleton } from '@/components/ui/Skeleton'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { formatNumber } from '@/utils/format'
 
 export function BillingPage() {
-  const [plans, setPlans] = useState<Plan[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const { data: plans = [], isLoading } = useQuery({
+    queryKey: ['plans'],
+    queryFn: getPlans,
+  })
 
-  useEffect(() => { load() }, [])
-
-  async function load() {
-    try { setLoading(true); setPlans(await getPlans()) }
-    catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed') }
-    finally { setLoading(false) }
-  }
+  if (isLoading) return <PageSkeleton />
 
   return (
-    <div className="space-y-6 p-6">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Billing & Plans</h1>
-      {error && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/20">{error}</div>}
-      {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-64 animate-pulse rounded-2xl bg-gray-200 dark:bg-gray-700" />)}
-        </div>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Billing &amp; plans</h1>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Overview of available plans and pricing</p>
+      </div>
+
+      {plans.length === 0 ? (
+        <EmptyState title="No plans available" description="Plans will appear here once configured." />
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {plans.map((plan) => (
-            <div key={plan.id} className={`rounded-2xl border-2 p-6 transition-all hover:shadow-lg ${plan.id === 'pro' ? 'border-primary-500 shadow-primary-500/10' : 'border-gray-200 dark:border-gray-700'}`}>
-              {plan.id === 'pro' && <span className="mb-2 inline-block rounded-full bg-primary-100 px-3 py-0.5 text-xs font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-400">Popular</span>}
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">{plan.name}</h3>
-              <div className="mt-3">
-                <span className="text-3xl font-bold text-gray-900 dark:text-white">${plan.monthly_price}</span>
-                <span className="text-sm text-gray-500 dark:text-gray-400">/mo</span>
+            <Card key={plan.id} hover>
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">{plan.name}</h3>
+                  <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-100">
+                    ${plan.monthly_price}<span className="text-sm font-normal text-gray-400">/mo</span>
+                  </p>
+                </div>
+                {plan.dedicated_pool && <Badge variant="primary" size="sm">Dedicated</Badge>}
               </div>
-              <div className="mt-4 space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                <p>📤 {plan.daily_quota.toLocaleString()} SMS/day</p>
-                <p>📊 {plan.monthly_quota.toLocaleString()} SMS/month</p>
-                <p>💰 ${plan.price_per_sms.toFixed(3)}/SMS</p>
-                <p>🔄 {plan.overage_buffer_pct}% overage buffer</p>
-                <p>📋 {plan.max_queue_depth.toLocaleString()} queue depth</p>
-                <p>🌐 {plan.dedicated_pool ? 'Dedicated pool' : 'Shared pool'}</p>
-                <p>⚙️ Default: {plan.default_routing_strategy.replace('_', ' ')}</p>
+
+              <div className="mt-6 space-y-3 text-sm">
+                <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                  <span>Daily quota</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{formatNumber(plan.daily_quota)}</span>
+                </div>
+                <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                  <span>Monthly quota</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{formatNumber(plan.monthly_quota)}</span>
+                </div>
+                <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                  <span>Overage buffer</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{plan.overage_buffer_pct}%</span>
+                </div>
+                <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                  <span>Max queue depth</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{formatNumber(plan.max_queue_depth)}</span>
+                </div>
+                <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                  <span>Price per SMS</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">${plan.price_per_sms}</span>
+                </div>
+                <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                  <span>Routing strategy</span>
+                  <Badge size="sm">{plan.default_routing_strategy}</Badge>
+                </div>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       )}

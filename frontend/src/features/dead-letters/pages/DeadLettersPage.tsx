@@ -1,52 +1,70 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getDeadLetters, retryDeadLetter } from '@/services/dashboard'
 import type { DeadLetter } from '@/types/models'
+import { Badge } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
+import { PageSkeleton } from '@/components/ui/Skeleton'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 export function DeadLettersPage() {
-  const [letters, setLetters] = useState<DeadLetter[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const queryClient = useQueryClient()
+  const [retryingId, setRetryingId] = useState<string | null>(null)
 
-  useEffect(() => { load() }, [])
+  const { data: letters = [], isLoading } = useQuery({
+    queryKey: ['dead-letters'],
+    queryFn: getDeadLetters,
+  })
 
-  async function load() {
-    try { setLoading(true); setLetters(await getDeadLetters()) }
-    catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed') }
-    finally { setLoading(false) }
-  }
+  const retryMutation = useMutation({
+    mutationFn: retryDeadLetter,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dead-letters'] })
+      setRetryingId(null)
+    },
+  })
 
-  async function handleRetry(id: string) {
-    try { await retryDeadLetter(id); load() } catch { setError('Failed') }
-  }
+  if (isLoading) return <PageSkeleton />
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dead Letter Queue</h1>
-        <button onClick={load} className="rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-gray-600">Refresh</button>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Dead letters</h1>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Messages that failed delivery after all retries</p>
       </div>
-      {error && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/20">{error}</div>}
-      <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-            <tr><th className="px-4 py-3">Stream</th><th className="px-4 py-3">Message ID</th><th className="px-4 py-3">Fail Reason</th><th className="px-4 py-3">Retries</th><th className="px-4 py-3">Failed At</th><th className="px-4 py-3">Actions</th></tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-            {loading ? <tr><td colSpan={6} className="px-4 py-8 text-center">Loading...</td></tr> :
-              letters.length === 0 ? <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-500">No dead letters</td></tr> :
-              letters.map((l) => (
-                <tr key={l.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                  <td className="px-4 py-3">{l.stream}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{l.message_id}</td>
-                  <td className="px-4 py-3 text-xs text-red-600 dark:text-red-400 max-w-xs truncate">{l.fail_reason}</td>
-                  <td className="px-4 py-3">{l.retry_count}</td>
-                  <td className="px-4 py-3 text-gray-500">{new Date(l.failed_at).toLocaleString()}</td>
-                  <td className="px-4 py-3"><button onClick={() => handleRetry(l.id)} className="rounded p-1 text-blue-600 hover:bg-blue-50 dark:text-blue-400">Retry</button></td>
+
+      {letters.length === 0 ? (
+        <EmptyState title="No dead letters" description="Failed messages will appear here for inspection." />
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 dark:border-gray-800">
+                <th className="px-4 py-3 text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Stream</th>
+                <th className="px-4 py-3 text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Message ID</th>
+                <th className="px-4 py-3 text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Reason</th>
+                <th className="px-4 py-3 text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Retries</th>
+                <th className="px-4 py-3 text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Failed at</th>
+                <th className="px-4 py-3 text-xs font-medium uppercase text-gray-500 dark:text-gray-400"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800/50">
+              {letters.map((dl) => (
+                <tr key={dl.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
+                  <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{dl.stream}</td>
+                  <td className="max-w-[200px] truncate px-4 py-3 font-mono text-xs text-gray-600 dark:text-gray-400">{dl.message_id}</td>
+                  <td className="max-w-[300px] truncate px-4 py-3 text-xs text-gray-500 dark:text-gray-400">{dl.fail_reason}</td>
+                  <td className="px-4 py-3"><Badge size="sm">{dl.retry_count}</Badge></td>
+                  <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">{new Date(dl.failed_at).toLocaleString()}</td>
+                  <td className="px-4 py-3">
+                    <Button variant="ghost" size="xs" onClick={() => retryMutation.mutate(dl.id)} loading={retryingId === dl.id}>Retry</Button>
+                  </td>
                 </tr>
               ))}
-          </tbody>
-        </table>
-      </div>
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
