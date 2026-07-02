@@ -39,27 +39,55 @@ func (h *AdminHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
 		Data: map[string]interface{}{
-			"total_accounts":   stats.TotalAccounts,
-			"active_devices":   stats.ActiveDevices,
-			"total_sent":       stats.TotalSent,
-			"total_delivered":  stats.TotalDelivered,
-			"total_failed":     stats.TotalFailed,
-			"avg_confidence":   stats.AvgConfidence,
-			"active_circuits":  stats.ActiveCircuits,
-			"pending_fraud":    stats.PendingFraud,
-			"queue_depth":      depths,
-			"timestamp":        time.Now(),
+			"total_accounts":  stats.TotalAccounts,
+			"active_devices":  stats.ActiveDevices,
+			"total_sent":      stats.TotalSent,
+			"total_delivered": stats.TotalDelivered,
+			"total_failed":    stats.TotalFailed,
+			"avg_confidence":  stats.AvgConfidence,
+			"active_circuits": stats.ActiveCircuits,
+			"pending_fraud":   stats.PendingFraud,
+			"queue_depth":     depths,
+			"timestamp":       time.Now(),
 		},
 	})
 }
 
 func (h *AdminHandler) ListAccounts(w http.ResponseWriter, r *http.Request) {
-	accounts, err := h.adminService.ListAccounts(r.Context(), 0, 100)
+	page := parseIntOrDefault(r.URL.Query().Get("page"), 1)
+	pageSize := parseIntOrDefault(r.URL.Query().Get("pageSize"), 20)
+	if pageSize > 100 {
+		pageSize = 100
+	}
+	offset := (page - 1) * pageSize
+
+	accounts, err := h.adminService.ListAccounts(r.Context(), offset, pageSize)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "database error"})
 		return
 	}
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: accounts})
+
+	// Get total count
+	totalAccounts, err := h.adminService.GetTotalAccountCount(r.Context())
+	if err != nil {
+		totalAccounts = int64(len(accounts))
+	}
+
+	totalPages := int(totalAccounts) / pageSize
+	if int(totalAccounts)%pageSize > 0 {
+		totalPages++
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Data: map[string]interface{}{
+			"data":        accounts,
+			"total":       totalAccounts,
+			"page":        page,
+			"page_size":   pageSize,
+			"total_pages": totalPages,
+		},
+	})
 }
 
 func (h *AdminHandler) GetAccount(w http.ResponseWriter, r *http.Request) {
@@ -74,6 +102,15 @@ func (h *AdminHandler) GetAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: account})
+}
+
+func (h *AdminHandler) DeleteAccount(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if err := h.adminService.DeleteAccount(r.Context(), id); err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to delete account"})
+		return
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Success: true})
 }
 
 func (h *AdminHandler) SuspendAccount(w http.ResponseWriter, r *http.Request) {
@@ -111,6 +148,47 @@ func (h *AdminHandler) GetAnalytics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: analytics})
+}
+
+func (h *AdminHandler) GetDailyCharts(w http.ResponseWriter, r *http.Request) {
+	// Get analytics for last 30 days
+	startDate := time.Now().AddDate(0, 0, -30).Format("2006-01-02")
+	endDate := time.Now().Format("2006-01-02")
+
+	analytics, err := h.adminService.GetAnalytics(r.Context(), startDate, endDate)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to get chart data"})
+		return
+	}
+
+	// Transform into chart-friendly format
+	messages := make([]map[string]interface{}, 0, len(analytics))
+	users := make([]map[string]interface{}, 0, len(analytics))
+	revenue := make([]map[string]interface{}, 0, len(analytics))
+
+	for _, a := range analytics {
+		messages = append(messages, map[string]interface{}{
+			"date":  a.Date,
+			"value": a.TotalSent,
+		})
+		users = append(users, map[string]interface{}{
+			"date":  a.Date,
+			"value": a.TotalDelivered,
+		})
+		revenue = append(revenue, map[string]interface{}{
+			"date":  a.Date,
+			"value": float64(a.TotalSent) * 0.005,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Data: map[string]interface{}{
+			"messages": messages,
+			"users":    users,
+			"revenue":  revenue,
+		},
+	})
 }
 
 func (h *AdminHandler) GetCircuitBreakers(w http.ResponseWriter, r *http.Request) {
@@ -189,5 +267,3 @@ func (h *AdminHandler) RejectTemplate(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, APIResponse{Success: true})
 }
-
-

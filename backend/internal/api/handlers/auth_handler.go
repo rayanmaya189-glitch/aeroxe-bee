@@ -129,19 +129,47 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Include user object in response for frontend alignment
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
 		Data: map[string]interface{}{
-			"access_token":  token,
-			"refresh_token": refresh,
-			"token_type":    "Bearer",
-			"expires_in":    900,
+			"token":         token,
+			"refreshToken":  refresh,
+			"user": map[string]interface{}{
+				"id":    account.ID,
+				"email": account.Email,
+				"name":  account.Name,
+				"role":  "member",
+			},
 		},
 	})
 }
 
 func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
+	// Support both JWT auth header and body-based refresh token
 	accountID := middleware.GetAccountID(r.Context())
+	
+	// If no account ID from JWT, try body-based refresh
+	if accountID == "" {
+		var req struct {
+			RefreshToken string `json:"refreshToken"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err == nil && req.RefreshToken != "" {
+			// Parse the refresh token to get account ID
+			claims, err := h.authMiddleware.ParseToken(req.RefreshToken)
+			if err != nil || claims == nil {
+				writeJSON(w, http.StatusUnauthorized, APIResponse{Error: "invalid refresh token"})
+				return
+			}
+			accountID, _ = claims["sub"].(string)
+		}
+	}
+
+	if accountID == "" {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Error: "missing authentication"})
+		return
+	}
+
 	account, err := h.accountService.GetByID(r.Context(), accountID)
 	if err != nil || account == nil {
 		writeJSON(w, http.StatusUnauthorized, APIResponse{Error: "account not found"})
@@ -157,9 +185,7 @@ func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
 		Data: map[string]interface{}{
-			"access_token": token,
-			"token_type":   "Bearer",
-			"expires_in":   900,
+			"token": token,
 		},
 	})
 }
@@ -199,6 +225,37 @@ func (h *AuthHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 			"risk_score": account.RiskScore,
 			"created_at": account.CreatedAt,
 			"is_admin":  isAdmin,
+		},
+	})
+}
+
+// UpdateProfile handles PUT /api/v1/auth/profile
+func (h *AuthHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
+	accountID := middleware.GetAccountID(r.Context())
+	var req struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid request"})
+		return
+	}
+	account, err := h.accountService.GetByID(r.Context(), accountID)
+	if err != nil || account == nil {
+		writeJSON(w, http.StatusNotFound, APIResponse{Error: "account not found"})
+		return
+	}
+	if req.Name != "" {
+		account.Name = req.Name
+	}
+	if err := h.accountService.Update(r.Context(), account); err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to update profile"})
+		return
+	}
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Data: map[string]interface{}{
+			"id":   account.ID,
+			"name": account.Name,
 		},
 	})
 }

@@ -187,6 +187,30 @@ func GetAPIKey(ctx context.Context) *models.APIKey {
 	return nil
 }
 
+// ParseToken parses and validates a JWT token string, returning claims as a map
+func (m *AuthMiddleware) ParseToken(tokenString string) (map[string]interface{}, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method")
+		}
+		return []byte(m.jwtSecret), nil
+	})
+	if err != nil || !token.Valid {
+		return nil, fmt.Errorf("invalid token")
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, fmt.Errorf("invalid token claims")
+	}
+
+	result := make(map[string]interface{})
+	for k, v := range claims {
+		result[k] = v
+	}
+	return result, nil
+}
+
 func decodeJSON(r *http.Request, v interface{}) error {
 	return json.NewDecoder(r.Body).Decode(v)
 }

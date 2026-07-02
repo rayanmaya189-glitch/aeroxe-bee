@@ -61,6 +61,7 @@ func main() {
 	}
 
 	svc := services.NewServiceRegistry(postgres.Pool, redisDB.Client, cfg.OTP)
+	userService := services.NewUserService(postgres.Pool)
 
 	idempotencyStore := idempotency.NewStore(redisDB.Client, cfg.App.IdempotencyTTL)
 	rateMgr := ratecontrol.NewManager(redisDB.Client, cfg.RateLimit)
@@ -198,15 +199,17 @@ func main() {
 	deviceHandler := handlers.NewDeviceHandler(svc.Devices, svc.Messages, svc.APIKeys, svc.MQTTCredentials, cfg.MQTT.BrokerURL(), authMiddleware)
 	accountHandler := handlers.NewAccountHandler(svc.Accounts, svc.APIKeys, svc.Subscriptions, svc.Billing)
 	adminHandler := handlers.NewAdminHandler(svc.Admin, cbManager, metrics)
+	userHandler := handlers.NewUserHandler(userService, authMiddleware)
 	templateHandler := handlers.NewTemplateHandler(svc.Templates)
 	webhookHandler := handlers.NewWebhookHandler(svc.Webhooks)
 	otpHandler := handlers.NewOTPHandler(svc.OTP, metrics)
 	billingHandler := handlers.NewBillingHandler(svc.Billing, svc.Subscriptions)
 	fraudHandler := handlers.NewFraudHandler(fraudDetector)
+	memberHandler := handlers.NewMemberHandler(svc.Accounts, svc.Devices, svc.Messages, svc.Billing, svc.Subscriptions)
 
 	router := api.NewRouter(authHandler, messageHandler, deviceHandler, accountHandler,
-		adminHandler, templateHandler, webhookHandler, otpHandler, billingHandler, fraudHandler,
-		authMiddleware, metrics, postgres, redisDB)
+		adminHandler, userHandler, templateHandler, webhookHandler, otpHandler, billingHandler,
+		fraudHandler, memberHandler, authMiddleware, metrics, postgres, redisDB)
 
 	promMux := http.NewServeMux()
 	promMux.Handle("/metrics", promhttp.Handler())

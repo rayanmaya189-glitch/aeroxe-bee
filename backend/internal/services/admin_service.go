@@ -17,15 +17,15 @@ func NewAdminService(db DatabaseQuerier) *AdminService {
 }
 
 type PlatformStats struct {
-	TotalAccounts   int64   `json:"total_accounts"`
-	ActiveDevices   int64   `json:"active_devices"`
-	TotalSent       int64   `json:"total_sent"`
-	TotalDelivered  int64   `json:"total_delivered"`
-	TotalFailed     int64   `json:"total_failed"`
-	AvgConfidence   float64 `json:"avg_confidence"`
-	ActiveCircuits  int64   `json:"active_circuits"`
-	PendingFraud    int64   `json:"pending_fraud"`
-	QueueDepth      map[string]int64 `json:"queue_depth"`
+	TotalAccounts  int64              `json:"total_accounts"`
+	ActiveDevices  int64              `json:"active_devices"`
+	TotalSent      int64              `json:"total_sent"`
+	TotalDelivered int64              `json:"total_delivered"`
+	TotalFailed    int64              `json:"total_failed"`
+	AvgConfidence  float64            `json:"avg_confidence"`
+	ActiveCircuits int64              `json:"active_circuits"`
+	PendingFraud   int64              `json:"pending_fraud"`
+	QueueDepth     map[string]int64   `json:"queue_depth"`
 }
 
 func (s *AdminService) GetPlatformStats(ctx context.Context) (*PlatformStats, error) {
@@ -39,7 +39,7 @@ func (s *AdminService) GetPlatformStats(ctx context.Context) (*PlatformStats, er
 	if err := s.db.QueryRow(ctx, `SELECT COUNT(*) FROM devices WHERE status = 'ONLINE'`).Scan(&stats.ActiveDevices); err != nil {
 		return nil, err
 	}
-	if err := s.db.QueryRow(ctx, `SELECT COUNT(*) FROM messages WHERE delivery_status = 'CARRIER_ACCEPTED' OR delivery_status = 'PROBABLE_DELIVERED'`).Scan(&stats.TotalDelivered); err != nil {
+	if err := s.db.QueryRow(ctx, `SELECT COUNT(*) FROM messages WHERE delivery_status IN ('CARRIER_ACCEPTED', 'PROBABLE_DELIVERED')`).Scan(&stats.TotalDelivered); err != nil {
 		return nil, err
 	}
 	if err := s.db.QueryRow(ctx, `SELECT COUNT(*) FROM messages WHERE delivery_status = 'FAILED'`).Scan(&stats.TotalFailed); err != nil {
@@ -63,6 +63,17 @@ func (s *AdminService) GetPlatformStats(ctx context.Context) (*PlatformStats, er
 
 func (s *AdminService) GetAccount(ctx context.Context, id string) (*models.Account, error) {
 	return NewAccountService(s.db).GetByID(ctx, id)
+}
+
+func (s *AdminService) DeleteAccount(ctx context.Context, id string) error {
+	_, err := s.db.Exec(ctx, `DELETE FROM accounts WHERE id=$1`, id)
+	return err
+}
+
+func (s *AdminService) GetTotalAccountCount(ctx context.Context) (int64, error) {
+	var count int64
+	err := s.db.QueryRow(ctx, `SELECT COUNT(*) FROM accounts`).Scan(&count)
+	return count, err
 }
 
 func (s *AdminService) GetQueueDepths(ctx context.Context) (map[string]int64, error) {
@@ -99,8 +110,7 @@ func (s *AdminService) RetryDeadLetter(ctx context.Context, id string) error {
 		return fmt.Errorf("dead letter not found: %w", err)
 	}
 
-	_, err = s.db.Exec(ctx,
-		`UPDATE messages SET status='pending' WHERE id=$1`, letter.MessageID)
+	_, err = s.db.Exec(ctx, `UPDATE messages SET status='pending' WHERE id=$1`, letter.MessageID)
 	if err != nil {
 		return err
 	}
@@ -222,5 +232,3 @@ func (s *AdminService) RecordAnalyticsDaily(ctx context.Context) error {
 		today)
 	return err
 }
-
-

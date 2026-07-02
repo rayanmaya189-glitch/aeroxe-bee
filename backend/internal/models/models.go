@@ -4,12 +4,55 @@ import (
 	"time"
 )
 
+// User represents a staff/admin panel user
+type User struct {
+	ID           string    `db:"id" json:"id"`
+	Name         string    `db:"name" json:"name"`
+	Email        string    `db:"email" json:"email"`
+	PasswordHash string    `db:"password_hash" json:"-"`
+	Role         string    `db:"role" json:"role"`
+	Status       string    `db:"status" json:"status"`
+	Avatar       string    `db:"avatar" json:"avatar"`
+	LastLogin    *time.Time `db:"last_login" json:"last_login,omitempty"`
+	CreatedAt    time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt    time.Time `db:"updated_at" json:"updated_at"`
+}
+
+// ActivityLog represents an admin panel audit trail entry
+type ActivityLog struct {
+	ID         string    `db:"id" json:"id"`
+	UserID     *string   `db:"user_id" json:"user_id,omitempty"`
+	UserName   string    `db:"user_name" json:"user_name"`
+	Action     string    `db:"action" json:"action"`
+	Resource   string    `db:"resource" json:"resource"`
+	ResourceID string    `db:"resource_id" json:"resource_id"`
+	Details    string    `db:"details" json:"details"`
+	IPAddress  string    `db:"ip_address" json:"ip_address"`
+	CreatedAt  time.Time `db:"created_at" json:"created_at"`
+}
+
+// PaginatedResponse is the standard paginated API response
+type PaginatedResponse[T any] struct {
+	Data       []T   `json:"data"`
+	Total      int64 `json:"total"`
+	Page       int   `json:"page"`
+	PageSize   int   `json:"page_size"`
+	TotalPages int   `json:"total_pages"`
+}
+
 type AccountStatus string
 
 const (
-	AccountStatusActive   AccountStatus = "active"
+	AccountStatusActive    AccountStatus = "active"
 	AccountStatusSuspended AccountStatus = "suspended"
-	AccountStatusDisabled AccountStatus = "disabled"
+	AccountStatusDisabled  AccountStatus = "disabled"
+)
+
+// User roles
+const (
+	UserRoleAdmin  = "admin"
+	UserRoleStaff  = "staff"
+	UserRoleViewer = "viewer"
 )
 
 type PlanType string
