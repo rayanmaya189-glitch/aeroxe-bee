@@ -111,7 +111,7 @@ export function Sidebar() {
 
         <div className={cn('border-t border-surface-100 p-3 dark:border-surface-700', !sidebarOpen && !isMobile && 'text-center')}>
           {(sidebarOpen || isMobile) && (
-            <p className="text-xs text-surface-400 dark:text-surface-500">© 2026 AeroXe Bee</p>
+            <p className="text-xs text-surface-400 dark:text-surface-500">© 2026 Aeroxe Enterprises Pvt. Ltd.</p>
           )}
         </div>
       </aside>

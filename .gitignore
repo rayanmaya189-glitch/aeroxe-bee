@@ -150,9 +150,10 @@ frontend/.env.*
 
 .gradle/
 **/build/
-android/.gradle/
-android/build/
-gradle/
+*.iml
+.idea/
+android/.idea/
+local.properties
 
 # Local config
 
