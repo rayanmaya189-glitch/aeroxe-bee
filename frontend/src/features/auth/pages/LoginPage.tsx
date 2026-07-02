@@ -62,7 +62,7 @@ export function LoginPage() {
               id="email"
               type="email"
               label="Email"
-              placeholder="admin@textbee.com"
+              placeholder="admin@aeroxe.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required

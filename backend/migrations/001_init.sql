@@ -1,4 +1,5 @@
--- TextBee Backend - Initial Schema
+-- AeroXe Bee - Initial Schema
+-- Aeroxe Enterprises Pvt. Ltd.
 -- All tables for the distributed Android SMS gateway platform
 
 BEGIN;

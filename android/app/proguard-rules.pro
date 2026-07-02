@@ -1,4 +1,5 @@
-# TextBee Client ProGuard Rules
+# AeroXe Bee ProGuard Rules
+# Aeroxe Enterprises Pvt. Ltd.
 -keepattributes *Annotation*
 -keep class com.textbee.client.** { *; }
 -keepclassmembers class * extends androidx.room.RoomDatabase { *; }
