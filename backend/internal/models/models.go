@@ -243,8 +243,9 @@ type MQTTCredential struct {
 	DeviceID          string    `db:"device_id" json:"device_id"`
 	Username          string    `db:"username" json:"username"`
 	CredentialHash    string    `db:"credential_hash_or_cert_ref" json:"-"`
-	IssuedAt          time.Time `db:"issued_at" json:"issued_at"`
+	IssuedAt          time.Time  `db:"issued_at" json:"issued_at"`
 	RevokedAt         *time.Time `db:"revoked_at" json:"revoked_at,omitempty"`
+	EncryptedPassword string     `db:"encrypted_password" json:"-"`
 }
 
 // Message represents an SMS message

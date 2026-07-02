@@ -19,8 +19,8 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "BASE_URL", "\"http://10.10.13.148:7090/api/v1/\"")
-        buildConfigField("String", "MQTT_BROKER_URL", "\"tcp://10.10.13.148:1883\"")
+        buildConfigField("String", "BASE_URL", "\"http://192.168.18.13:7090/api/v1/\"")
+        buildConfigField("String", "MQTT_BROKER_URL", "\"tcp://192.168.18.13:1883\"")
         buildConfigField("String", "MQTT_CLIENT_ID", "\"textbee_android_\"")
     }
 

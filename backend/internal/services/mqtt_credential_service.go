@@ -46,6 +46,43 @@ func (s *MQTTCredentialService) Create(ctx context.Context, deviceID string) (*m
 	return cred, password, nil
 }
 
+// CreateWithEncryptedPassword creates MQTT credentials with the deviceID as the MQTT username
+// and stores an AES-256 encrypted version of the password for later decryption.
+// This is used by the device login flow where the Android device authenticates directly.
+func (s *MQTTCredentialService) CreateWithEncryptedPassword(ctx context.Context, deviceID string, encryptFn func([]byte) (string, error)) (*models.MQTTCredential, string, error) {
+	id := uuidV4()
+	username := deviceID // MQTT username = Android device ID
+	password := generatePassword()
+
+	hash := sha256.Sum256([]byte(password))
+	hashHex := hex.EncodeToString(hash[:])
+
+	// Encrypt the password with AES-256 for reversible storage
+	encryptedPass, err := encryptFn([]byte(password))
+	if err != nil {
+		return nil, "", fmt.Errorf("encrypt mqtt password: %w", err)
+	}
+
+	cred := &models.MQTTCredential{
+		ID:                id,
+		DeviceID:          deviceID,
+		Username:          username,
+		CredentialHash:    hashHex,
+		IssuedAt:          time.Now(),
+		EncryptedPassword: encryptedPass,
+	}
+
+	_, err = s.db.Exec(ctx,
+		`INSERT INTO mqtt_credentials (id, device_id, username, credential_hash_or_cert_ref, encrypted_password, issued_at)
+		 VALUES ($1, $2, $3, $4, $5, $6)`,
+		cred.ID, cred.DeviceID, cred.Username, cred.CredentialHash, cred.EncryptedPassword, cred.IssuedAt)
+	if err != nil {
+		return nil, "", fmt.Errorf("create mqtt credential: %w", err)
+	}
+
+	return cred, password, nil
+}
+
 func (s *MQTTCredentialService) RevokeByDeviceID(ctx context.Context, deviceID string) error {
 	now := time.Now()
 	_, err := s.db.Exec(ctx,
@@ -57,10 +94,10 @@ func (s *MQTTCredentialService) RevokeByDeviceID(ctx context.Context, deviceID s
 func (s *MQTTCredentialService) GetByDeviceID(ctx context.Context, deviceID string) (*models.MQTTCredential, error) {
 	cred := &models.MQTTCredential{}
 	err := s.db.QueryRow(ctx,
-		`SELECT id, device_id, username, credential_hash_or_cert_ref, issued_at, revoked_at
+		`SELECT id, device_id, username, credential_hash_or_cert_ref, encrypted_password, issued_at, revoked_at
 		 FROM mqtt_credentials WHERE device_id=$1 AND revoked_at IS NULL
 		 ORDER BY issued_at DESC LIMIT 1`, deviceID,
-	).Scan(&cred.ID, &cred.DeviceID, &cred.Username, &cred.CredentialHash, &cred.IssuedAt, &cred.RevokedAt)
+	).Scan(&cred.ID, &cred.DeviceID, &cred.Username, &cred.CredentialHash, &cred.EncryptedPassword, &cred.IssuedAt, &cred.RevokedAt)
 	if err != nil {
 		return nil, nil
 	}

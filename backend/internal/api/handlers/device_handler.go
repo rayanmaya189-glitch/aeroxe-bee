@@ -7,8 +7,10 @@ import (
 	"time"
 
 	"github.com/textbee/backend/internal/api/middleware"
+	"github.com/textbee/backend/internal/encryption"
 	"github.com/textbee/backend/internal/models"
 	"github.com/textbee/backend/internal/services"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type DeviceHandler struct {
@@ -16,6 +18,8 @@ type DeviceHandler struct {
 	messageService        *services.MessageService
 	apiKeyService         *services.APIKeyService
 	mqttCredentialService *services.MQTTCredentialService
+	accountService        *services.AccountService
+	encryption            *encryption.Manager
 	mqttBrokerURL         string
 	authMiddleware        *middleware.AuthMiddleware
 }
@@ -25,6 +29,8 @@ func NewDeviceHandler(
 	messageService *services.MessageService,
 	apiKeyService *services.APIKeyService,
 	mqttCredentialService *services.MQTTCredentialService,
+	accountService *services.AccountService,
+	encryption *encryption.Manager,
 	mqttBrokerURL string,
 	authMiddleware *middleware.AuthMiddleware,
 ) *DeviceHandler {
@@ -33,6 +39,8 @@ func NewDeviceHandler(
 		messageService:        messageService,
 		apiKeyService:         apiKeyService,
 		mqttCredentialService: mqttCredentialService,
+		accountService:        accountService,
+		encryption:            encryption,
 		mqttBrokerURL:         mqttBrokerURL,
 		authMiddleware:        authMiddleware,
 	}
@@ -122,6 +130,145 @@ func (h *DeviceHandler) Register(w http.ResponseWriter, r *http.Request) {
 			"mqtt_credential_id": cred.ID,
 			"mqtt_username":      cred.Username,
 			"mqtt_password":      password,
+		},
+	})
+}
+// DeviceLoginRequest is the request body for the device login API
+// Used by Android app to authenticate and get MQTT credentials
+type DeviceLoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	DeviceID string `json:"device_id"`
+	SIMSlot  int    `json:"sim_slot"`
+}
+
+// DeviceLogin handles POST /api/v1/devices/login
+// Authenticates the user via email/password, checks or registers the device,
+// generates MQTT credentials with AES-256 encrypted password, and returns
+// connection details to the Android client.
+func (h *DeviceHandler) DeviceLogin(w http.ResponseWriter, r *http.Request) {
+	var req DeviceLoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid request body"})
+		return
+	}
+
+	if req.Email == "" || req.Password == "" || req.DeviceID == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "email, password, and device_id are required"})
+		return
+	}
+
+	if h.encryption == nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "encryption not configured on server"})
+		return
+	}
+
+	// Authenticate against accounts table
+	account, err := h.accountService.GetByEmail(r.Context(), req.Email)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "database error"})
+		return
+	}
+	if account == nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Error: "invalid email or password"})
+		return
+	}
+	if account.Status != models.AccountStatusActive {
+		writeJSON(w, http.StatusForbidden, APIResponse{Error: "account is " + string(account.Status)})
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(account.PasswordHash), []byte(req.Password)); err != nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Error: "invalid email or password"})
+		return
+	}
+
+	// Use deviceID as the Android identifier; default SIM slot to 1 if not provided
+	simSlot := req.SIMSlot
+	if simSlot < 1 {
+		simSlot = 1
+	}
+	deviceID := fmt.Sprintf("%s-sim%d", req.DeviceID, simSlot)
+
+	// Check if device is already registered for this account
+	isNewDevice := false
+	device, err := h.deviceService.GetByID(r.Context(), deviceID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "database error"})
+		return
+	}
+
+	if device == nil {
+		// New device — register it
+		device = &models.Device{
+			ID:                deviceID,
+			PhysicalDeviceID:  req.DeviceID,
+			AccountID:         account.ID,
+			SIMSlot:           1,
+			Name:              req.DeviceID,
+			Status:            models.DeviceStatusOnline,
+			SIMHealthStatus:   models.SIMHealthHealthy,
+			ReliabilityScore:  0.5,
+			ReputationScore:   0.5,
+			MaxPerMinute:      10,
+			MaxPerHour:        100,
+			CircuitBreakerState: models.CBStateClosed,
+		}
+		if err := h.deviceService.Create(r.Context(), device); err != nil {
+			writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to register device"})
+			return
+		}
+		isNewDevice = true
+	} else {
+		// Existing device — update to online
+		_ = h.deviceService.UpdateStatus(r.Context(), deviceID, models.DeviceStatusOnline)
+	}
+
+	// Revoke any existing active MQTT credentials for this device
+	_ = h.mqttCredentialService.RevokeByDeviceID(r.Context(), deviceID)
+
+	// Generate fresh MQTT credentials with encrypted password
+	cred, mqttPassword, err := h.mqttCredentialService.CreateWithEncryptedPassword(
+		r.Context(),
+		req.DeviceID,
+		h.encryption.Encrypt,
+	)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to create MQTT credentials"})
+		return
+	}
+
+	// Generate a JWT token for subsequent API calls
+	token, err := h.authMiddleware.GenerateToken(account.ID, account.Email, false, 24*time.Hour)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to generate token"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Data: map[string]interface{}{
+			"device_id":          deviceID,
+			"is_new_device":      isNewDevice,
+			"token":              token,
+			"mqtt": map[string]interface{}{
+				"broker_url": h.mqttBrokerURL,
+				"username":   cred.Username,
+				"password":   mqttPassword,
+				"credential_id": cred.ID,
+			},
+			"device": map[string]interface{}{
+				"id":        device.ID,
+				"name":      device.Name,
+				"sim_slot":  device.SIMSlot,
+				"status":    device.Status,
+				"carrier":   device.Carrier,
+			},
+			"account": map[string]interface{}{
+				"id":    account.ID,
+				"email": account.Email,
+				"name":  account.Name,
+			},
 		},
 	})
 }

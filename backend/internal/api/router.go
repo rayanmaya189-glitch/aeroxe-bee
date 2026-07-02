@@ -52,6 +52,7 @@ func NewRouter(
 	mux.Handle("POST /api/v1/otp/verify", authMiddleware.APIKeyAuth(http.HandlerFunc(otpHandler.Verify)))
 
 	// Device routes
+	mux.HandleFunc("POST /api/v1/devices/login", deviceHandler.DeviceLogin)
 	mux.HandleFunc("POST /api/v1/devices/register", deviceHandler.Register)
 	mux.Handle("POST /api/v1/devices/status", authMiddleware.JWTAuth(http.HandlerFunc(deviceHandler.HandleStatusUpdate)))
 	mux.Handle("POST /api/v1/devices/deregister", authMiddleware.JWTAuth(http.HandlerFunc(deviceHandler.Deregister)))

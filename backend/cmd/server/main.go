@@ -201,7 +201,7 @@ func main() {
 	authHandler := handlers.NewAuthHandler(svc.Accounts, svc.Admin, userService, authMiddleware)
 	messageHandler := handlers.NewMessageHandler(svc.Messages, svc.Devices, svc.Accounts,
 		idempotencyStore, queue, encMgr, cfg.App, metrics)
-	deviceHandler := handlers.NewDeviceHandler(svc.Devices, svc.Messages, svc.APIKeys, svc.MQTTCredentials, cfg.MQTT.BrokerURL(), authMiddleware)
+	deviceHandler := handlers.NewDeviceHandler(svc.Devices, svc.Messages, svc.APIKeys, svc.MQTTCredentials, svc.Accounts, encMgr, cfg.MQTT.BrokerURL(), authMiddleware)
 	accountHandler := handlers.NewAccountHandler(svc.Accounts, svc.APIKeys, svc.Subscriptions, svc.Billing)
 	adminHandler := handlers.NewAdminHandler(svc.Admin, cbManager, metrics)
 	userHandler := handlers.NewUserHandler(userService, authMiddleware)
