@@ -154,13 +154,13 @@ type TelemetryConfig struct {
 }
 
 type AppConfig struct {
-	Environment      string
-	IdempotencyTTL   time.Duration
-	MessageRetention time.Duration
+	Environment          string
+	IdempotencyTTL       time.Duration
+	MessageRetention     time.Duration
 	OTPMetadataRetention time.Duration
-	PingTimeout      time.Duration
-	HeartbeatWindow  time.Duration
-	MaxRetryDevices  int
+	PingTimeout          time.Duration
+	HeartbeatWindow      time.Duration
+	MaxRetryDevices      int
 }
 
 func Load() *Config {

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/textbee/backend/internal/api/middleware"
@@ -109,8 +110,8 @@ func (h *DeviceHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cred, password, err := h.mqttCredentialService.Create(r.Context(), deviceID)
-	if err != nil {
+	// Track credential in DB for audit trail (actual MQTT auth uses shared "devices" credentials)
+	if _, _, err := h.mqttCredentialService.Create(r.Context(), deviceID); err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to create MQTT credentials"})
 		return
 	}
@@ -124,12 +125,13 @@ func (h *DeviceHandler) Register(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, APIResponse{
 		Success: true,
 		Data: map[string]interface{}{
-			"device_id":          deviceID,
-			"token":              token,
-			"mqtt_broker_url":    h.mqttBrokerURL,
-			"mqtt_credential_id": cred.ID,
-			"mqtt_username":      cred.Username,
-			"mqtt_password":      password,
+			"device_id":       deviceID,
+			"token":           token,
+			"mqtt_broker_url": h.mqttBrokerURL,
+			"mqtt": map[string]interface{}{
+				"username": getEnvOrDefault("MQTT_DEVICE_USERNAME", "devices"),
+				"password": getEnvOrDefault("MQTT_DEVICE_PASSWORD", "dev-device-password"),
+			},
 		},
 	})
 }
@@ -227,13 +229,12 @@ func (h *DeviceHandler) DeviceLogin(w http.ResponseWriter, r *http.Request) {
 	// Revoke any existing active MQTT credentials for this device
 	_ = h.mqttCredentialService.RevokeByDeviceID(r.Context(), deviceID)
 
-	// Generate fresh MQTT credentials with encrypted password
-	cred, mqttPassword, err := h.mqttCredentialService.CreateWithEncryptedPassword(
+	// Track credential in DB for audit trail (actual MQTT auth uses shared "devices" credentials)
+	if _, _, err := h.mqttCredentialService.CreateWithEncryptedPassword(
 		r.Context(),
 		req.DeviceID,
 		h.encryption.Encrypt,
-	)
-	if err != nil {
+	); err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to create MQTT credentials"})
 		return
 	}
@@ -248,14 +249,13 @@ func (h *DeviceHandler) DeviceLogin(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
 		Data: map[string]interface{}{
-			"device_id":          deviceID,
-			"is_new_device":      isNewDevice,
-			"token":              token,
+			"device_id":     deviceID,
+			"is_new_device": isNewDevice,
+			"token":         token,
 			"mqtt": map[string]interface{}{
 				"broker_url": h.mqttBrokerURL,
-				"username":   cred.Username,
-				"password":   mqttPassword,
-				"credential_id": cred.ID,
+				"username":   getEnvOrDefault("MQTT_DEVICE_USERNAME", "devices"),
+				"password":   getEnvOrDefault("MQTT_DEVICE_PASSWORD", "dev-device-password"),
 			},
 			"device": map[string]interface{}{
 				"id":        device.ID,
@@ -474,6 +474,13 @@ func (h *DeviceHandler) Get(w http.ResponseWriter, r *http.Request) {
 			"last_pong_at":         device.LastPongAt,
 		},
 	})
+}
+
+func getEnvOrDefault(key, fallback string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
+	}
+	return fallback
 }
 
 func detectCountryFromPhone(phone string) (string, string) {

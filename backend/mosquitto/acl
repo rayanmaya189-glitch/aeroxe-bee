@@ -1,0 +1,15 @@
+# ============================================================================
+# AeroXe Bee Mosquitto ACL
+# Two users: "backend" (Go service) and "devices" (all Android devices)
+# ============================================================================
+
+# Backend service: full read/write access to all device topics
+user backend
+topic readwrite devices/#
+
+# All devices share the "devices" username.
+# Each device connects and subscribes to its own topic tree,
+# e.g. devices/ABC-sim1/commands, devices/DEF-sim2/commands, etc.
+# Since they share a username, ACL grants access to the full devices/ tree.
+user devices
+topic readwrite devices/#
