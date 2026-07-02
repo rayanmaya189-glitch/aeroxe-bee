@@ -392,9 +392,10 @@ func processMessage(
 		}
 
 		priority := "NORMAL"
-		if msg.Priority == worker.LaneOTP {
+		switch msg.Priority {
+		case worker.LaneOTP:
 			priority = "HIGH"
-		} else if msg.Priority == worker.LaneMarketing {
+		case worker.LaneMarketing:
 			priority = "LOW"
 		}
 		if err := mqttClient.SendSMSCommand(ctx, device.ID, msg.ID, msg.AccountID, msg.Recipient, msg.Message, priority); err != nil {
