@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -419,17 +421,16 @@ func (h *MemberHandler) CreateWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	secret := make([]byte, 32)
-	if _, err := time.Now().Zone(); err == nil {
-		// crypto/rand not imported; use simple approach
-		for i := range secret {
-			secret[i] = byte(i*37 + 17)
-		}
+	if _, err := rand.Read(secret); err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to generate secret"})
+		return
 	}
 
 	webhook := &models.Webhook{
 		AccountID: accountID,
 		URL:       req.URL,
 		Events:    req.Events,
+		Secret:    hex.EncodeToString(secret),
 		Active:    true,
 	}
 
@@ -445,6 +446,7 @@ func (h *MemberHandler) CreateWebhook(w http.ResponseWriter, r *http.Request) {
 			"url":    webhook.URL,
 			"events": webhook.Events,
 			"active": webhook.Active,
+			"secret": webhook.Secret,
 		},
 	})
 }
@@ -548,12 +550,12 @@ func (h *MemberHandler) RotateWebhookSecret(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Generate a simple secret
-	secretBytes := make([]byte, 32)
-	for i := range secretBytes {
-		secretBytes[i] = byte((i*37 + int64(accountID[i%len(accountID)]))) % 256
+	secret := make([]byte, 32)
+	if _, err := rand.Read(secret); err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to generate secret"})
+		return
 	}
-	newSecret := fmt.Sprintf("%x", secretBytes)
+	newSecret := hex.EncodeToString(secret)
 
 	if err := h.webhookService.RotateSecret(r.Context(), id, newSecret); err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to rotate secret"})
