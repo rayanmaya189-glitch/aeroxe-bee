@@ -12,3 +12,4 @@ RUN mkdir -p /mosquitto/auth && chmod 755 /mosquitto/auth
 COPY mosquitto/entrypoint.sh /usr/local/bin/mosquitto-wrapper.sh
 RUN chmod +x /usr/local/bin/mosquitto-wrapper.sh
 ENTRYPOINT ["/usr/local/bin/mosquitto-wrapper.sh"]
+CMD ["/usr/sbin/mosquitto", "-c", "/mosquitto/config/mosquitto.conf"]
