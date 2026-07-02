@@ -1,24 +1,32 @@
-import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { getAnalytics } from '@/services/dashboard'
-import type { AnalyticsDaily } from '@/types/models'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
-import { Badge } from '@/components/ui/Badge'
 import { PageSkeleton } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { formatNumber } from '@/utils/format'
 
 export function AnalyticsPage() {
-  const [data, setData] = useState<AnalyticsDaily[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data: analyticsData = [], isLoading, error } = useQuery({
+    queryKey: ['admin-analytics'],
+    queryFn: getAnalytics,
+  })
 
-  useEffect(() => {
-    getAnalytics()
-      .then((d) => setData(d))
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [])
+  if (isLoading) return <PageSkeleton />
 
-  if (loading) return <PageSkeleton />
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Analytics</h1>
+        </div>
+        <div className="rounded-lg border border-danger-200 bg-danger-50 p-4 text-sm text-danger-700 dark:border-danger-800/50 dark:bg-danger-900/20 dark:text-danger-300">
+          Failed to load analytics data.
+        </div>
+      </div>
+    )
+  }
+
+  const data = analyticsData
 
   const totals = data.reduce(
     (acc, day) => ({

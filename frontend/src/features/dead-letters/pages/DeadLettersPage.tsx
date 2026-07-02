@@ -17,11 +17,15 @@ export function DeadLettersPage() {
   })
 
   const retryMutation = useMutation({
-    mutationFn: retryDeadLetter,
+    mutationFn: async (id: string) => {
+      setRetryingId(id)
+      await retryDeadLetter(id)
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dead-letters'] })
       setRetryingId(null)
     },
+    onError: () => setRetryingId(null),
   })
 
   if (isLoading) return <PageSkeleton />
@@ -57,7 +61,7 @@ export function DeadLettersPage() {
                   <td className="px-4 py-3"><Badge size="sm">{dl.retry_count}</Badge></td>
                   <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">{new Date(dl.failed_at).toLocaleString()}</td>
                   <td className="px-4 py-3">
-                    <Button variant="ghost" size="xs" onClick={() => retryMutation.mutate(dl.id)} loading={retryingId === dl.id}>Retry</Button>
+                    <Button variant="ghost" size="xs" onClick={() => retryMutation.mutate(dl.id)} loading={retryMutation.isPending && retryingId === dl.id}>Retry</Button>
                   </td>
                 </tr>
               ))}

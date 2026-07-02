@@ -35,15 +35,18 @@ export function AccountsPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const debouncedSearch = useDebounce(search, 300)
 
+  const [error, setError] = useState('')
+
   const load = useCallback(async () => {
     try {
       setLoading(true)
+      setError('')
       const result = await getAccounts({ page, pageSize, search: debouncedSearch, status: statusFilter })
       setAccounts(result.data)
       setTotal(result.total)
       setTotalPages(result.total_pages)
-    } catch {
-      // handled by error state in parent
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load accounts')
     } finally {
       setLoading(false)
     }
@@ -52,15 +55,15 @@ export function AccountsPage() {
   useEffect(() => { load() }, [load])
 
   async function handleSuspend(id: string) {
-    try { await suspendAccount(id); load() } catch { /* noop */ }
+    try { await suspendAccount(id); load() } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed to suspend account') }
   }
 
   async function handleActivate(id: string) {
-    try { await activateAccount(id); load() } catch { /* noop */ }
+    try { await activateAccount(id); load() } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed to activate account') }
   }
 
   async function handleDelete(id: string) {
-    try { await deleteAccount(id); load() } catch { /* noop */ }
+    try { await deleteAccount(id); load() } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed to delete account') }
   }
 
   const columns: Column<Account>[] = [
@@ -108,6 +111,13 @@ export function AccountsPage() {
           Manage member accounts on your platform
         </p>
       </div>
+
+      {error && (
+        <div className="rounded-lg border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700 dark:border-danger-800/50 dark:bg-danger-900/20 dark:text-danger-300">
+          {error}
+          <button onClick={() => setError('')} className="ml-2 font-medium underline">Dismiss</button>
+        </div>
+      )}
 
       <div className="flex items-center gap-3">
         <Input

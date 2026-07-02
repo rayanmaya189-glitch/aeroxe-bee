@@ -57,7 +57,7 @@ export function FraudFlagsPage() {
                   </td>
                   <td className="px-4 py-3">
                     {!f.reviewed && (
-                      <Button variant="ghost" size="xs" onClick={() => reviewMutation.mutate(f.id)} loading={false}>Review</Button>
+                      <Button variant="ghost" size="xs" onClick={() => reviewMutation.mutate(f.id)} loading={reviewMutation.isPending}>Review</Button>
                     )}
                   </td>
                 </tr>

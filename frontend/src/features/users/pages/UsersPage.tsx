@@ -34,14 +34,17 @@ export function UsersPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const debouncedSearch = useDebounce(search, 300)
 
+  const [error, setError] = useState('')
+
   const loadUsers = useCallback(async () => {
     try {
       setLoading(true)
+      setError('')
       const result = await getUsers({ page, pageSize, search: debouncedSearch, role: roleFilter, status: statusFilter })
       setUsers(result.data)
       setTotal(result.total)
-    } catch {
-      /* noop */
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load users')
     } finally {
       setLoading(false)
     }
@@ -50,12 +53,12 @@ export function UsersPage() {
   useEffect(() => { loadUsers() }, [loadUsers])
 
   async function handleDelete(id: string) {
-    try { await deleteUser(id); loadUsers() } catch { /* noop */ }
+    try { await deleteUser(id); loadUsers() } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed to delete user') }
   }
 
   async function handleBulkDelete() {
     if (selectedIds.length === 0) return
-    try { await bulkDeleteUsers(selectedIds); setSelectedIds([]); loadUsers() } catch { /* noop */ }
+    try { await bulkDeleteUsers(selectedIds); setSelectedIds([]); loadUsers() } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed to delete users') }
   }
 
   const columns: Column<User>[] = [
@@ -108,6 +111,13 @@ export function UsersPage() {
           </Button>
         </div>
       </div>
+
+      {error && (
+        <div className="rounded-lg border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700 dark:border-danger-800/50 dark:bg-danger-900/20 dark:text-danger-300">
+          {error}
+          <button onClick={() => setError('')} className="ml-2 font-medium underline">Dismiss</button>
+        </div>
+      )}
 
       <div className="flex items-center gap-3">
         <Input

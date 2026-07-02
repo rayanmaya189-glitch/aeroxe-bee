@@ -1,10 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
-import { getDashboardStats, getDailyChartData } from '@/services/dashboard'
-import type { ApiResponse, PaginatedResponse } from '@/types/api'
-import type { DashboardStats } from '@/types/models'
+import { getDashboardStats } from '@/services/dashboard'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
-import { Skeleton, CardSkeleton } from '@/components/ui/Skeleton'
 import { PageSkeleton } from '@/components/ui/Skeleton'
 import { formatNumber } from '@/utils/format'
 
@@ -42,17 +39,25 @@ function StatCard({ title, value, change, trend, icon, color }: StatCardProps) {
 }
 
 export function DashboardPage() {
-  const { data: statsData, isLoading: statsLoading } = useQuery({
+  const { data: stats, isLoading, error } = useQuery({
     queryKey: ['dashboard-stats'],
-    queryFn: async () => {
-      const res = await getDashboardStats()
-      return res as unknown as ApiResponse<DashboardStats>
-    },
+    queryFn: getDashboardStats,
   })
 
-  const stats = statsData?.data
+  if (isLoading) return <PageSkeleton />
 
-  if (statsLoading) return <PageSkeleton />
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Dashboard</h1>
+        </div>
+        <div className="rounded-lg border border-danger-200 bg-danger-50 p-4 text-sm text-danger-700 dark:border-danger-800/50 dark:bg-danger-900/20 dark:text-danger-300">
+          Failed to load dashboard data. Please try again.
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -97,7 +102,7 @@ export function DashboardPage() {
             <Badge variant="primary" dot>Last 30 days</Badge>
           </CardHeader>
           <div className="flex h-64 items-center justify-center rounded-lg border border-dashed border-gray-200 dark:border-gray-800">
-            <p className="text-sm text-gray-400">Chart data loading...</p>
+            <p className="text-sm text-gray-400">Chart integration coming soon</p>
           </div>
         </Card>
 

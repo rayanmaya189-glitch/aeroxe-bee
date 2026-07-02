@@ -24,7 +24,9 @@ export function SettingsPage() {
           setEmail(String(profile.email ?? ''))
         }
       })
-      .catch(() => {})
+      .catch((err: unknown) => {
+        setProfileMsg({ type: 'error', text: err instanceof Error ? err.message : 'Failed to load profile' })
+      })
   }, [])
 
   async function handleProfileUpdate(e: React.FormEvent) {
