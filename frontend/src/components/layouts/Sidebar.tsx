@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { cn } from '@/utils/cn'
 import { useUIStore } from '@/store/uiStore'
+import { useAuthStore } from '@/store/authStore'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 
 interface NavItem {
@@ -174,7 +175,10 @@ function NavItemLink({ item, isCollapsed }: { item: NavItem; isCollapsed: boolea
 export function Sidebar() {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen)
   const setSidebarOpen = useUIStore((s) => s.setSidebarOpen)
+  const user = useAuthStore((s) => s.user)
   const isMobile = useIsMobile()
+
+  const isAdmin = user && user.role !== 'member'
 
   const showSidebar = isMobile ? sidebarOpen : true
   const isCollapsed = !sidebarOpen && !isMobile
@@ -211,25 +215,29 @@ export function Sidebar() {
         </div>
 
         <nav className="flex-1 overflow-y-auto p-3">
-          {/* Admin Section */}
-          <div className="mb-2">
-            {!isCollapsed && (
-              <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-surface-400 dark:text-surface-500">
-                Admin
-              </p>
-            )}
-            {isCollapsed && <div className="mx-auto mb-2 h-px w-6 bg-surface-200 dark:bg-surface-700" />}
-            <div className="space-y-0.5">
-              {adminItems.map((item) => (
-                <NavItemLink key={item.path} item={item} isCollapsed={isCollapsed} />
-              ))}
+          {/* Admin Section — only shown to admin/staff users */}
+          {isAdmin && (
+            <div className="mb-2">
+              {!isCollapsed && (
+                <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-surface-400 dark:text-surface-500">
+                  Admin
+                </p>
+              )}
+              {isCollapsed && <div className="mx-auto mb-2 h-px w-6 bg-surface-200 dark:bg-surface-700" />}
+              <div className="space-y-0.5">
+                {adminItems.map((item) => (
+                  <NavItemLink key={item.path} item={item} isCollapsed={isCollapsed} />
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Divider */}
-          <div className={cn('my-3', isCollapsed ? 'mx-auto h-px w-6' : 'mx-3 h-px')} style={{ backgroundColor: 'var(--color-surface-200, #e5e7eb)' }} />
+          {/* Divider — only when both sections are visible */}
+          {isAdmin && (
+            <div className={cn('my-3', isCollapsed ? 'mx-auto h-px w-6' : 'mx-3 h-px')} style={{ backgroundColor: 'var(--color-surface-200, #e5e7eb)' }} />
+          )}
 
-          {/* Member Section */}
+          {/* Member Section — shown to all authenticated users */}
           <div>
             {!isCollapsed && (
               <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-surface-400 dark:text-surface-500">

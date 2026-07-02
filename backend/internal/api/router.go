@@ -69,20 +69,20 @@ func NewRouter(
 	mux.Handle("GET /api/v1/account/subscription", authMiddleware.JWTAuth(http.HandlerFunc(accountHandler.GetSubscription)))
 	mux.Handle("GET /api/v1/account/usage", authMiddleware.JWTAuth(http.HandlerFunc(accountHandler.GetUsage)))
 
-	// Template routes
-	mux.Handle("POST /api/v1/templates", authMiddleware.JWTAuth(http.HandlerFunc(templateHandler.Create)))
-	mux.Handle("GET /api/v1/templates", authMiddleware.JWTAuth(http.HandlerFunc(templateHandler.List)))
-	mux.Handle("GET /api/v1/templates/{id}", authMiddleware.JWTAuth(http.HandlerFunc(templateHandler.Get)))
-	mux.Handle("PUT /api/v1/templates/{id}", authMiddleware.JWTAuth(http.HandlerFunc(templateHandler.Update)))
-	mux.Handle("DELETE /api/v1/templates/{id}", authMiddleware.JWTAuth(http.HandlerFunc(templateHandler.Delete)))
+	// Template routes (admin only)
+	mux.Handle("POST /api/v1/templates", authMiddleware.AdminAuth(http.HandlerFunc(templateHandler.Create)))
+	mux.Handle("GET /api/v1/templates", authMiddleware.AdminAuth(http.HandlerFunc(templateHandler.List)))
+	mux.Handle("GET /api/v1/templates/{id}", authMiddleware.AdminAuth(http.HandlerFunc(templateHandler.Get)))
+	mux.Handle("PUT /api/v1/templates/{id}", authMiddleware.AdminAuth(http.HandlerFunc(templateHandler.Update)))
+	mux.Handle("DELETE /api/v1/templates/{id}", authMiddleware.AdminAuth(http.HandlerFunc(templateHandler.Delete)))
 
-	// Webhook routes
-	mux.Handle("GET /api/v1/webhooks", authMiddleware.JWTAuth(http.HandlerFunc(webhookHandler.List)))
-	mux.Handle("POST /api/v1/webhooks", authMiddleware.JWTAuth(http.HandlerFunc(webhookHandler.Create)))
-	mux.Handle("GET /api/v1/webhooks/{id}", authMiddleware.JWTAuth(http.HandlerFunc(webhookHandler.Get)))
-	mux.Handle("PUT /api/v1/webhooks/{id}", authMiddleware.JWTAuth(http.HandlerFunc(webhookHandler.Update)))
-	mux.Handle("DELETE /api/v1/webhooks/{id}", authMiddleware.JWTAuth(http.HandlerFunc(webhookHandler.Delete)))
-	mux.Handle("POST /api/v1/webhooks/{id}/rotate-secret", authMiddleware.JWTAuth(http.HandlerFunc(webhookHandler.RotateSecret)))
+	// Webhook routes (admin only)
+	mux.Handle("GET /api/v1/webhooks", authMiddleware.AdminAuth(http.HandlerFunc(webhookHandler.List)))
+	mux.Handle("POST /api/v1/webhooks", authMiddleware.AdminAuth(http.HandlerFunc(webhookHandler.Create)))
+	mux.Handle("GET /api/v1/webhooks/{id}", authMiddleware.AdminAuth(http.HandlerFunc(webhookHandler.Get)))
+	mux.Handle("PUT /api/v1/webhooks/{id}", authMiddleware.AdminAuth(http.HandlerFunc(webhookHandler.Update)))
+	mux.Handle("DELETE /api/v1/webhooks/{id}", authMiddleware.AdminAuth(http.HandlerFunc(webhookHandler.Delete)))
+	mux.Handle("POST /api/v1/webhooks/{id}/rotate-secret", authMiddleware.AdminAuth(http.HandlerFunc(webhookHandler.RotateSecret)))
 
 	// Billing routes
 	mux.Handle("GET /api/v1/plans", authMiddleware.JWTAuth(http.HandlerFunc(billingHandler.ListPlans)))

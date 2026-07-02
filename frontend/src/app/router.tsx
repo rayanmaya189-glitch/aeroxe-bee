@@ -1,8 +1,9 @@
 import { lazy, Suspense, useEffect } from 'react'
-import { createBrowserRouter, Navigate, type RouteObject } from 'react-router-dom'
+import { createBrowserRouter, Navigate, Outlet, type RouteObject } from 'react-router-dom'
 import { AppLayout } from '@/components/layouts/AppLayout'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { useAuthStore } from '@/store/authStore'
+import { AdminRoute, MemberRoute } from './guards'
 
 const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage').then((m) => ({ default: m.LoginPage })))
 const RegisterPage = lazy(() => import('@/features/auth/pages/RegisterPage').then((m) => ({ default: m.RegisterPage })))
@@ -64,6 +65,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+function DefaultRedirect() {
+  const user = useAuthStore((s) => s.user)
+  if (!user || user.role === 'member') {
+    return <Navigate to="/member" replace />
+  }
+  return <Navigate to="/dashboard" replace />
+}
+
 const routes: RouteObject[] = [
   {
     path: '/login',
@@ -85,22 +94,39 @@ const routes: RouteObject[] = [
     path: '/',
     element: <ProtectedRoute><AppLayout /></ProtectedRoute>,
     children: [
-      { index: true, element: <Navigate to="/dashboard" replace /> },
-      { path: 'dashboard', element: <LazyLoader><DashboardPage /></LazyLoader> },
-      { path: 'accounts', element: <LazyLoader><AccountsPage /></LazyLoader> },
-      { path: 'users', element: <LazyLoader><UsersPage /></LazyLoader> },
-      { path: 'analytics', element: <LazyLoader><AnalyticsPage /></LazyLoader> },
-      { path: 'webhooks', element: <LazyLoader><WebhooksPage /></LazyLoader> },
-      { path: 'templates', element: <LazyLoader><TemplatesPage /></LazyLoader> },
+      // Default redirect based on role
+      {
+        index: true,
+        element: <DefaultRedirect />,
+      },
+      // Admin-only routes
+      {
+        element: <AdminRoute><Outlet /></AdminRoute>,
+        children: [
+          { path: 'dashboard', element: <LazyLoader><DashboardPage /></LazyLoader> },
+          { path: 'accounts', element: <LazyLoader><AccountsPage /></LazyLoader> },
+          { path: 'users', element: <LazyLoader><UsersPage /></LazyLoader> },
+          { path: 'analytics', element: <LazyLoader><AnalyticsPage /></LazyLoader> },
+          { path: 'webhooks', element: <LazyLoader><WebhooksPage /></LazyLoader> },
+          { path: 'templates', element: <LazyLoader><TemplatesPage /></LazyLoader> },
+          { path: 'circuit-breakers', element: <LazyLoader><CircuitBreakersPage /></LazyLoader> },
+          { path: 'dead-letters', element: <LazyLoader><DeadLettersPage /></LazyLoader> },
+          { path: 'fraud-flags', element: <LazyLoader><FraudFlagsPage /></LazyLoader> },
+        ],
+      },
+      // Shared routes (accessible to both admin and member)
       { path: 'billing', element: <LazyLoader><BillingPage /></LazyLoader> },
-      { path: 'circuit-breakers', element: <LazyLoader><CircuitBreakersPage /></LazyLoader> },
-      { path: 'dead-letters', element: <LazyLoader><DeadLettersPage /></LazyLoader> },
-      { path: 'fraud-flags', element: <LazyLoader><FraudFlagsPage /></LazyLoader> },
       { path: 'settings', element: <LazyLoader><SettingsPage /></LazyLoader> },
-      { path: 'member', element: <LazyLoader><MemberDashboardPage /></LazyLoader> },
-      { path: 'member/devices', element: <LazyLoader><MemberDevicesPage /></LazyLoader> },
-      { path: 'member/messages', element: <LazyLoader><MemberMessagesPage /></LazyLoader> },
-      { path: 'member/analytics', element: <LazyLoader><MemberAnalyticsPage /></LazyLoader> },
+      // Member portal routes (accessible to all authenticated users)
+      {
+        element: <MemberRoute><Outlet /></MemberRoute>,
+        children: [
+          { path: 'member', element: <LazyLoader><MemberDashboardPage /></LazyLoader> },
+          { path: 'member/devices', element: <LazyLoader><MemberDevicesPage /></LazyLoader> },
+          { path: 'member/messages', element: <LazyLoader><MemberMessagesPage /></LazyLoader> },
+          { path: 'member/analytics', element: <LazyLoader><MemberAnalyticsPage /></LazyLoader> },
+        ],
+      },
     ],
   },
   {
