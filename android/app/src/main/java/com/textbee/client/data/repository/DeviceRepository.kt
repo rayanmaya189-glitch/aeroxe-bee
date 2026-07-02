@@ -25,7 +25,7 @@ class DeviceRepository @Inject constructor(
     private val api: TextBeeApi,
     private val tokenManager: TokenManager,
 ) {
-    suspend fun registerDevice(apiKey: String): Result<String> = runCatching {
+    suspend fun registerDevice(apiKey: String): Result<Unit> = runCatching {
         val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
         val deviceId = tm.imei ?: Settings.Secure.getString(
             context.contentResolver, Settings.Secure.ANDROID_ID
@@ -47,41 +47,16 @@ class DeviceRepository @Inject constructor(
         val body = response.body()
 
         if (response.isSuccessful && body?.success == true && body.data != null) {
-            tokenManager.saveToken(body.data.token)
-            body.data.token
+            val data = body.data
+            tokenManager.saveToken(data.token)
+            tokenManager.saveDeviceId(data.deviceId)
+            data.mqttBrokerUrl?.let { tokenManager.saveMqttBrokerUrl(it) }
+            data.mqttUsername?.let { tokenManager.saveMqttUsername(it) }
+            data.mqttPassword?.let { tokenManager.saveMqttPassword(it) }
+            data.mqttCredentialId?.let { tokenManager.saveMqttCredentialId(it) }
         } else {
             throw Exception(body?.error ?: "Registration failed")
         }
-    }
-
-    suspend fun sendHeartbeat(deviceInfo: DeviceInfo) {
-        val request = HeartbeatRequest(
-            deviceId = deviceInfo.deviceId,
-            batteryLevel = deviceInfo.batteryLevel,
-            isCharging = deviceInfo.isCharging,
-            networkStrength = deviceInfo.networkStrength,
-            networkType = deviceInfo.networkType,
-            simSlots = deviceInfo.simSlots.map { slot ->
-                SimSlotStatus(
-                    slot = slot.slot,
-                    carrier = slot.carrier,
-                    phoneNumber = slot.phoneNumber,
-                    isAvailable = slot.isAvailable,
-                    isRoaming = slot.isRoaming,
-                )
-            },
-        )
-        try { api.sendHeartbeat(request) } catch (_: Exception) {}
-    }
-
-    suspend fun fetchTasks(deviceId: String): List<SMSCommand> {
-        return try {
-            val response = api.fetchTasks(deviceId)
-            val body = response.body()
-            if (response.isSuccessful && body?.success == true && body.data != null) {
-                body.data
-            } else emptyList()
-        } catch (_: Exception) { emptyList() }
     }
 
     suspend fun updateStatus(request: StatusUpdateRequest) {

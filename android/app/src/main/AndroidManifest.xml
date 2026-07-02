@@ -41,6 +41,11 @@
             android:exported="false" />
 
         <service
+            android:name=".worker.MqttService"
+            android:foregroundServiceType="dataSync"
+            android:exported="false" />
+
+        <service
             android:name=".worker.JobSchedulerFallback"
             android:exported="false"
             android:permission="android.permission.BIND_JOB_SERVICE" />

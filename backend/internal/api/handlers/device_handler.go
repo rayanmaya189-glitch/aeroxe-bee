@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/textbee/backend/internal/api/middleware"
 	"github.com/textbee/backend/internal/models"
@@ -12,11 +13,12 @@ import (
 )
 
 type DeviceHandler struct {
-	deviceService       *services.DeviceService
-	messageService      *services.MessageService
-	apiKeyService       *services.APIKeyService
+	deviceService         *services.DeviceService
+	messageService        *services.MessageService
+	apiKeyService         *services.APIKeyService
 	mqttCredentialService *services.MQTTCredentialService
-	authMiddleware      *middleware.AuthMiddleware
+	mqttBrokerURL         string
+	authMiddleware        *middleware.AuthMiddleware
 }
 
 func NewDeviceHandler(
@@ -24,14 +26,16 @@ func NewDeviceHandler(
 	messageService *services.MessageService,
 	apiKeyService *services.APIKeyService,
 	mqttCredentialService *services.MQTTCredentialService,
+	mqttBrokerURL string,
 	authMiddleware *middleware.AuthMiddleware,
 ) *DeviceHandler {
 	return &DeviceHandler{
-		deviceService:       deviceService,
-		messageService:      messageService,
-		apiKeyService:       apiKeyService,
+		deviceService:         deviceService,
+		messageService:        messageService,
+		apiKeyService:         apiKeyService,
 		mqttCredentialService: mqttCredentialService,
-		authMiddleware:      authMiddleware,
+		mqttBrokerURL:         mqttBrokerURL,
+		authMiddleware:        authMiddleware,
 	}
 }
 
@@ -112,113 +116,12 @@ func (h *DeviceHandler) Register(w http.ResponseWriter, r *http.Request) {
 		Data: map[string]interface{}{
 			"device_id":          deviceID,
 			"token":              token,
+			"mqtt_broker_url":    h.mqttBrokerURL,
 			"mqtt_credential_id": cred.ID,
 			"mqtt_username":      cred.Username,
 			"mqtt_password":      password,
 		},
 	})
-}
-
-// HeartbeatRequest matches the Android HeartbeatRequest model
-type HeartbeatRequest struct {
-	DeviceID      string         `json:"device_id"`
-	BatteryLevel  int            `json:"battery_level"`
-	IsCharging    bool           `json:"is_charging"`
-	NetworkStrength int          `json:"network_strength"`
-	NetworkType   string         `json:"network_type"`
-	SimSlots      []SimSlotStatus `json:"sim_slots"`
-}
-
-type SimSlotStatus struct {
-	Slot        int    `json:"slot"`
-	Carrier     string `json:"carrier"`
-	PhoneNumber string `json:"phone_number"`
-	IsAvailable bool   `json:"is_available"`
-	IsRoaming   bool   `json:"is_roaming"`
-}
-
-// HandleHeartbeat handles POST /api/v1/devices/heartbeat
-func (h *DeviceHandler) HandleHeartbeat(w http.ResponseWriter, r *http.Request) {
-	accountID := middleware.GetAccountID(r.Context())
-
-	var req HeartbeatRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid request body"})
-		return
-	}
-
-	device, err := h.deviceService.GetByID(r.Context(), req.DeviceID)
-	if err != nil || device == nil || device.AccountID != accountID {
-		writeJSON(w, http.StatusNotFound, APIResponse{Error: "device not found"})
-		return
-	}
-
-	if err := h.deviceService.UpdateStatus(r.Context(), req.DeviceID, models.DeviceStatusOnline); err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to update heartbeat"})
-		return
-	}
-
-	writeJSON(w, http.StatusOK, APIResponse{Success: true})
-}
-
-// TaskItem represents a pending SMS task returned to the device
-type TaskItem struct {
-	ID        string `json:"id"`
-	AccountID string `json:"account_id"`
-	Recipient string `json:"recipient"`
-	Message   string `json:"message"`
-	Sender    string `json:"sender"`
-	Priority  string `json:"priority"`
-}
-
-// HandleTasks handles GET /api/v1/devices/tasks?device_id=X&limit=N
-func (h *DeviceHandler) HandleTasks(w http.ResponseWriter, r *http.Request) {
-	accountID := middleware.GetAccountID(r.Context())
-	deviceID := r.URL.Query().Get("device_id")
-	limit := 10
-
-	if deviceID == "" {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "device_id query parameter is required"})
-		return
-	}
-
-	device, err := h.deviceService.GetByID(r.Context(), deviceID)
-	if err != nil || device == nil || device.AccountID != accountID {
-		writeJSON(w, http.StatusNotFound, APIResponse{Error: "device not found"})
-		return
-	}
-
-	msgs, err := h.messageService.ListPendingByAccount(r.Context(), accountID, limit)
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to fetch tasks"})
-		return
-	}
-
-	tasks := make([]TaskItem, 0, len(msgs))
-	for _, m := range msgs {
-		priority := "NORMAL"
-		if m.PriorityLane == models.PriorityLaneOTP {
-			priority = "HIGH"
-		} else if m.PriorityLane == models.PriorityLaneMarketing {
-			priority = "LOW"
-		}
-
-		msgBody := m.Sender
-		tasks = append(tasks, TaskItem{
-			ID:        m.ID,
-			AccountID: accountID,
-			Recipient: m.Recipient,
-			Message:   msgBody,
-			Sender:    m.Sender,
-			Priority:  priority,
-		})
-	}
-
-	if tasks == nil {
-		tasks = []TaskItem{}
-	}
-
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: tasks})
 }
 
 // StatusUpdateRequest matches the Android StatusUpdateRequest model

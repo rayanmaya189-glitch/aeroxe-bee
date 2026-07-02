@@ -1,5 +1,6 @@
 package com.textbee.client.ui.screens.registration
 
+import android.app.Application
 import android.os.Build
 import android.os.PowerManager
 import androidx.lifecycle.ViewModel
@@ -10,7 +11,9 @@ import com.textbee.client.util.OEMBatteryGuide
 import com.textbee.client.util.OEMBatteryGuideEntry
 import com.textbee.client.util.SimManager
 import com.textbee.client.util.TokenManager
+import com.textbee.client.worker.MqttService
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,6 +45,7 @@ enum class RegistrationStep {
 
 @HiltViewModel
 class RegistrationViewModel @Inject constructor(
+    @ApplicationContext private val appContext: android.content.Context,
     private val tokenManager: TokenManager,
     private val deviceRepository: DeviceRepository,
     private val simManager: SimManager,
@@ -146,6 +150,7 @@ class RegistrationViewModel @Inject constructor(
 
             try {
                 deviceRepository.registerDevice(s.apiKey)
+                MqttService.start(appContext)
                 _state.update { it.copy(isLoading = false, isRegistered = true) }
             } catch (e: Exception) {
                 _state.update {

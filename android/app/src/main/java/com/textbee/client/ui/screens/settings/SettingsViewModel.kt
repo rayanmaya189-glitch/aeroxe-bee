@@ -4,7 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.textbee.client.data.repository.DeviceRepository
 import com.textbee.client.util.TokenManager
+import com.textbee.client.worker.MqttService
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,6 +24,7 @@ data class SettingsState(
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
+    @ApplicationContext private val appContext: android.content.Context,
     private val tokenManager: TokenManager,
     private val deviceRepository: DeviceRepository,
 ) : ViewModel() {
@@ -45,6 +48,7 @@ class SettingsViewModel @Inject constructor(
             tokenManager.saveApiKey(apiKey.trim())
             try {
                 deviceRepository.registerDevice(apiKey.trim())
+                MqttService.start(appContext)
                 _state.update { it.copy(isLoading = false, saved = true) }
             } catch (e: Exception) {
                 _state.update { it.copy(isLoading = false, saved = false) }

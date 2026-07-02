@@ -8,15 +8,6 @@ interface TextBeeApi {
     @POST("devices/register")
     suspend fun registerDevice(@Body request: RegisterRequest): Response<ApiResponse<RegisterResponse>>
 
-    @POST("devices/heartbeat")
-    suspend fun sendHeartbeat(@Body request: HeartbeatRequest): Response<ApiResponse<Unit>>
-
-    @GET("devices/tasks")
-    suspend fun fetchTasks(
-        @Query("device_id") deviceId: String,
-        @Query("limit") limit: Int = 10,
-    ): Response<ApiResponse<List<SMSCommand>>>
-
     @POST("devices/status")
     suspend fun updateStatus(@Body request: StatusUpdateRequest): Response<ApiResponse<Unit>>
 

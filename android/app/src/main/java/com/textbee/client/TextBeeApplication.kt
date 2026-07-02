@@ -51,6 +51,15 @@ class TextBeeApplication : Application(), Configuration.Provider {
                 description = "Server-triggered app revival notifications"
             }
             manager.createNotificationChannel(revivalChannel)
+
+            val mqttChannel = NotificationChannel(
+                CHANNEL_MQTT,
+                "MQTT Service",
+                NotificationManager.IMPORTANCE_LOW,
+            ).apply {
+                description = "Notifications for MQTT message broker service"
+            }
+            manager.createNotificationChannel(mqttChannel)
         }
     }
 
@@ -65,5 +74,6 @@ class TextBeeApplication : Application(), Configuration.Provider {
     companion object {
         const val CHANNEL_SMS = "textbee_sms_service"
         const val CHANNEL_FCM_REVIVAL = "textbee_fcm_revival"
+        const val CHANNEL_MQTT = "textbee_mqtt_service"
     }
 }

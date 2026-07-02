@@ -55,26 +55,6 @@ class SMSTaskRepository @Inject constructor(
         smsTaskDao.markFailed(id, status, retryCount, error)
     }
 
-    suspend fun fetchRemoteTasks(deviceId: String): List<SMSTask> {
-        val response = api.fetchTasks(deviceId)
-        if (response.isSuccessful && response.body()?.success == true) {
-            val commands = response.body()?.data ?: return emptyList()
-            val tasks = commands.map { cmd ->
-                SMSTask(
-                    id = cmd.id,
-                    accountId = cmd.accountId,
-                    recipient = cmd.recipient,
-                    message = cmd.message,
-                    priority = try { SMSTask.Priority.valueOf(cmd.priority) } catch (_: Exception) { SMSTask.Priority.NORMAL },
-                    status = SMSTask.Status.PENDING,
-                )
-            }
-            saveTasks(tasks)
-            return tasks
-        }
-        return emptyList()
-    }
-
     suspend fun updateRemoteStatus(
         messageId: String, deviceId: String, status: String, error: String? = null, simSlot: Int = 0,
     ) {

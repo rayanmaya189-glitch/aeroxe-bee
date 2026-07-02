@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -89,6 +90,57 @@ func main() {
 	} else {
 		defer mqttClient.Disconnect()
 		logger.Info("mqtt broker connected")
+
+		if err := mqttClient.Subscribe("devices/+/status", func(topic string, payload []byte) {
+			var statusReport struct {
+				MessageID      string  `json:"message_id"`
+				DeviceID       string  `json:"device_id"`
+				Status         string  `json:"status"`
+				DeliveryStatus string  `json:"delivery_status"`
+				Error          *string `json:"error,omitempty"`
+				SIMSlot        int     `json:"sim_slot"`
+				Timestamp      int64   `json:"timestamp"`
+			}
+			if err := json.Unmarshal(payload, &statusReport); err != nil {
+				logger.Error("failed to parse device status", "topic", topic, "error", err)
+				return
+			}
+			switch statusReport.Status {
+			case "SENT", "DELIVERED":
+				if err := svc.Messages.UpdateDeliveryStatus(context.Background(), statusReport.MessageID,
+					models.DeliveryStatus(statusReport.DeliveryStatus), 1.0); err != nil {
+					logger.Error("mqtt status: update delivery failed", "msg_id", statusReport.MessageID, "error", err)
+				}
+			case "FAILED":
+				reason := "device reported failure"
+				if statusReport.Error != nil {
+					reason = *statusReport.Error
+				}
+				if err := svc.Messages.MarkFailed(context.Background(), statusReport.MessageID, reason); err != nil {
+					logger.Error("mqtt status: mark failed", "msg_id", statusReport.MessageID, "error", err)
+				}
+			}
+		}); err != nil {
+			logger.Warn("failed to subscribe to device status", "error", err)
+		}
+
+		if err := mqttClient.Subscribe("devices/+/pong", func(topic string, payload []byte) {
+			var pongReport struct {
+				DeviceID  string `json:"device_id"`
+				Timestamp int64  `json:"timestamp"`
+			}
+			if err := json.Unmarshal(payload, &pongReport); err != nil {
+				logger.Error("failed to parse device pong", "topic", topic, "error", err)
+				return
+			}
+			if pongReport.DeviceID != "" {
+				if err := svc.Devices.UpdatePong(context.Background(), pongReport.DeviceID); err != nil {
+					logger.Error("mqtt pong: update failed", "device_id", pongReport.DeviceID, "error", err)
+				}
+			}
+		}); err != nil {
+			logger.Warn("failed to subscribe to device pong", "error", err)
+		}
 	}
 
 	workerCount := cfg.Queue.WorkerCount
@@ -115,7 +167,7 @@ func main() {
 	authHandler := handlers.NewAuthHandler(svc.Accounts, svc.Admin, authMiddleware)
 	messageHandler := handlers.NewMessageHandler(svc.Messages, svc.Devices, svc.Accounts,
 		idempotencyStore, queue, encMgr, cfg.App, metrics)
-	deviceHandler := handlers.NewDeviceHandler(svc.Devices, svc.Messages, svc.APIKeys, svc.MQTTCredentials, authMiddleware)
+	deviceHandler := handlers.NewDeviceHandler(svc.Devices, svc.Messages, svc.APIKeys, svc.MQTTCredentials, cfg.MQTT.BrokerURL(), authMiddleware)
 	accountHandler := handlers.NewAccountHandler(svc.Accounts, svc.APIKeys, svc.Subscriptions, svc.Billing)
 	adminHandler := handlers.NewAdminHandler(svc.Admin, cbManager, metrics)
 	templateHandler := handlers.NewTemplateHandler(svc.Templates)

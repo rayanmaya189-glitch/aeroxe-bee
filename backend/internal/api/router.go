@@ -46,8 +46,6 @@ func NewRouter(
 	mux.Handle("POST /api/v1/otp/verify", authMiddleware.APIKeyAuth(http.HandlerFunc(otpHandler.Verify)))
 
 	mux.HandleFunc("POST /api/v1/devices/register", deviceHandler.Register)
-	mux.Handle("POST /api/v1/devices/heartbeat", authMiddleware.JWTAuth(http.HandlerFunc(deviceHandler.HandleHeartbeat)))
-	mux.Handle("GET /api/v1/devices/tasks", authMiddleware.JWTAuth(http.HandlerFunc(deviceHandler.HandleTasks)))
 	mux.Handle("POST /api/v1/devices/status", authMiddleware.JWTAuth(http.HandlerFunc(deviceHandler.HandleStatusUpdate)))
 	mux.Handle("POST /api/v1/devices", authMiddleware.JWTAuth(http.HandlerFunc(deviceHandler.RegisterDeprecated)))
 	mux.Handle("GET /api/v1/devices", authMiddleware.JWTAuth(http.HandlerFunc(deviceHandler.List)))

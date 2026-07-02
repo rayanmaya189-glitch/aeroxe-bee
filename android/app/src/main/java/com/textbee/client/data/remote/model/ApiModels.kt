@@ -22,6 +22,7 @@ data class RegisterRequest(
 data class RegisterResponse(
     @SerializedName("device_id") val deviceId: String,
     @SerializedName("token") val token: String,
+    @SerializedName("mqtt_broker_url") val mqttBrokerUrl: String?,
     @SerializedName("mqtt_credential_id") val mqttCredentialId: String?,
     @SerializedName("mqtt_username") val mqttUsername: String?,
     @SerializedName("mqtt_password") val mqttPassword: String?,
@@ -44,23 +45,6 @@ data class StatusUpdateRequest(
     @SerializedName("error") val error: String? = null,
     @SerializedName("sim_slot") val simSlot: Int = 0,
     @SerializedName("timestamp") val timestamp: Long = System.currentTimeMillis(),
-)
-
-data class HeartbeatRequest(
-    @SerializedName("device_id") val deviceId: String,
-    @SerializedName("battery_level") val batteryLevel: Int,
-    @SerializedName("is_charging") val isCharging: Boolean,
-    @SerializedName("network_strength") val networkStrength: Int,
-    @SerializedName("network_type") val networkType: String,
-    @SerializedName("sim_slots") val simSlots: List<SimSlotStatus>,
-)
-
-data class SimSlotStatus(
-    @SerializedName("slot") val slot: Int,
-    @SerializedName("carrier") val carrier: String,
-    @SerializedName("phone_number") val phoneNumber: String,
-    @SerializedName("is_available") val isAvailable: Boolean,
-    @SerializedName("is_roaming") val isRoaming: Boolean,
 )
 
 data class TokenRefreshRequest(

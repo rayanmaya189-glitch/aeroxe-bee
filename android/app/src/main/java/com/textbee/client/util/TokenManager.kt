@@ -48,6 +48,18 @@ class TokenManager @Inject constructor(
 
     fun getApiKey(): String? = prefs.getString(KEY_API_KEY, null)
 
+    fun saveMqttBrokerUrl(url: String) = prefs.edit().putString(KEY_MQTT_BROKER_URL, url).apply()
+    fun getMqttBrokerUrl(): String? = prefs.getString(KEY_MQTT_BROKER_URL, null)
+
+    fun saveMqttUsername(username: String) = prefs.edit().putString(KEY_MQTT_USERNAME, username).apply()
+    fun getMqttUsername(): String? = prefs.getString(KEY_MQTT_USERNAME, null)
+
+    fun saveMqttPassword(password: String) = prefs.edit().putString(KEY_MQTT_PASSWORD, password).apply()
+    fun getMqttPassword(): String? = prefs.getString(KEY_MQTT_PASSWORD, null)
+
+    fun saveMqttCredentialId(id: String) = prefs.edit().putString(KEY_MQTT_CREDENTIAL_ID, id).apply()
+    fun getMqttCredentialId(): String? = prefs.getString(KEY_MQTT_CREDENTIAL_ID, null)
+
     fun clear() = prefs.edit().clear().apply()
 
     companion object {
@@ -57,5 +69,9 @@ class TokenManager @Inject constructor(
         private const val KEY_SERVER_URL = "server_url"
         private const val KEY_API_KEY = "api_key"
         private const val KEY_REGISTERED = "registered"
+        private const val KEY_MQTT_BROKER_URL = "mqtt_broker_url"
+        private const val KEY_MQTT_USERNAME = "mqtt_username"
+        private const val KEY_MQTT_PASSWORD = "mqtt_password"
+        private const val KEY_MQTT_CREDENTIAL_ID = "mqtt_credential_id"
     }
 }
