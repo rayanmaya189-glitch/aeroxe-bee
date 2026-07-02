@@ -16,8 +16,11 @@ class JobSchedulerFallback : JobService() {
     @Inject lateinit var exactAlarmHandler: ExactAlarmHandler
 
     override fun onStartJob(params: JobParameters?): Boolean {
-        if (!isServiceRunning()) {
+        if (!isServiceRunning(SMSSendingService::class.java.name)) {
             SMSSendingService.start(this)
+        }
+        if (!isServiceRunning(MqttService::class.java.name)) {
+            MqttService.start(this)
         }
         jobFinished(params, false)
         return false
@@ -25,10 +28,10 @@ class JobSchedulerFallback : JobService() {
 
     override fun onStopJob(params: JobParameters?): Boolean = true
 
-    private fun isServiceRunning(): Boolean {
+    private fun isServiceRunning(className: String): Boolean {
         val manager = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
         for (service in manager.getRunningServices(Integer.MAX_VALUE)) {
-            if (service.service.className == SMSSendingService::class.java.name && service.started) {
+            if (service.service.className == className && service.started) {
                 return true
             }
         }

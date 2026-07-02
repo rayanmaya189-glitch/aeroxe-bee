@@ -13,4 +13,7 @@ interface TextBeeApi {
 
     @POST("auth/refresh")
     suspend fun refreshToken(@Body request: TokenRefreshRequest): Response<ApiResponse<TokenRefreshResponse>>
+
+    @POST("devices/deregister")
+    suspend fun deregisterDevice(@Body request: DeregisterRequest): Response<ApiResponse<Map<String, Any>>>
 }

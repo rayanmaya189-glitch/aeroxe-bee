@@ -89,21 +89,25 @@ func (c *Client) Unsubscribe(topic string) error {
 	return token.Error()
 }
 
-func (c *Client) SendSMSCommand(ctx context.Context, deviceID string, recipient string, message string) error {
+func (c *Client) SendSMSCommand(ctx context.Context, deviceID, msgID, accountID, recipient, message, priority string) error {
 	topic := fmt.Sprintf("devices/%s/commands", deviceID)
 	payload := map[string]interface{}{
-		"action":    "send_sms",
-		"recipient": recipient,
-		"message":   message,
-		"timestamp": time.Now().Unix(),
+		"action":     "send_sms",
+		"id":         msgID,
+		"account_id": accountID,
+		"recipient":  recipient,
+		"message":    message,
+		"priority":   priority,
+		"timestamp":  time.Now().Unix(),
 	}
 	return c.Publish(ctx, topic, payload)
 }
 
-func (c *Client) SendPing(ctx context.Context, deviceID string) error {
-	topic := fmt.Sprintf("devices/%s/ping", deviceID)
+func (c *Client) SendPong(ctx context.Context, deviceID string) error {
+	topic := fmt.Sprintf("devices/%s/pong", deviceID)
 	payload := map[string]interface{}{
-		"action":    "ping",
+		"action":    "pong",
+		"device_id": deviceID,
 		"timestamp": time.Now().Unix(),
 	}
 	return c.Publish(ctx, topic, payload)
@@ -139,4 +143,8 @@ func (c *Client) DevicePingTopic(deviceID string) string {
 
 func (c *Client) DevicePongTopic(deviceID string) string {
 	return fmt.Sprintf("devices/%s/pong", deviceID)
+}
+
+func (c *Client) DeviceAckTopic(deviceID string) string {
+	return fmt.Sprintf("devices/%s/ack", deviceID)
 }

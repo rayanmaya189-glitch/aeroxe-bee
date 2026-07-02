@@ -8,13 +8,18 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
+import android.content.Context
 import org.eclipse.paho.client.mqttv3.*
-import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
+import org.eclipse.paho.client.mqttv3.persist.MqttDefaultFilePersistence
+import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class MqttManager @Inject constructor() {
+class MqttManager @Inject constructor(
+    @ApplicationContext private val context: Context,
+) {
     companion object {
         private const val TAG = "MqttManager"
         private const val QOS = 2
@@ -40,7 +45,6 @@ class MqttManager @Inject constructor() {
             Log.w(TAG, "Connection lost: ${cause?.message}")
             isConnected = false
             _connectionState.tryEmit(false)
-            scheduleReconnect()
         }
 
         override fun messageArrived(topic: String, message: MqttMessage) {
@@ -58,16 +62,18 @@ class MqttManager @Inject constructor() {
         try {
             if (client?.isConnected == true) disconnect()
 
-            val persistence = MemoryPersistence()
+            val dataDir = File(context.filesDir, "mqtt-persistence")
+            dataDir.mkdirs()
+            val persistence = MqttDefaultFilePersistence(dataDir.absolutePath)
             client = MqttClient(brokerUrl, clientId, persistence).also {
                 it.setCallback(callback)
             }
 
             val options = MqttConnectOptions().apply {
-                isCleanSession = true
+                isCleanSession = false
                 connectionTimeout = CONNECT_TIMEOUT
                 keepAliveInterval = KEEP_ALIVE
-                isAutomaticReconnect = false
+                isAutomaticReconnect = true
                 username?.let { userName = it }
                 password?.let { this.password = it.toCharArray() }
             }

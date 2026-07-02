@@ -111,6 +111,11 @@ func main() {
 					models.DeliveryStatus(statusReport.DeliveryStatus), 1.0); err != nil {
 					logger.Error("mqtt status: update delivery failed", "msg_id", statusReport.MessageID, "error", err)
 				}
+				if statusReport.DeviceID != "" {
+					if err := svc.Devices.UpdatePong(context.Background(), statusReport.DeviceID); err != nil {
+						logger.Error("mqtt status: update pong failed", "device_id", statusReport.DeviceID, "error", err)
+					}
+				}
 			case "FAILED":
 				reason := "device reported failure"
 				if statusReport.Error != nil {
@@ -119,27 +124,50 @@ func main() {
 				if err := svc.Messages.MarkFailed(context.Background(), statusReport.MessageID, reason); err != nil {
 					logger.Error("mqtt status: mark failed", "msg_id", statusReport.MessageID, "error", err)
 				}
+				if statusReport.DeviceID != "" {
+					if err := svc.Devices.UpdateStatus(context.Background(), statusReport.DeviceID, models.DeviceStatusOffline); err != nil {
+						logger.Error("mqtt status: update status failed", "device_id", statusReport.DeviceID, "error", err)
+					}
+				}
 			}
 		}); err != nil {
 			logger.Warn("failed to subscribe to device status", "error", err)
 		}
 
-		if err := mqttClient.Subscribe("devices/+/pong", func(topic string, payload []byte) {
-			var pongReport struct {
+		if err := mqttClient.Subscribe("devices/+/ping", func(topic string, payload []byte) {
+			var pingReport struct {
 				DeviceID  string `json:"device_id"`
 				Timestamp int64  `json:"timestamp"`
 			}
-			if err := json.Unmarshal(payload, &pongReport); err != nil {
-				logger.Error("failed to parse device pong", "topic", topic, "error", err)
+			if err := json.Unmarshal(payload, &pingReport); err != nil {
+				logger.Error("failed to parse device ping", "topic", topic, "error", err)
 				return
 			}
-			if pongReport.DeviceID != "" {
-				if err := svc.Devices.UpdatePong(context.Background(), pongReport.DeviceID); err != nil {
-					logger.Error("mqtt pong: update failed", "device_id", pongReport.DeviceID, "error", err)
+			if pingReport.DeviceID != "" {
+				if err := mqttClient.SendPong(context.Background(), pingReport.DeviceID); err != nil {
+					logger.Error("mqtt ping: send pong failed", "device_id", pingReport.DeviceID, "error", err)
 				}
 			}
 		}); err != nil {
-			logger.Warn("failed to subscribe to device pong", "error", err)
+			logger.Warn("failed to subscribe to device ping", "error", err)
+		}
+
+		if err := mqttClient.Subscribe("devices/+/ack", func(topic string, payload []byte) {
+			var ackReport struct {
+				DeviceID  string `json:"device_id"`
+				Timestamp int64  `json:"timestamp"`
+			}
+			if err := json.Unmarshal(payload, &ackReport); err != nil {
+				logger.Error("failed to parse device ack", "topic", topic, "error", err)
+				return
+			}
+			if ackReport.DeviceID != "" {
+				if err := svc.Devices.UpdatePong(context.Background(), ackReport.DeviceID); err != nil {
+					logger.Error("mqtt ack: update pong failed", "device_id", ackReport.DeviceID, "error", err)
+				}
+			}
+		}); err != nil {
+			logger.Warn("failed to subscribe to device ack", "error", err)
 		}
 	}
 
@@ -363,7 +391,13 @@ func processMessage(
 			continue
 		}
 
-		if err := mqttClient.SendSMSCommand(ctx, device.ID, msg.Recipient, msg.Message); err != nil {
+		priority := "NORMAL"
+		if msg.Priority == worker.LaneOTP {
+			priority = "HIGH"
+		} else if msg.Priority == worker.LaneMarketing {
+			priority = "LOW"
+		}
+		if err := mqttClient.SendSMSCommand(ctx, device.ID, msg.ID, msg.AccountID, msg.Recipient, msg.Message, priority); err != nil {
 			cbManager.RecordFailure(ctx, models.CBScopeDevice, device.ID)
 			simHealth.RecordDelivery(device.ID, false)
 			lastErr = fmt.Errorf("mqtt send failed: %w", err)

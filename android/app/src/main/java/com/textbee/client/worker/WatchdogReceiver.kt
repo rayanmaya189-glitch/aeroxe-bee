@@ -17,15 +17,18 @@ class WatchdogReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != ACTION_WATCHDOG_CHECK) return
-        if (!isServiceRunning(context)) {
+        if (!isServiceRunning(context, SMSSendingService::class.java.name)) {
             SMSSendingService.start(context)
+        }
+        if (!isServiceRunning(context, MqttService::class.java.name)) {
+            MqttService.start(context)
         }
     }
 
-    private fun isServiceRunning(context: Context): Boolean {
+    private fun isServiceRunning(context: Context, className: String): Boolean {
         val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
         for (service in manager.getRunningServices(Integer.MAX_VALUE)) {
-            if (service.service.className == SMSSendingService::class.java.name) {
+            if (service.service.className == className) {
                 return service.started
             }
         }

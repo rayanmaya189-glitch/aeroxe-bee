@@ -149,7 +149,7 @@ class RegistrationViewModel @Inject constructor(
             tokenManager.saveApiKey(s.apiKey.trim())
 
             try {
-                deviceRepository.registerDevice(s.apiKey)
+                deviceRepository.registerDevice(s.apiKey, s.selectedSlotIndex)
                 MqttService.start(appContext)
                 _state.update { it.copy(isLoading = false, isRegistered = true) }
             } catch (e: Exception) {

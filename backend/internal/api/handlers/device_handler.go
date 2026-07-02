@@ -77,6 +77,7 @@ func (h *DeviceHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 	accountID := keyObj.AccountID
 
+	countryCode, region := detectCountryFromPhone(req.PhoneNumber)
 	deviceID := fmt.Sprintf("%s-sim%d", req.PhysicalDeviceID, req.SIMSlot)
 
 	device := models.Device{
@@ -89,6 +90,8 @@ func (h *DeviceHandler) Register(w http.ResponseWriter, r *http.Request) {
 		SIMHealthStatus:   models.SIMHealthHealthy,
 		ReliabilityScore:  0.5,
 		ReputationScore:   0.5,
+		CountryCode:       countryCode,
+		Region:            region,
 		MaxPerMinute:      10,
 		MaxPerHour:        100,
 		CircuitBreakerState: models.CBStateClosed,
@@ -222,6 +225,45 @@ func (h *DeviceHandler) RegisterDeprecated(w http.ResponseWriter, r *http.Reques
 	})
 }
 
+// Deregister handles POST /api/v1/devices/deregister
+// Revokes MQTT credentials and marks the device as offline
+func (h *DeviceHandler) Deregister(w http.ResponseWriter, r *http.Request) {
+	accountID := middleware.GetAccountID(r.Context())
+
+	var req struct {
+		DeviceID string `json:"device_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid request body"})
+		return
+	}
+
+	device, err := h.deviceService.GetByID(r.Context(), req.DeviceID)
+	if err != nil || device == nil {
+		writeJSON(w, http.StatusNotFound, APIResponse{Error: "device not found"})
+		return
+	}
+	if device.AccountID != accountID {
+		writeJSON(w, http.StatusForbidden, APIResponse{Error: "device does not belong to account"})
+		return
+	}
+
+	if err := h.mqttCredentialService.RevokeByDeviceID(r.Context(), req.DeviceID); err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to revoke MQTT credentials"})
+		return
+	}
+
+	if err := h.deviceService.UpdateStatus(r.Context(), req.DeviceID, models.DeviceStatusOffline); err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to update device status"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: map[string]interface{}{
+		"status":  "deregistered",
+		"message": "MQTT credentials revoked and device set offline",
+	}})
+}
+
 // Legacy List handler - GET /api/v1/devices
 func (h *DeviceHandler) List(w http.ResponseWriter, r *http.Request) {
 	accountID := middleware.GetAccountID(r.Context())
@@ -286,6 +328,33 @@ func (h *DeviceHandler) Get(w http.ResponseWriter, r *http.Request) {
 			"last_pong_at":         device.LastPongAt,
 		},
 	})
+}
+
+func detectCountryFromPhone(phone string) (string, string) {
+	if len(phone) < 3 {
+		return "", ""
+	}
+	if phone[0] == '+' {
+		phone = phone[1:]
+	}
+	prefixes := map[string]string{
+		"1":   "US", "44": "GB", "91": "IN", "86": "CN", "81": "JP",
+		"82": "KR", "49": "DE", "33": "FR", "39": "IT", "34": "ES",
+		"61": "AU", "55": "BR", "7": "RU", "52": "MX", "971": "AE",
+		"855": "KH",
+	}
+	regionMap := map[string]string{
+		"US": "NA", "GB": "EU", "IN": "APAC", "CN": "APAC", "JP": "APAC",
+		"KR": "APAC", "DE": "EU", "FR": "EU", "IT": "EU", "ES": "EU",
+		"AU": "APAC", "BR": "LATAM", "RU": "EU", "MX": "LATAM",
+		"AE": "APAC", "KH": "APAC",
+	}
+	for prefix, country := range prefixes {
+		if len(phone) >= len(prefix) && phone[:len(prefix)] == prefix {
+			return country, regionMap[country]
+		}
+	}
+	return "", ""
 }
 
 func uuidV4() string {

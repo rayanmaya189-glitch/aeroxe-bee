@@ -5,7 +5,11 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.telephony.SmsManager
+import com.textbee.client.data.remote.mqtt.MqttManager
+import com.textbee.client.data.remote.model.StatusUpdateRequest
 import com.textbee.client.data.repository.SMSTaskRepository
+import com.textbee.client.util.TokenManager
+import com.google.gson.Gson
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -15,33 +19,54 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class SMSDeliveryReceiver : BroadcastReceiver() {
     @Inject lateinit var repository: SMSTaskRepository
+    @Inject lateinit var mqttManager: MqttManager
+    @Inject lateinit var tokenManager: TokenManager
+
+    private val gson = Gson()
 
     override fun onReceive(context: Context, intent: Intent) {
         val taskId = intent.getStringExtra("task_id") ?: return
         val resultCode = resultCode
+        val action = intent.action
 
         CoroutineScope(Dispatchers.IO).launch {
-            when (resultCode) {
-                SmsManager.RESULT_ERROR_GENERIC_FAILURE -> {
-                    repository.markFailed(taskId, 0, "Generic failure")
-                    repository.updateRemoteStatus(taskId, "", "FAILED", "Generic failure")
+            val deviceId = tokenManager.getDeviceId() ?: ""
+
+            when {
+                resultCode != android.app.Activity.RESULT_OK -> {
+                    val errorMsg = when (resultCode) {
+                        SmsManager.RESULT_ERROR_GENERIC_FAILURE -> "Generic failure"
+                        SmsManager.RESULT_ERROR_NO_SERVICE -> "No service"
+                        SmsManager.RESULT_ERROR_NULL_PDU -> "Null PDU"
+                        SmsManager.RESULT_ERROR_RADIO_OFF -> "Radio off"
+                        else -> "Unknown error"
+                    }
+                    repository.markFailed(taskId, 0, errorMsg)
+                    repository.updateRemoteStatus(taskId, "", "FAILED", errorMsg)
                 }
-                SmsManager.RESULT_ERROR_NO_SERVICE -> {
-                    repository.markFailed(taskId, 0, "No service")
-                    repository.updateRemoteStatus(taskId, "", "FAILED", "No service")
+                action == "com.textbee.client.SMS_DELIVERED" -> {
+                    repository.markDelivered(taskId)
+                    repository.addLog(taskId, "DELIVERED", "Carrier delivery confirmed")
+                    if (deviceId.isNotBlank()) {
+                        mqttManager.publish(
+                            "devices/$deviceId/status",
+                            gson.toJson(
+                                StatusUpdateRequest(
+                                    messageId = taskId,
+                                    deviceId = deviceId,
+                                    status = "DELIVERED",
+                                    deliveryStatus = "DELIVERED",
+                                    confidenceScore = 1.0,
+                                    simSlot = 0,
+                                    timestamp = System.currentTimeMillis(),
+                                )
+                            )
+                        )
+                    }
                 }
-                SmsManager.RESULT_ERROR_NULL_PDU -> {
-                    repository.markFailed(taskId, 0, "Null PDU")
-                    repository.updateRemoteStatus(taskId, "", "FAILED", "Null PDU")
-                }
-                SmsManager.RESULT_ERROR_RADIO_OFF -> {
-                    repository.markFailed(taskId, 0, "Radio off")
-                    repository.updateRemoteStatus(taskId, "", "FAILED", "Radio off")
-                }
-                android.app.Activity.RESULT_OK -> {
+                else -> {
                     repository.markSent(taskId)
-                    repository.addLog(taskId, "SENT", "Delivery confirmed")
-                    repository.updateRemoteStatus(taskId, "", "SENT")
+                    repository.addLog(taskId, "SENT", "Sent to carrier")
                 }
             }
         }

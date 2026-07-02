@@ -66,14 +66,12 @@ class SMSEngine @Inject constructor(
                 rateLimiter.recordSend(slot)
                 repository.markSent(task.id)
                 repository.addLog(task.id, "SENT", "SIM slot $slot")
-                repository.updateRemoteStatus(task.id, task.accountId, "SENT", simSlot = slot)
 
                 SMSTask.Status.SENT
             } catch (e: Exception) {
                 val newRetry = task.retryCount + 1
                 repository.markFailed(task.id, newRetry, e.message)
                 repository.addLog(task.id, "FAILED", e.message)
-                repository.updateRemoteStatus(task.id, task.accountId, "FAILED", e.message, task.simSlot)
                 SMSTask.Status.FAILED
             }
         }

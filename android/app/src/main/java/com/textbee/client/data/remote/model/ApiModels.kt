@@ -54,3 +54,7 @@ data class TokenRefreshRequest(
 data class TokenRefreshResponse(
     @SerializedName("token") val token: String,
 )
+
+data class DeregisterRequest(
+    @SerializedName("device_id") val deviceId: String,
+)

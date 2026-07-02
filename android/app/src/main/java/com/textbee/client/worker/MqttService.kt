@@ -28,52 +28,70 @@ class MqttService : Service() {
     @Inject lateinit var smsEngine: SMSEngine
 
     private val gson = Gson()
-
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var deviceId: String = ""
+    private var heartbeatJob: Job? = null
 
     override fun onCreate() {
         super.onCreate()
         startForeground(NOTIFICATION_ID, createNotification())
 
+        deviceId = tokenManager.getDeviceId() ?: ""
         val brokerUrl = tokenManager.getMqttBrokerUrl()
-        val username = tokenManager.getMqttUsername()
-        val password = tokenManager.getMqttPassword()
-        val deviceId = tokenManager.getDeviceId()
 
-        if (brokerUrl == null || deviceId == null) {
+        if (brokerUrl.isNullOrBlank() || deviceId.isBlank()) {
             stopSelf()
             return
         }
 
+        val username = tokenManager.getMqttUsername()
+        val password = tokenManager.getMqttPassword()
         val clientId = "textbee_android_$deviceId"
         mqttManager.connect(brokerUrl, clientId, username, password)
 
         mqttManager.subscribe("devices/$deviceId/commands")
-        mqttManager.subscribe("devices/$deviceId/ping")
+        mqttManager.subscribe("devices/$deviceId/pong")
 
         scope.launch {
             mqttManager.messages.collect { payload ->
-                processMqttMessage(payload, deviceId)
+                processMqttMessage(payload)
             }
         }
+
+        startHeartbeat()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
+        heartbeatJob?.cancel()
         scope.cancel()
         mqttManager.destroy()
         super.onDestroy()
     }
 
-    private fun processMqttMessage(payload: String, deviceId: String) {
+    private fun startHeartbeat() {
+        heartbeatJob = scope.launch {
+            while (isActive) {
+                mqttManager.publish(
+                    "devices/$deviceId/ping",
+                    """{"device_id":"$deviceId","action":"ping","timestamp":${System.currentTimeMillis()}}"""
+                )
+                delay(HEARTBEAT_INTERVAL_MS)
+            }
+        }
+    }
+
+    private fun processMqttMessage(payload: String) {
         try {
-            val json = gson.fromJson(payload, Map::class.java) as Map<String, Any>
+            val json = gson.fromJson(payload, Map::class.java) as? Map<String, Any> ?: return
             val action = json["action"] as? String ?: return
 
             when (action) {
                 "send_sms" -> {
                     val cmd = gson.fromJson(payload, SMSCommand::class.java)
+                    if (cmd.id.isBlank()) return
+
                     scope.launch {
                         val task = SMSTask(
                             id = cmd.id,
@@ -85,27 +103,38 @@ class MqttService : Service() {
                             } catch (_: Exception) { SMSTask.Priority.NORMAL },
                             status = SMSTask.Status.PENDING,
                         )
-                        smsEngine.send(task)
+                        val result = smsEngine.send(task)
+                        val isSuccess = result == SMSTask.Status.SENT || result == SMSTask.Status.DELIVERED
+                        mqttManager.publish(
+                            "devices/$deviceId/status",
+                            gson.toJson(
+                                StatusUpdateRequest(
+                                    messageId = cmd.id,
+                                    deviceId = deviceId,
+                                    status = if (isSuccess) "SENT" else "FAILED",
+                                    deliveryStatus = if (isSuccess) "SENT" else "FAILED",
+                                    confidenceScore = if (isSuccess) 1.0 else 0.0,
+                                    error = if (isSuccess) null else "sms_send_failed",
+                                    simSlot = 0,
+                                    timestamp = System.currentTimeMillis(),
+                                )
+                            )
+                        )
                     }
-                    mqttManager.publish(
-                        "devices/$deviceId/status",
-                        gson.toJson(StatusUpdateRequest(
-                            messageId = cmd.id,
-                            deviceId = deviceId,
-                            status = "SENT",
-                            deliveryStatus = "SENT",
-                            confidenceScore = 1.0,
-                        ))
-                    )
                 }
-                "ping" -> {
-                    mqttManager.publish(
-                        "devices/$deviceId/pong",
-                        """{"device_id":"$deviceId","timestamp":${System.currentTimeMillis()}}"""
-                    )
+                "pong" -> {
+                    val deviceIdFromPayload = json["device_id"] as? String
+                    if (deviceIdFromPayload == deviceId) {
+                        mqttManager.publish(
+                            "devices/$deviceId/ack",
+                            """{"device_id":"$deviceId","action":"ack","timestamp":${System.currentTimeMillis()}}"""
+                        )
+                    }
                 }
             }
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            android.util.Log.e("MqttService", "Failed to process MQTT message", e)
+        }
     }
 
     private fun createNotification(): Notification {
@@ -125,6 +154,7 @@ class MqttService : Service() {
     companion object {
         private const val NOTIFICATION_ID = 1002
         const val CHANNEL_MQTT = "textbee_mqtt_service"
+        private const val HEARTBEAT_INTERVAL_MS = 30_000L
 
         fun start(context: Context) {
             val intent = Intent(context, MqttService::class.java)

@@ -25,7 +25,7 @@ class DeviceRepository @Inject constructor(
     private val api: TextBeeApi,
     private val tokenManager: TokenManager,
 ) {
-    suspend fun registerDevice(apiKey: String): Result<Unit> = runCatching {
+    suspend fun registerDevice(apiKey: String, simSlot: Int = 0): Result<Unit> = runCatching {
         val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
         val deviceId = tm.imei ?: Settings.Secure.getString(
             context.contentResolver, Settings.Secure.ANDROID_ID
@@ -37,7 +37,7 @@ class DeviceRepository @Inject constructor(
             physicalDeviceId = deviceId,
             phoneNumber = phoneNumber,
             carrier = carrier,
-            simSlot = 0,
+            simSlot = simSlot,
             appVersion = "1.0.0",
             model = Build.MODEL,
             osVersion = Build.VERSION.RELEASE,
@@ -57,6 +57,11 @@ class DeviceRepository @Inject constructor(
         } else {
             throw Exception(body?.error ?: "Registration failed")
         }
+    }
+
+    suspend fun deregisterDevice(): Result<Unit> = runCatching {
+        val deviceId = tokenManager.getDeviceId() ?: throw Exception("No device registered")
+        api.deregisterDevice(DeregisterRequest(deviceId))
     }
 
     suspend fun updateStatus(request: StatusUpdateRequest) {
