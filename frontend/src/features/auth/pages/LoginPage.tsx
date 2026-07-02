@@ -27,7 +27,7 @@ export function LoginPage() {
         name: data.user.name,
         role: data.user.role,
       })
-      navigate('/dashboard', { replace: true })
+      navigate(data.user.role === 'member' ? '/member' : '/dashboard', { replace: true })
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed')
     } finally {
