@@ -9,10 +9,15 @@ interface NavItem {
   icon: React.ReactNode
 }
 
-const navItems: NavItem[] = [
+const adminItems: NavItem[] = [
   {
     label: 'Dashboard',
     path: '/dashboard',
+    icon: (
+      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+      </svg>
+    ),
   },
   {
     label: 'Accounts',
@@ -105,6 +110,9 @@ const navItems: NavItem[] = [
       </svg>
     ),
   },
+]
+
+const memberItems: NavItem[] = [
   {
     label: 'My Dashboard',
     path: '/member',
@@ -143,12 +151,33 @@ const navItems: NavItem[] = [
   },
 ]
 
+function NavItemLink({ item, isCollapsed }: { item: NavItem; isCollapsed: boolean }) {
+  return (
+    <NavLink
+      to={item.path}
+      className={({ isActive }) =>
+        cn(
+          'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200',
+          isActive
+            ? 'bg-primary-50 text-primary-700 dark:bg-primary-500/10 dark:text-primary-400'
+            : 'text-surface-600 hover:bg-surface-100 hover:text-surface-900 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-200',
+          isCollapsed && 'justify-center px-2',
+        )
+      }
+    >
+      {item.icon}
+      {!isCollapsed && <span>{item.label}</span>}
+    </NavLink>
+  )
+}
+
 export function Sidebar() {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen)
   const setSidebarOpen = useUIStore((s) => s.setSidebarOpen)
   const isMobile = useIsMobile()
 
   const showSidebar = isMobile ? sidebarOpen : true
+  const isCollapsed = !sidebarOpen && !isMobile
 
   return (
     <>
@@ -181,29 +210,42 @@ export function Sidebar() {
           )}
         </div>
 
-        <nav className="flex-1 space-y-1 p-3">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              onClick={() => isMobile && setSidebarOpen(false)}
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200',
-                  isActive
-                    ? 'bg-primary-50 text-primary-700 dark:bg-primary-500/10 dark:text-primary-400'
-                    : 'text-surface-600 hover:bg-surface-100 hover:text-surface-900 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-200',
-                  !sidebarOpen && !isMobile && 'justify-center px-2',
-                )
-              }
-            >
-              {item.icon}
-              {(sidebarOpen || isMobile) && <span>{item.label}</span>}
-            </NavLink>
-          ))}
+        <nav className="flex-1 overflow-y-auto p-3">
+          {/* Admin Section */}
+          <div className="mb-2">
+            {!isCollapsed && (
+              <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-surface-400 dark:text-surface-500">
+                Admin
+              </p>
+            )}
+            {isCollapsed && <div className="mx-auto mb-2 h-px w-6 bg-surface-200 dark:bg-surface-700" />}
+            <div className="space-y-0.5">
+              {adminItems.map((item) => (
+                <NavItemLink key={item.path} item={item} isCollapsed={isCollapsed} />
+              ))}
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className={cn('my-3', isCollapsed ? 'mx-auto h-px w-6' : 'mx-3 h-px')} style={{ backgroundColor: 'var(--color-surface-200, #e5e7eb)' }} />
+
+          {/* Member Section */}
+          <div>
+            {!isCollapsed && (
+              <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-surface-400 dark:text-surface-500">
+                Member Portal
+              </p>
+            )}
+            {isCollapsed && <div className="mx-auto mb-2 h-px w-6 bg-surface-200 dark:bg-surface-700" />}
+            <div className="space-y-0.5">
+              {memberItems.map((item) => (
+                <NavItemLink key={item.path} item={item} isCollapsed={isCollapsed} />
+              ))}
+            </div>
+          </div>
         </nav>
 
-        <div className={cn('border-t border-surface-100 p-3 dark:border-surface-700', !sidebarOpen && !isMobile && 'text-center')}>
+        <div className={cn('border-t border-surface-100 p-3 dark:border-surface-700', isCollapsed && 'text-center')}>
           {(sidebarOpen || isMobile) && (
             <p className="text-xs text-surface-400 dark:text-surface-500">© 2026 Aeroxe Enterprises Pvt. Ltd.</p>
           )}
