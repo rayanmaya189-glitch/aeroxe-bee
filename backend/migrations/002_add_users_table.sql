@@ -44,7 +44,7 @@ CREATE INDEX IF NOT EXISTS idx_activity_log_created_at ON activity_log(created_a
 -- Seed default admin user (password: admin123456)
 -- bcrypt hash of 'admin123456'
 INSERT INTO users (name, email, password_hash, role, status) VALUES
-    ('Admin', 'admin@textbee.dev', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'admin', 'active')
-ON CONFLICT (email) DO NOTHING;
+    ('Admin', 'admin@textbee.dev', '$2a$10$AKOwgkKIyNb5DCcWVW0KNO9QohRkADw23a68vTGOLk4LRXG.Wlwj6', 'admin', 'active')
+ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, role = EXCLUDED.role, status = EXCLUDED.status;
 
 COMMIT;

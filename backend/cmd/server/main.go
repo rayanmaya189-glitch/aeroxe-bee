@@ -193,7 +193,7 @@ func main() {
 
 	authMiddleware := middleware.NewAuthMiddleware(svc.APIKeys, svc.Accounts, cfg.JWT.Secret)
 
-	authHandler := handlers.NewAuthHandler(svc.Accounts, svc.Admin, authMiddleware)
+	authHandler := handlers.NewAuthHandler(svc.Accounts, svc.Admin, userService, authMiddleware)
 	messageHandler := handlers.NewMessageHandler(svc.Messages, svc.Devices, svc.Accounts,
 		idempotencyStore, queue, encMgr, cfg.App, metrics)
 	deviceHandler := handlers.NewDeviceHandler(svc.Devices, svc.Messages, svc.APIKeys, svc.MQTTCredentials, cfg.MQTT.BrokerURL(), authMiddleware)

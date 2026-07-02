@@ -180,6 +180,12 @@ func (s *UserService) UpdateLastLogin(ctx context.Context, id string) error {
 	return err
 }
 
+// UpdatePassword updates only the password hash
+func (s *UserService) UpdatePassword(ctx context.Context, id string, passwordHash string) error {
+	_, err := s.db.Exec(ctx, `UPDATE users SET password_hash=$1, updated_at=NOW() WHERE id=$2`, passwordHash, id)
+	return err
+}
+
 // Delete deletes a user
 func (s *UserService) Delete(ctx context.Context, id string) error {
 	_, err := s.db.Exec(ctx, `DELETE FROM users WHERE id=$1`, id)

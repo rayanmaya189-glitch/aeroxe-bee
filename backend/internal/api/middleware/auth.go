@@ -23,6 +23,7 @@ type contextKey string
 
 const (
 	ContextAccountID  contextKey = "account_id"
+	ContextIsAdmin     contextKey = "is_admin"
 	ContextAPIKeyID   contextKey = "api_key_id"
 	ContextAccount    contextKey = "account"
 	ContextAPIKey     contextKey = "api_key"
@@ -117,6 +118,7 @@ func (m *AuthMiddleware) AdminAuth(next http.Handler) http.Handler {
 		}
 
 		ctx := context.WithValue(r.Context(), ContextAccountID, accountID)
+		ctx = context.WithValue(ctx, ContextIsAdmin, claims["admin"] == true)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -159,6 +161,7 @@ func (m *AuthMiddleware) JWTAuth(next http.Handler) http.Handler {
 		}
 
 		ctx := context.WithValue(r.Context(), ContextAccountID, accountID)
+		ctx = context.WithValue(ctx, ContextIsAdmin, claims["admin"] == true)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -181,6 +184,13 @@ func GetAccountID(ctx context.Context) string {
 		return id
 	}
 	return ""
+}
+
+func GetIsAdmin(ctx context.Context) bool {
+	if admin, ok := ctx.Value(ContextIsAdmin).(bool); ok {
+		return admin
+	}
+	return false
 }
 
 func GetAPIKeyID(ctx context.Context) string {
