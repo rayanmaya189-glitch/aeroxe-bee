@@ -210,7 +210,7 @@ func main() {
 	otpHandler := handlers.NewOTPHandler(svc.OTP, metrics)
 	billingHandler := handlers.NewBillingHandler(svc.Billing, svc.Subscriptions)
 	fraudHandler := handlers.NewFraudHandler(fraudDetector)
-	memberHandler := handlers.NewMemberHandler(svc.Accounts, svc.Devices, svc.Messages, svc.Billing, svc.Subscriptions)
+	memberHandler := handlers.NewMemberHandler(svc.Accounts, svc.Devices, svc.Messages, svc.Billing, svc.Subscriptions, svc.Templates, svc.Webhooks)
 
 	router := api.NewRouter(authHandler, messageHandler, deviceHandler, accountHandler,
 		adminHandler, userHandler, templateHandler, webhookHandler, otpHandler, billingHandler,

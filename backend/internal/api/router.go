@@ -100,6 +100,21 @@ func NewRouter(
 	mux.Handle("GET /api/v1/member/analytics", authMiddleware.JWTAuth(http.HandlerFunc(memberHandler.GetAnalytics)))
 	mux.Handle("GET /api/v1/member/stats", authMiddleware.JWTAuth(http.HandlerFunc(memberHandler.GetStats)))
 
+	// Member template routes (scoped to the member's account)
+	mux.Handle("GET /api/v1/member/templates", authMiddleware.JWTAuth(http.HandlerFunc(memberHandler.ListTemplates)))
+	mux.Handle("POST /api/v1/member/templates", authMiddleware.JWTAuth(http.HandlerFunc(memberHandler.CreateTemplate)))
+	mux.Handle("GET /api/v1/member/templates/{id}", authMiddleware.JWTAuth(http.HandlerFunc(memberHandler.GetTemplate)))
+	mux.Handle("PUT /api/v1/member/templates/{id}", authMiddleware.JWTAuth(http.HandlerFunc(memberHandler.UpdateTemplate)))
+	mux.Handle("DELETE /api/v1/member/templates/{id}", authMiddleware.JWTAuth(http.HandlerFunc(memberHandler.DeleteTemplate)))
+
+	// Member webhook routes (scoped to the member's account)
+	mux.Handle("GET /api/v1/member/webhooks", authMiddleware.JWTAuth(http.HandlerFunc(memberHandler.ListWebhooks)))
+	mux.Handle("POST /api/v1/member/webhooks", authMiddleware.JWTAuth(http.HandlerFunc(memberHandler.CreateWebhook)))
+	mux.Handle("GET /api/v1/member/webhooks/{id}", authMiddleware.JWTAuth(http.HandlerFunc(memberHandler.GetWebhook)))
+	mux.Handle("PUT /api/v1/member/webhooks/{id}", authMiddleware.JWTAuth(http.HandlerFunc(memberHandler.UpdateWebhook)))
+	mux.Handle("DELETE /api/v1/member/webhooks/{id}", authMiddleware.JWTAuth(http.HandlerFunc(memberHandler.DeleteWebhook)))
+	mux.Handle("POST /api/v1/member/webhooks/{id}/rotate-secret", authMiddleware.JWTAuth(http.HandlerFunc(memberHandler.RotateWebhookSecret)))
+
 	// Admin routes
 	mux.Handle("GET /api/v1/admin/stats", authMiddleware.AdminAuth(http.HandlerFunc(adminHandler.GetStats)))
 	mux.Handle("GET /api/v1/admin/accounts", authMiddleware.AdminAuth(http.HandlerFunc(adminHandler.ListAccounts)))

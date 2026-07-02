@@ -16,6 +16,8 @@ const MemberDashboardPage = lazy(() => import('@/features/member/pages/MemberDas
 const MemberDevicesPage = lazy(() => import('@/features/member/pages/MemberDevicesPage').then((m) => ({ default: m.MemberDevicesPage })))
 const MemberMessagesPage = lazy(() => import('@/features/member/pages/MemberMessagesPage').then((m) => ({ default: m.MemberMessagesPage })))
 const MemberAnalyticsPage = lazy(() => import('@/features/member/pages/MemberAnalyticsPage').then((m) => ({ default: m.MemberAnalyticsPage })))
+const MemberTemplatesPage = lazy(() => import('@/features/member/pages/MemberTemplatesPage').then((m) => ({ default: m.MemberTemplatesPage })))
+const MemberWebhooksPage = lazy(() => import('@/features/member/pages/MemberWebhooksPage').then((m) => ({ default: m.MemberWebhooksPage })))
 const AccountsPage = lazy(() => import('@/features/accounts/pages/AccountsPage').then((m) => ({ default: m.AccountsPage })))
 const WebhooksPage = lazy(() => import('@/features/webhooks/pages/WebhooksPage').then((m) => ({ default: m.WebhooksPage })))
 const TemplatesPage = lazy(() => import('@/features/templates/pages/TemplatesPage').then((m) => ({ default: m.TemplatesPage })))
@@ -125,6 +127,8 @@ const routes: RouteObject[] = [
           { path: 'member/devices', element: <LazyLoader><MemberDevicesPage /></LazyLoader> },
           { path: 'member/messages', element: <LazyLoader><MemberMessagesPage /></LazyLoader> },
           { path: 'member/analytics', element: <LazyLoader><MemberAnalyticsPage /></LazyLoader> },
+          { path: 'member/templates', element: <LazyLoader><MemberTemplatesPage /></LazyLoader> },
+          { path: 'member/webhooks', element: <LazyLoader><MemberWebhooksPage /></LazyLoader> },
         ],
       },
     ],
