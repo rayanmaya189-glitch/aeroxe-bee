@@ -397,12 +397,27 @@ func (h *SubscriptionRequestHandler) Approve(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Update the actual subscription
+	// Snapshot the plan's current values into the subscription.
+	// This ensures the member keeps the benefits they subscribed to,
+	// even if admin later edits the plan in the plans table.
+	plan, err := h.billingService.GetPlan(r.Context(), sr.RequestedPlan)
+	if err != nil || plan == nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "plan not found"})
+		return
+	}
+
 	sub, _ := h.subscriptionService.GetByAccountID(r.Context(), sr.AccountID)
 	if sub != nil {
-		sub.PlanType = models.PlanType(sr.RequestedPlan)
+		// Snapshot: copy ALL plan values into the subscription record
+		sub.PlanType = plan.ID
 		sub.BillingCycle = models.BillingCycle(sr.RequestedBillingCycle)
 		sub.Status = models.SubStatusActive
+		sub.QuotaDaily = plan.DailyQuota
+		sub.QuotaMonthly = plan.MonthlyQuota
+		sub.OverageBufferPct = plan.OverageBufferPct
+		sub.MaxQueueDepth = plan.MaxQueueDepth
+		sub.DedicatedPool = plan.DedicatedPool
+		sub.DefaultRoutingStrategy = plan.DefaultRoutingStrategy
 		_ = h.subscriptionService.Update(r.Context(), sub)
 	}
 	writeJSON(w, http.StatusOK, APIResponse{Success: true})
