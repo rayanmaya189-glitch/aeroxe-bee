@@ -1,5 +1,7 @@
 package com.textbee.client.ui.screens.registration
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -16,8 +18,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -107,11 +107,25 @@ fun RegistrationScreen(
             Spacer(Modifier.height(28.dp))
 
             // ─── Step Content ───────────────────────────────────
-            when (state.step) {
-                RegistrationStep.CREDENTIALS -> CredentialsStep(state, viewModel)
-                RegistrationStep.SIM_SELECTION -> SimSelectionStep(state, viewModel)
-                RegistrationStep.BATTERY_OPT -> BatteryOptStep(state, viewModel)
-                RegistrationStep.CONFIRM -> ConfirmStep(state, viewModel)
+            AnimatedContent(
+                targetState = state.step,
+                transitionSpec = {
+                    if (targetState.ordinal > initialState.ordinal) {
+                        slideInHorizontally(tween(300)) { it / 4 } + fadeIn(tween(300)) togetherWith
+                        slideOutHorizontally(tween(250)) { -it / 4 } + fadeOut(tween(250))
+                    } else {
+                        slideInHorizontally(tween(300)) { -it / 4 } + fadeIn(tween(300)) togetherWith
+                        slideOutHorizontally(tween(250)) { it / 4 } + fadeOut(tween(250))
+                    }
+                },
+                label = "stepContent",
+            ) { step ->
+                when (step) {
+                    RegistrationStep.CREDENTIALS -> CredentialsStep(state, viewModel)
+                    RegistrationStep.SIM_SELECTION -> SimSelectionStep(state, viewModel)
+                    RegistrationStep.BATTERY_OPT -> BatteryOptStep(state, viewModel)
+                    RegistrationStep.CONFIRM -> ConfirmStep(state, viewModel)
+                }
             }
 
             state.error?.let { error ->

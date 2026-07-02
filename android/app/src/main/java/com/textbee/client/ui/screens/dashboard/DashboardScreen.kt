@@ -1,5 +1,8 @@
 package com.textbee.client.ui.screens.dashboard
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -25,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.textbee.client.ui.components.DashboardSkeleton
 import com.textbee.client.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -61,61 +65,78 @@ fun DashboardScreen(
         ) {
             Spacer(Modifier.height(4.dp))
 
-            // ─── Connection Status Hero ─────────────────────────
-            ConnectionStatusCard(
-                sentCount = state.stats.sent,
-                totalMessages = state.stats.total,
-            )
-
-            Spacer(Modifier.height(28.dp))
-
-            // ─── Stats Section ──────────────────────────────────
-            Text(
-                text = "Message Activity",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-
-            Spacer(Modifier.height(14.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            // ─── Loading / Content transition ─────────────────────
+            AnimatedVisibility(
+                visible = state.isLoading,
+                enter = fadeIn(),
+                exit = fadeOut(),
             ) {
-                StatCard(
-                    icon = Icons.Filled.CheckCircle,
-                    label = "Sent",
-                    value = state.stats.sent.toString(),
-                    accentColor = SuccessDark,
-                    bgColor = Color(0xFF064E3B),
-                    modifier = Modifier.weight(1f),
-                )
-                StatCard(
-                    icon = Icons.Filled.Schedule,
-                    label = "Queued",
-                    value = state.pendingCount.toString(),
-                    accentColor = WarningDark,
-                    bgColor = Color(0xFF78350F),
-                    modifier = Modifier.weight(1f),
-                )
-                StatCard(
-                    icon = Icons.Filled.Error,
-                    label = "Failed",
-                    value = state.stats.failed.toString(),
-                    accentColor = DangerDark,
-                    bgColor = Color(0xFF7F1D1D),
-                    modifier = Modifier.weight(1f),
-                )
+                DashboardSkeleton()
             }
 
-            Spacer(Modifier.height(28.dp))
+            AnimatedVisibility(
+                visible = !state.isLoading,
+                enter = fadeIn(animationSpec = tween(400, delayMillis = 100)),
+                exit = fadeOut(),
+            ) {
+                Column {
+                    // ─── Connection Status Hero ─────────────────
+                    ConnectionStatusCard(
+                        sentCount = state.stats.sent,
+                        totalMessages = state.stats.total,
+                    )
 
-            // ─── Total Messages ─────────────────────────────────
-            TotalMessagesCard(
-                total = state.stats.total,
-                sent = state.stats.sent,
-                failed = state.stats.failed,
-            )
+                    Spacer(Modifier.height(28.dp))
+
+                    // ─── Stats Section ──────────────────────────
+                    Text(
+                        text = "Message Activity",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+
+                    Spacer(Modifier.height(14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        StatCard(
+                            icon = Icons.Filled.CheckCircle,
+                            label = "Sent",
+                            value = state.stats.sent.toString(),
+                            accentColor = SuccessDark,
+                            bgColor = Color(0xFF064E3B),
+                            modifier = Modifier.weight(1f),
+                        )
+                        StatCard(
+                            icon = Icons.Filled.Schedule,
+                            label = "Queued",
+                            value = state.pendingCount.toString(),
+                            accentColor = WarningDark,
+                            bgColor = Color(0xFF78350F),
+                            modifier = Modifier.weight(1f),
+                        )
+                        StatCard(
+                            icon = Icons.Filled.Error,
+                            label = "Failed",
+                            value = state.stats.failed.toString(),
+                            accentColor = DangerDark,
+                            bgColor = Color(0xFF7F1D1D),
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+
+                    Spacer(Modifier.height(28.dp))
+
+                    // ─── Total Messages ─────────────────────────
+                    TotalMessagesCard(
+                        total = state.stats.total,
+                        sent = state.stats.sent,
+                        failed = state.stats.failed,
+                    )
+                }
+            }
 
             Spacer(Modifier.height(32.dp))
         }

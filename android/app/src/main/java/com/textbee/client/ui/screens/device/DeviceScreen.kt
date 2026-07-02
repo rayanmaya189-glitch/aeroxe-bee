@@ -1,5 +1,8 @@
 package com.textbee.client.ui.screens.device
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -22,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.textbee.client.domain.model.DeviceState
+import com.textbee.client.ui.components.DeviceSkeleton
 import com.textbee.client.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,148 +62,163 @@ fun DeviceScreen(
         ) {
             Spacer(Modifier.height(4.dp))
 
-            // ─── Device Health Hero ─────────────────────────────
-            DeviceHealthCard(state)
-
-            Spacer(Modifier.height(24.dp))
-
-            // ─── Device Info ────────────────────────────────────
-            SectionHeader(icon = Icons.Outlined.Info, title = "Device Info")
-
-            Spacer(Modifier.height(12.dp))
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                ),
+            // ─── Loading / Content transition ─────────────────────
+            AnimatedVisibility(
+                visible = state.isLoading,
+                enter = fadeIn(),
+                exit = fadeOut(),
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    InfoRow(Icons.Outlined.PhoneAndroid, "Model", state.deviceInfo.model)
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 10.dp),
-                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                    )
-                    InfoRow(Icons.Outlined.Business, "Manufacturer", state.deviceInfo.manufacturer)
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 10.dp),
-                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                    )
-                    InfoRow(Icons.Outlined.SystemUpdate, "OS Version", state.deviceInfo.osVersion)
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 10.dp),
-                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                    )
-                    InfoRow(Icons.Outlined.Code, "SDK Level", state.deviceInfo.sdkLevel.toString())
-                }
+                DeviceSkeleton()
             }
 
-            Spacer(Modifier.height(24.dp))
+            AnimatedVisibility(
+                visible = !state.isLoading,
+                enter = fadeIn(animationSpec = tween(400, delayMillis = 100)),
+                exit = fadeOut(),
+            ) {
+                Column {
+                    // ─── Device Health Hero ─────────────────────
+                    DeviceHealthCard(state)
 
-            // ─── SIM Cards ──────────────────────────────────────
-            SectionHeader(icon = Icons.Outlined.SimCard, title = "SIM Cards")
+                    Spacer(Modifier.height(24.dp))
 
-            Spacer(Modifier.height(12.dp))
+                    // ─── Device Info ────────────────────────────
+                    SectionHeader(icon = Icons.Outlined.Info, title = "Device Info")
 
-            if (state.deviceInfo.simSlots.isEmpty()) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    ),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        contentAlignment = Alignment.Center,
+                    Spacer(Modifier.height(12.dp))
+
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        ),
                     ) {
-                        Text(
-                            text = "No SIM slots detected",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            InfoRow(Icons.Outlined.PhoneAndroid, "Model", state.deviceInfo.model)
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 10.dp),
+                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                            )
+                            InfoRow(Icons.Outlined.Business, "Manufacturer", state.deviceInfo.manufacturer)
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 10.dp),
+                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                            )
+                            InfoRow(Icons.Outlined.SystemUpdate, "OS Version", state.deviceInfo.osVersion)
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 10.dp),
+                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                            )
+                            InfoRow(Icons.Outlined.Code, "SDK Level", state.deviceInfo.sdkLevel.toString())
+                        }
                     }
-                }
-            } else {
-                state.deviceInfo.simSlots.forEachIndexed { index, slot ->
-                    SimSlotCard(
-                        slotNumber = slot.slot + 1,
-                        carrier = slot.carrier,
-                        phoneNumber = slot.phoneNumber,
-                    )
-                    if (index < state.deviceInfo.simSlots.lastIndex) {
-                        Spacer(Modifier.height(8.dp))
-                    }
-                }
-            }
 
-            Spacer(Modifier.height(24.dp))
+                    Spacer(Modifier.height(24.dp))
 
-            // ─── Permissions ────────────────────────────────────
-            SectionHeader(icon = Icons.Outlined.Security, title = "Permissions")
+                    // ─── SIM Cards ──────────────────────────────
+                    SectionHeader(icon = Icons.Outlined.SimCard, title = "SIM Cards")
 
-            Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(12.dp))
 
-            // Battery Optimization
-            PermissionCard(
-                icon = Icons.Outlined.BatteryFull,
-                title = "Battery optimization",
-                isGranted = !state.isBatteryOptimized,
-                grantedLabel = "Disabled",
-                notGrantedLabel = "Enabled — background may be restricted",
-                actionLabel = "Disable",
-                onAction = { viewModel.requestBatteryOptimization() },
-            )
-
-            Spacer(Modifier.height(8.dp))
-
-            // Exact Alarm
-            PermissionCard(
-                icon = Icons.Outlined.Alarm,
-                title = "Exact alarm permission",
-                isGranted = state.canScheduleExactAlarms,
-                grantedLabel = "Granted",
-                notGrantedLabel = "Not granted",
-                actionLabel = "Grant permission",
-                onAction = { viewModel.requestExactAlarmPermission() },
-                hideActionWhenGranted = true,
-            )
-
-            state.batteryGuide?.let { guide ->
-                Spacer(Modifier.height(16.dp))
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                    ),
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "Guide for ${guide.displayName}",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        guide.instructions.forEachIndexed { index, instruction ->
-                            Row(
-                                modifier = Modifier.padding(vertical = 3.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    if (state.deviceInfo.simSlots.isEmpty()) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            ),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(24.dp),
+                                contentAlignment = Alignment.Center,
                             ) {
                                 Text(
-                                    text = "${index + 1}.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
-                                Text(
-                                    text = instruction,
-                                    style = MaterialTheme.typography.bodySmall,
+                                    text = "No SIM slots detected",
+                                    style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
+                            }
+                        }
+                    } else {
+                        state.deviceInfo.simSlots.forEachIndexed { index, slot ->
+                            SimSlotCard(
+                                slotNumber = slot.slot + 1,
+                                carrier = slot.carrier,
+                                phoneNumber = slot.phoneNumber,
+                            )
+                            if (index < state.deviceInfo.simSlots.lastIndex) {
+                                Spacer(Modifier.height(8.dp))
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(24.dp))
+
+                    // ─── Permissions ────────────────────────────
+                    SectionHeader(icon = Icons.Outlined.Security, title = "Permissions")
+
+                    Spacer(Modifier.height(12.dp))
+
+                    PermissionCard(
+                        icon = Icons.Outlined.BatteryFull,
+                        title = "Battery optimization",
+                        isGranted = !state.isBatteryOptimized,
+                        grantedLabel = "Disabled",
+                        notGrantedLabel = "Enabled — background may be restricted",
+                        actionLabel = "Disable",
+                        onAction = { viewModel.requestBatteryOptimization() },
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    PermissionCard(
+                        icon = Icons.Outlined.Alarm,
+                        title = "Exact alarm permission",
+                        isGranted = state.canScheduleExactAlarms,
+                        grantedLabel = "Granted",
+                        notGrantedLabel = "Not granted",
+                        actionLabel = "Grant permission",
+                        onAction = { viewModel.requestExactAlarmPermission() },
+                        hideActionWhenGranted = true,
+                    )
+
+                    state.batteryGuide?.let { guide ->
+                        Spacer(Modifier.height(16.dp))
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                            ),
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    text = "Guide for ${guide.displayName}",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                guide.instructions.forEachIndexed { index, instruction ->
+                                    Row(
+                                        modifier = Modifier.padding(vertical = 3.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Text(
+                                            text = "${index + 1}.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary,
+                                        )
+                                        Text(
+                                            text = instruction,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

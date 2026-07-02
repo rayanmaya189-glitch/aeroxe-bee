@@ -1,5 +1,7 @@
 package com.textbee.client.ui.navigation
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -37,18 +39,71 @@ private val bottomNavItems = listOf(
     Screen.Dashboard, Screen.Logs, Screen.Device, Screen.Settings,
 )
 
+/** Slide direction: left↔right based on route index */
+private val routeOrder = listOf(
+    Screen.Dashboard.route,
+    Screen.Logs.route,
+    Screen.Device.route,
+    Screen.Settings.route,
+)
+
+private fun slideTransitionForRoute(
+    targetRoute: String,
+    initialRoute: String?,
+): EnterTransition {
+    val targetIndex = routeOrder.indexOf(targetRoute).coerceAtLeast(0)
+    val initialIndex = initialRoute?.let { routeOrder.indexOf(it) }?.coerceAtLeast(0) ?: targetIndex
+    return if (targetIndex >= initialIndex) {
+        slideInHorizontally(tween(300)) { it / 3 } + fadeIn(tween(300))
+    } else {
+        slideInHorizontally(tween(300)) { -it / 3 } + fadeIn(tween(300))
+    }
+}
+
+private fun slideExitForRoute(
+    exitRoute: String,
+    targetRoute: String?,
+): ExitTransition {
+    val exitIndex = routeOrder.indexOf(exitRoute).coerceAtLeast(0)
+    val targetIndex = targetRoute?.let { routeOrder.indexOf(it) }?.coerceAtLeast(0) ?: exitIndex
+    return if (targetIndex >= exitIndex) {
+        slideOutHorizontally(tween(300)) { -it / 3 } + fadeOut(tween(200))
+    } else {
+        slideOutHorizontally(tween(300)) { it / 3 } + fadeOut(tween(200))
+    }
+}
+
 @Composable
 fun AppNavHost() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
     val showBottomBar = currentDestination?.route != "registration"
+    val currentRoute = currentDestination?.route
 
     val navHostContent: @Composable (Modifier) -> Unit = { modifier ->
         NavHost(
             navController = navController,
             startDestination = "registration",
             modifier = modifier,
+            enterTransition = {
+                slideTransitionForRoute(
+                    targetRoute = targetState.destination.route ?: "",
+                    initialRoute = initialState.destination.route,
+                )
+            },
+            exitTransition = {
+                slideExitForRoute(
+                    exitRoute = initialState.destination.route ?: "",
+                    targetRoute = targetState.destination.route,
+                )
+            },
+            popEnterTransition = {
+                slideInHorizontally(tween(300)) { -it / 3 } + fadeIn(tween(300))
+            },
+            popExitTransition = {
+                slideOutHorizontally(tween(300)) { it / 3 } + fadeOut(tween(200))
+            },
         ) {
             composable("registration") {
                 RegistrationScreen(

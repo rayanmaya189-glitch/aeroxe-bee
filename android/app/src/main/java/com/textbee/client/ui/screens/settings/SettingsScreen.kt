@@ -1,5 +1,10 @@
 package com.textbee.client.ui.screens.settings
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -134,8 +139,11 @@ fun SettingsScreen(
                 }
             }
 
-            if (state.saved) {
-                Spacer(Modifier.height(12.dp))
+            AnimatedVisibility(
+                visible = state.saved,
+                enter = expandVertically(tween(300)) + fadeIn(tween(300)),
+                exit = shrinkVertically(tween(200)) + fadeOut(tween(200)),
+            ) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
