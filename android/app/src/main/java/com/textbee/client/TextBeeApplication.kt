@@ -31,36 +31,34 @@ class TextBeeApplication : Application(), Configuration.Provider {
     }
 
     private fun createNotificationChannels() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val manager = getSystemService(NotificationManager::class.java)
+        val manager = getSystemService(NotificationManager::class.java)
 
-            val smsChannel = NotificationChannel(
-                CHANNEL_SMS,
-                "SMS Service",
-                NotificationManager.IMPORTANCE_LOW,
-            ).apply {
-                description = "Notifications for SMS sending service"
-            }
-            manager.createNotificationChannel(smsChannel)
-
-            val revivalChannel = NotificationChannel(
-                CHANNEL_FCM_REVIVAL,
-                "Service Revival",
-                NotificationManager.IMPORTANCE_HIGH,
-            ).apply {
-                description = "Server-triggered app revival notifications"
-            }
-            manager.createNotificationChannel(revivalChannel)
-
-            val mqttChannel = NotificationChannel(
-                CHANNEL_MQTT,
-                "MQTT Service",
-                NotificationManager.IMPORTANCE_LOW,
-            ).apply {
-                description = "Notifications for MQTT message broker service"
-            }
-            manager.createNotificationChannel(mqttChannel)
+        val smsChannel = NotificationChannel(
+            CHANNEL_SMS,
+            "SMS Service",
+            NotificationManager.IMPORTANCE_LOW,
+        ).apply {
+            description = "Notifications for SMS sending service"
         }
+        manager.createNotificationChannel(smsChannel)
+
+        val revivalChannel = NotificationChannel(
+            CHANNEL_FCM_REVIVAL,
+            "Service Revival",
+            NotificationManager.IMPORTANCE_HIGH,
+        ).apply {
+            description = "Server-triggered app revival notifications"
+        }
+        manager.createNotificationChannel(revivalChannel)
+
+        val mqttChannel = NotificationChannel(
+            CHANNEL_MQTT,
+            "MQTT Service",
+            NotificationManager.IMPORTANCE_LOW,
+        ).apply {
+            description = "Notifications for MQTT message broker service"
+        }
+        manager.createNotificationChannel(mqttChannel)
     }
 
     private fun startWatchdog() {

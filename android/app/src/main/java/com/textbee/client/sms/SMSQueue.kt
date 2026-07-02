@@ -40,7 +40,7 @@ class SMSQueue @Inject constructor(
 
         scope.launch {
             while (pendingTasks.isNotEmpty()) {
-                val task = pendingTasks.removeFirst()
+                val task = pendingTasks.removeAt(0)
 
                 val result = smsEngine.send(task)
                 if (result == SMSTask.Status.SENT) {

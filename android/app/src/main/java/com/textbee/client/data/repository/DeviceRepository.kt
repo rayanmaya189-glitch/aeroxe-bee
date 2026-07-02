@@ -1,5 +1,6 @@
 package com.textbee.client.data.repository
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -25,6 +26,7 @@ class DeviceRepository @Inject constructor(
     private val api: TextBeeApi,
     private val tokenManager: TokenManager,
 ) {
+    @SuppressLint("MissingPermission")
     suspend fun registerDevice(apiKey: String, simSlot: Int = 0): Result<Unit> = runCatching {
         val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
         val deviceId = tm.imei ?: Settings.Secure.getString(
@@ -69,6 +71,7 @@ class DeviceRepository @Inject constructor(
         try { api.updateStatus(request) } catch (_: Exception) {}
     }
 
+    @SuppressLint("MissingPermission", "NewApi")
     fun getDeviceInfo(): DeviceInfo {
         val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
         val slots = mutableListOf<SimSlotInfo>()
@@ -118,6 +121,7 @@ class DeviceRepository @Inject constructor(
                 status == BatteryManager.BATTERY_STATUS_FULL
     }
 
+    @SuppressLint("MissingPermission")
     private fun getNetworkType(tm: TelephonyManager): String {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val activeNetwork = cm.activeNetwork ?: return "Unknown"

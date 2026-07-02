@@ -26,7 +26,6 @@ class MainActivity : ComponentActivity() {
         Manifest.permission.READ_PHONE_STATE,
         Manifest.permission.FOREGROUND_SERVICE,
         Manifest.permission.RECEIVE_BOOT_COMPLETED,
-        Manifest.permission.POST_NOTIFICATIONS,
     )
 
     private val permissionLauncher = registerForActivityResult(
@@ -37,7 +36,15 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            requiredPermissions.add(Manifest.permission.POST_NOTIFICATIONS)
+            if (!requiredPermissions.contains(Manifest.permission.POST_NOTIFICATIONS)) {
+                requiredPermissions.add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            if (!requiredPermissions.contains(Manifest.permission.FOREGROUND_SERVICE_DATA_SYNC)) {
+                requiredPermissions.add(Manifest.permission.FOREGROUND_SERVICE_DATA_SYNC)
+            }
         }
 
         requestPermissionsIfNeeded()

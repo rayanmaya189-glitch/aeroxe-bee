@@ -1,5 +1,6 @@
 package com.textbee.client.util
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.telephony.SubscriptionManager
 import android.telephony.TelephonyManager
@@ -13,6 +14,7 @@ class SimManager @Inject constructor(
 ) {
     private val telephonyManager = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
 
+    @SuppressLint("MissingPermission")
     fun getAvailableSlots(): List<SimSlot> {
         val slots = mutableListOf<SimSlot>()
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
@@ -42,6 +44,7 @@ class SimManager @Inject constructor(
         return slots
     }
 
+    @SuppressLint("MissingPermission")
     fun getDefaultSubscriptionId(slot: Int): Int {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
             val subManager = context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as SubscriptionManager
