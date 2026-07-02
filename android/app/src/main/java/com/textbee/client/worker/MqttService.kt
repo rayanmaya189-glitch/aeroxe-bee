@@ -93,6 +93,7 @@ class MqttService : Service() {
                     if (cmd.id.isBlank()) return
 
                     scope.launch {
+                        val targetSimSlot = if (cmd.simSlot >= 0) cmd.simSlot else tokenManager.getSimSlot()
                         val task = SMSTask(
                             id = cmd.id,
                             accountId = cmd.accountId,
@@ -102,6 +103,7 @@ class MqttService : Service() {
                                 SMSTask.Priority.valueOf(cmd.priority)
                             } catch (_: Exception) { SMSTask.Priority.NORMAL },
                             status = SMSTask.Status.PENDING,
+                            simSlot = targetSimSlot,
                         )
                         val result = smsEngine.send(task)
                         val isSuccess = result == SMSTask.Status.SENT || result == SMSTask.Status.DELIVERED
@@ -115,7 +117,7 @@ class MqttService : Service() {
                                     deliveryStatus = if (isSuccess) "SENT" else "FAILED",
                                     confidenceScore = if (isSuccess) 1.0 else 0.0,
                                     error = if (isSuccess) null else "sms_send_failed",
-                                    simSlot = 0,
+                                    simSlot = targetSimSlot,
                                     timestamp = System.currentTimeMillis(),
                                 )
                             )

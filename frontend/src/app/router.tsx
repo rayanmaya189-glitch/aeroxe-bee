@@ -10,6 +10,7 @@ const UsersPage = lazy(() => import('@/features/users/pages/UsersPage').then((m)
 const AnalyticsPage = lazy(() => import('@/features/analytics/pages/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })))
 const SettingsPage = lazy(() => import('@/features/settings/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })))
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })))
+const MemberDashboardPage = lazy(() => import('@/features/member/pages/MemberDashboardPage').then((m) => ({ default: m.MemberDashboardPage })))
 
 function LazyLoader({ children }: { children: React.ReactNode }) {
   return (
@@ -70,6 +71,7 @@ const routes: RouteObject[] = [
       { path: 'users', element: <LazyLoader><UsersPage /></LazyLoader> },
       { path: 'analytics', element: <LazyLoader><AnalyticsPage /></LazyLoader> },
       { path: 'settings', element: <LazyLoader><SettingsPage /></LazyLoader> },
+      { path: 'member', element: <LazyLoader><MemberDashboardPage /></LazyLoader> },
     ],
   },
   {

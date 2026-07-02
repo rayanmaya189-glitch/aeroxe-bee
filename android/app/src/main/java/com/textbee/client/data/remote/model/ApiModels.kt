@@ -33,8 +33,10 @@ data class SMSCommand(
     @SerializedName("account_id") val accountId: String,
     @SerializedName("recipient") val recipient: String,
     @SerializedName("message") val message: String,
+    @SerializedName("sender") val sender: String = "",
     @SerializedName("priority") val priority: String = "NORMAL",
     @SerializedName("sim_slot") val simSlot: Int = -1,
+    @SerializedName("timestamp") val timestamp: Long = 0L,
 )
 
 data class StatusUpdateRequest(

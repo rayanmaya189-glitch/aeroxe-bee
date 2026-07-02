@@ -1,159 +1,100 @@
-import { useQuery } from '@tanstack/react-query'
-import { Card, CardTitle } from '@/components/ui/Card'
-import { Skeleton } from '@/components/ui/Skeleton'
-import { getDailyChartData } from '@/services/dashboard'
-import { formatNumber } from '@/utils/format'
-import {
-  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
-} from 'recharts'
-
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
+import { useState, useEffect } from 'react'
+import { getAnalytics } from '@/services/dashboard'
+import type { AnalyticsDaily } from '@/types/models'
 
 export function AnalyticsPage() {
-  const { data: chartData, isLoading } = useQuery({
-    queryKey: ['dashboard-charts'],
-    queryFn: getDailyChartData,
-  })
+  const [analytics, setAnalytics] = useState<AnalyticsDaily[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => { loadAnalytics() }, [])
+
+  async function loadAnalytics() {
+    try {
+      setLoading(true)
+      const end = new Date().toISOString().split('T')[0]
+      const start = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]
+      const data = await getAnalytics({ start, end })
+      setAnalytics(data)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load analytics')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const totals = analytics.reduce(
+    (acc, a) => ({
+      sent: acc.sent + a.total_sent,
+      delivered: acc.delivered + a.total_delivered,
+      failed: acc.failed + a.total_failed,
+      otp: acc.otp + a.otp_sent,
+      transactional: acc.transactional + a.transactional_sent,
+      marketing: acc.marketing + a.marketing_sent,
+    }),
+    { sent: 0, delivered: 0, failed: 0, otp: 0, transactional: 0, marketing: 0 },
+  )
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-surface-900 dark:text-white">Analytics</h1>
-        <p className="text-sm text-surface-500 dark:text-surface-400">Detailed platform metrics and trends</p>
-      </div>
+    <div className="space-y-6 p-6">
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Analytics</h1>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardTitle>Messages Over Time</CardTitle>
-          {isLoading ? (
-            <Skeleton className="mt-4 h-72 w-full" variant="rectangular" />
-          ) : chartData?.messages ? (
-            <div className="mt-4 h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData.messages}>
-                  <defs>
-                    <linearGradient id="analyticsMsg" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#94a3b8" tickLine={false} />
-                  <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" tickLine={false} axisLine={false} />
-                  <Tooltip
-                    contentStyle={{
-                      borderRadius: '12px',
-                      border: '1px solid #e2e8f0',
-                      background: 'rgba(255,255,255,0.9)',
-                      backdropFilter: 'blur(8px)',
-                    }}
-                  />
-                  <Area type="monotone" dataKey="value" stroke="#3b82f6" fill="url(#analyticsMsg)" strokeWidth={2} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <div className="flex h-72 items-center justify-center text-sm text-surface-400">No message data available</div>
-          )}
-        </Card>
+      {error && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/20">{error}</div>}
 
-        <Card>
-          <CardTitle>User Registrations</CardTitle>
-          {isLoading ? (
-            <Skeleton className="mt-4 h-72 w-full" variant="rectangular" />
-          ) : chartData?.users ? (
-            <div className="mt-4 h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData.users}>
-                  <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#94a3b8" tickLine={false} />
-                  <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" tickLine={false} axisLine={false} />
-                  <Tooltip
-                    contentStyle={{
-                      borderRadius: '12px',
-                      border: '1px solid #e2e8f0',
-                      background: 'rgba(255,255,255,0.9)',
-                      backdropFilter: 'blur(8px)',
-                    }}
-                  />
-                  <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <div className="flex h-72 items-center justify-center text-sm text-surface-400">No user data available</div>
-          )}
-        </Card>
-
-        <Card>
-          <CardTitle>Revenue Distribution</CardTitle>
-          {isLoading ? (
-            <Skeleton className="mt-4 h-72 w-full" variant="rectangular" />
-          ) : chartData?.revenue ? (
-            <div className="mt-4 h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={chartData.revenue}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={4}
-                    dataKey="value"
-                    nameKey="label"
-                  >
-                    {chartData.revenue.map((_, idx) => (
-                      <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      borderRadius: '12px',
-                      border: '1px solid #e2e8f0',
-                      background: 'rgba(255,255,255,0.9)',
-                      backdropFilter: 'blur(8px)',
-                    }}
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <div className="flex h-72 items-center justify-center text-sm text-surface-400">No revenue data available</div>
-          )}
-        </Card>
-
-        <Card>
-          <CardTitle>Summary</CardTitle>
-          <div className="mt-4 space-y-4">
-            {isLoading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex items-center justify-between">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-4 w-16" />
-                </div>
-              ))
-            ) : chartData ? (
-              <>
-                {[
-                  { label: 'Total Messages', value: chartData.messages?.reduce((s, d) => s + d.value, 0) ?? 0 },
-                  { label: 'Total Users', value: chartData.users?.reduce((s, d) => s + d.value, 0) ?? 0 },
-                  { label: 'Total Revenue', value: chartData.revenue?.reduce((s, d) => s + d.value, 0) ?? 0 },
-                  { label: 'Avg Messages/Day', value: chartData.messages?.length ? Math.round(chartData.messages.reduce((s, d) => s + d.value, 0) / chartData.messages.length) : 0 },
-                  { label: 'Data Points', value: chartData.messages?.length ?? 0 },
-                ].map((item) => (
-                  <div key={item.label} className="flex items-center justify-between border-b border-surface-100 pb-3 last:border-0 dark:border-surface-700">
-                    <span className="text-sm text-surface-600 dark:text-surface-400">{item.label}</span>
-                    <span className="text-sm font-semibold text-surface-900 dark:text-surface-100">{formatNumber(item.value)}</span>
-                  </div>
-                ))}
-              </>
-            ) : (
-              <div className="text-sm text-surface-400">No data available</div>
-            )}
+      {loading ? (
+        <div className="h-64 animate-pulse rounded-2xl bg-gray-200 dark:bg-gray-700" />
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
+            <KPI label="Total Sent" value={totals.sent} />
+            <KPI label="Delivered" value={totals.delivered} />
+            <KPI label="Failed" value={totals.failed} />
+            <KPI label="OTP" value={totals.otp} />
+            <KPI label="Transactional" value={totals.transactional} />
+            <KPI label="Marketing" value={totals.marketing} />
           </div>
-        </Card>
-      </div>
+
+          <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                <tr>
+                  <th className="px-4 py-3">Date</th>
+                  <th className="px-4 py-3">Sent</th>
+                  <th className="px-4 py-3">Delivered</th>
+                  <th className="px-4 py-3">Failed</th>
+                  <th className="px-4 py-3">OTP</th>
+                  <th className="px-4 py-3">Transactional</th>
+                  <th className="px-4 py-3">Marketing</th>
+                  <th className="px-4 py-3">Avg Confidence</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {analytics.map((a) => (
+                  <tr key={a.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                    <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{a.date}</td>
+                    <td className="px-4 py-3">{a.total_sent}</td>
+                    <td className="px-4 py-3 text-green-600">{a.total_delivered}</td>
+                    <td className="px-4 py-3 text-red-600">{a.total_failed}</td>
+                    <td className="px-4 py-3">{a.otp_sent}</td>
+                    <td className="px-4 py-3">{a.transactional_sent}</td>
+                    <td className="px-4 py-3">{a.marketing_sent}</td>
+                    <td className="px-4 py-3">{a.avg_confidence.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function KPI({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-2xl border border-gray-200 p-4 dark:border-gray-700">
+      <p className="text-xs font-medium uppercase text-gray-500 dark:text-gray-400">{label}</p>
+      <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{value.toLocaleString()}</p>
     </div>
   )
 }

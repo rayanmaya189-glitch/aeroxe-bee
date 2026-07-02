@@ -1,265 +1,215 @@
-import { useState, useCallback } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Card } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
-import { DataTable, type Column } from '@/components/ui/DataTable'
-import { FilterPanel } from '@/components/ui/FilterPanel'
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { useDebounce } from '@/hooks/useDebounce'
-import { useFilterStore } from '@/store/filterStore'
-import { useUIStore } from '@/store/uiStore'
-import { getAccounts, suspendAccount, activateAccount, deleteAccount } from '@/services/dashboard'
-import type { Account } from '@/types/models'
-import { formatDateTime } from '@/utils/format'
-
-const statusBadge: Record<string, 'success' | 'warning' | 'danger'> = {
-  active: 'success',
-  suspended: 'warning',
-  disabled: 'danger',
-}
-
-const planBadge: Record<string, 'default' | 'info' | 'warning'> = {
-  free: 'default',
-  pro: 'info',
-  enterprise: 'warning',
-}
+import { useState, useEffect, useCallback } from 'react'
+import { getUsers, createUser, updateUser, deleteUser, bulkDeleteUsers } from '@/services/dashboard'
+import type { User } from '@/types/models'
 
 export function UsersPage() {
-  const queryClient = useQueryClient()
-  const addToast = useUIStore((s) => s.addToast)
-  const filters = useFilterStore((s) => s.filters['users'] ?? { search: '', status: '', sortBy: 'createdAt', sortOrder: 'desc' })
-  const setFilter = useFilterStore((s) => s.setFilter)
-  const resetFilter = useFilterStore((s) => s.resetFilter)
-
+  const [users, setUsers] = useState<User[]>([])
+  const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
-  const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [suspendConfirm, setSuspendConfirm] = useState<string | null>(null)
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [pageSize] = useState(20)
+  const [totalPages, setTotalPages] = useState(1)
+  const [search, setSearch] = useState('')
+  const [roleFilter, setRoleFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [showCreate, setShowCreate] = useState(false)
+  const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
 
-  const debouncedSearch = useDebounce(filters.search, 300)
-
-  const { data, isLoading } = useQuery({
-    queryKey: ['accounts', page, debouncedSearch, filters.status, filters.sortBy, filters.sortOrder],
-    queryFn: () =>
-      getAccounts({
-        page,
-        pageSize: 10,
-        search: debouncedSearch || undefined,
-        status: filters.status || undefined,
-        sortBy: filters.sortBy,
-        sortOrder: filters.sortOrder,
-      }),
-  })
-
-  const suspendMutation = useMutation({
-    mutationFn: suspendAccount,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['accounts'] })
-      addToast({ type: 'success', title: 'Account suspended' })
-      setSuspendConfirm(null)
-    },
-    onError: () => addToast({ type: 'error', title: 'Failed to suspend account' }),
-  })
-
-  const activateMutation = useMutation({
-    mutationFn: activateAccount,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['accounts'] })
-      addToast({ type: 'success', title: 'Account activated' })
-    },
-    onError: () => addToast({ type: 'error', title: 'Failed to activate account' }),
-  })
-
-  const deleteMutation = useMutation({
-    mutationFn: deleteAccount,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['accounts'] })
-      addToast({ type: 'success', title: 'Account deleted' })
-      setDeleteConfirm(null)
-    },
-    onError: () => addToast({ type: 'error', title: 'Failed to delete account' }),
-  })
-
-  const columns: Column<Account>[] = [
-    {
-      key: 'name',
-      header: 'Name',
-      sortKey: 'name',
-      render: (user) => (
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700 dark:bg-primary-500/20 dark:text-primary-400">
-            {user.name?.charAt(0).toUpperCase() ?? '?'}
-          </div>
-          <div>
-            <p className="font-medium text-surface-900 dark:text-surface-100">{user.name}</p>
-            <p className="text-xs text-surface-500 dark:text-surface-400">{user.email}</p>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: 'plan',
-      header: 'Plan',
-      sortKey: 'plan',
-      render: (user) => <Badge variant={planBadge[user.plan] ?? 'default'}>{user.plan}</Badge>,
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      sortKey: 'status',
-      render: (user) => <Badge variant={statusBadge[user.status] ?? 'default'}>{user.status}</Badge>,
-    },
-    {
-      key: 'messageCount',
-      header: 'Messages',
-      sortKey: 'messageCount',
-      className: 'text-right',
-      render: (user) => (
-        <span className="font-mono text-sm">{user.messageCount.toLocaleString()}</span>
-      ),
-    },
-    {
-      key: 'apiKeys',
-      header: 'API Keys',
-      className: 'text-right',
-      render: (user) => <span className="font-mono text-sm">{user.apiKeys}</span>,
-    },
-    {
-      key: 'createdAt',
-      header: 'Created',
-      sortKey: 'createdAt',
-      render: (user) => (
-        <span className="text-surface-500 dark:text-surface-400">{formatDateTime(user.createdAt)}</span>
-      ),
-    },
-    {
-      key: 'actions',
-      header: '',
-      className: 'w-24 text-right',
-      render: (user) => (
-        <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-          {user.status === 'active' ? (
-            <Button variant="ghost" size="sm" onClick={() => setSuspendConfirm(user.id)}>
-              Suspend
-            </Button>
-          ) : (
-            <Button variant="ghost" size="sm" onClick={() => activateMutation.mutate(user.id)}>
-              Activate
-            </Button>
-          )}
-          <Button variant="ghost" size="sm" onClick={() => setDeleteConfirm(user.id)} className="text-danger hover:text-danger">
-            Delete
-          </Button>
-        </div>
-      ),
-    },
-  ]
-
-  const totalPages = data ? Math.ceil(data.total / 10) : 0
-
-  const toggleSelect = useCallback(
-    (id: string) => {
-      setSelected((prev) => {
-        const next = new Set(prev)
-        if (next.has(id)) next.delete(id)
-        else next.add(id)
-        return next
-      })
-    },
-    [],
-  )
-
-  const toggleSelectAll = useCallback(() => {
-    if (!data) return
-    if (selected.size === data.data.length) {
-      setSelected(new Set())
-    } else {
-      setSelected(new Set(data.data.map((u) => u.id)))
+  const loadUsers = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError('')
+      const result = await getUsers({ page, pageSize, search, role: roleFilter, status: statusFilter })
+      setUsers(result.data)
+      setTotal(result.total)
+      setTotalPages(result.total_pages)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load users')
+    } finally {
+      setLoading(false)
     }
-  }, [data, selected.size])
+  }, [page, pageSize, search, roleFilter, statusFilter])
+
+  useEffect(() => { loadUsers() }, [loadUsers])
+
+  async function handleDelete(id: string) {
+    if (!confirm('Delete this user?')) return
+    try { await deleteUser(id); loadUsers() } catch { setError('Failed to delete user') }
+  }
+
+  async function handleBulkDelete() {
+    if (selectedIds.length === 0 || !confirm(`Delete ${selectedIds.length} users?`)) return
+    try { await bulkDeleteUsers(selectedIds); setSelectedIds([]); loadUsers() } catch { setError('Bulk delete failed') }
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id])
+  }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-surface-900 dark:text-white">Users</h1>
-        <p className="text-sm text-surface-500 dark:text-surface-400">Manage platform accounts</p>
+    <div className="space-y-6 p-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Staff Users</h1>
+        <div className="flex gap-2">
+          {selectedIds.length > 0 && (
+            <button onClick={handleBulkDelete} className="rounded-lg bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700">
+              Delete ({selectedIds.length})
+            </button>
+          )}
+          <button onClick={() => { setEditingUser(null); setShowCreate(true) }} className="rounded-lg bg-primary-600 px-4 py-2 text-sm text-white hover:bg-primary-700">
+            Add User
+          </button>
+        </div>
       </div>
 
-      <Card padding="none">
-        <div className="p-4 pb-0">
-          <FilterPanel
-            searchPlaceholder="Search by name or email..."
-            statusOptions={[
-              { label: 'Active', value: 'active' },
-              { label: 'Suspended', value: 'suspended' },
-              { label: 'Disabled', value: 'disabled' },
-            ]}
-            filters={filters}
-            onFilterChange={(key, value) => setFilter('users', { [key]: value })}
-            onReset={() => resetFilter('users')}
-            className="pb-4"
-          />
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3">
+        <input type="text" placeholder="Search..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+          className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+        <select value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value); setPage(1) }}
+          className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+          <option value="">All Roles</option>
+          <option value="admin">Admin</option>
+          <option value="staff">Staff</option>
+          <option value="viewer">Viewer</option>
+        </select>
+        <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1) }}
+          className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+          <option value="">All Statuses</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+          <option value="suspended">Suspended</option>
+        </select>
+      </div>
+
+      {error && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/20">{error}</div>}
+
+      {/* Table */}
+      <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+            <tr>
+              <th className="px-4 py-3"><input type="checkbox" onChange={(e) => setSelectedIds(e.target.checked ? users.map((u) => u.id) : [])}
+                checked={users.length > 0 && selectedIds.length === users.length} /></th>
+              <th className="px-4 py-3">Name</th>
+              <th className="px-4 py-3">Email</th>
+              <th className="px-4 py-3">Role</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Last Login</th>
+              <th className="px-4 py-3">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+            {loading ? (
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-500">Loading...</td></tr>
+            ) : users.length === 0 ? (
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-500">No users found</td></tr>
+            ) : users.map((user) => (
+              <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                <td className="px-4 py-3"><input type="checkbox" checked={selectedIds.includes(user.id)} onChange={() => toggleSelect(user.id)} /></td>
+                <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{user.name}</td>
+                <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{user.email}</td>
+                <td className="px-4 py-3"><span className={`inline-block rounded-full px-2 py-1 text-xs font-medium ${user.role === 'admin' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>{user.role}</span></td>
+                <td className="px-4 py-3"><span className={`inline-block rounded-full px-2 py-1 text-xs font-medium ${user.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>{user.status}</span></td>
+                <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{user.last_login ? new Date(user.last_login).toLocaleDateString() : 'Never'}</td>
+                <td className="px-4 py-3">
+                  <div className="flex gap-1">
+                    <button onClick={() => { setEditingUser(user); setShowCreate(true) }} className="rounded p-1 text-blue-600 hover:bg-blue-50 dark:text-blue-400">Edit</button>
+                    <button onClick={() => handleDelete(user.id)} className="rounded p-1 text-red-600 hover:bg-red-50 dark:text-red-400">Delete</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-600 dark:text-gray-400">Showing {users.length} of {total} users</p>
+        <div className="flex gap-1">
+          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm disabled:opacity-50 dark:border-gray-600">Prev</button>
+          <span className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm dark:border-gray-600">{page} / {totalPages}</span>
+          <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm disabled:opacity-50 dark:border-gray-600">Next</button>
         </div>
+      </div>
 
-        <DataTable
-          columns={columns}
-          data={data?.data ?? []}
-          keyExtractor={(u) => u.id}
-          loading={isLoading}
-          sortBy={filters.sortBy}
-          sortOrder={filters.sortOrder as 'asc' | 'desc'}
-          onSort={(key) =>
-            setFilter('users', {
-              sortBy: key,
-              sortOrder: filters.sortBy === key && filters.sortOrder === 'asc' ? 'desc' : 'asc',
-            })
-          }
-          selected={selected}
-          onSelect={toggleSelect}
-          onSelectAll={toggleSelectAll}
-          emptyTitle="No users found"
-          emptyDescription="Try adjusting your search or filters"
-        />
+      {/* Create/Edit Modal */}
+      {showCreate && <UserModal user={editingUser} onClose={() => { setShowCreate(false); setEditingUser(null) }} onSaved={() => { setShowCreate(false); setEditingUser(null); loadUsers() }} />}
+    </div>
+  )
+}
 
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-surface-100 px-4 py-3 dark:border-surface-700">
-            <p className="text-sm text-surface-500 dark:text-surface-400">
-              Page {page} of {totalPages} ({data?.total ?? 0} total)
-            </p>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-                Previous
-              </Button>
-              <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
-                Next
-              </Button>
-            </div>
+function UserModal({ user, onClose, onSaved }: { user: User | null; onClose: () => void; onSaved: () => void }) {
+  const [name, setName] = useState(user?.name ?? '')
+  const [email, setEmail] = useState(user?.email ?? '')
+  const [password, setPassword] = useState('')
+  const [role, setRole] = useState(user?.role ?? 'staff')
+  const [status, setStatus] = useState(user?.status ?? 'active')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    try {
+      if (user) {
+        await updateUser(user.id, { name, role, status })
+      } else {
+        if (!password) { setError('Password is required'); setLoading(false); return }
+        await createUser({ name, email, password, role })
+      }
+      onSaved()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Operation failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-800" onClick={(e) => e.stopPropagation()}>
+        <h2 className="mb-4 text-lg font-bold text-gray-900 dark:text-white">{user ? 'Edit User' : 'Create User'}</h2>
+        {error && <div className="mb-3 rounded-lg bg-red-50 p-2 text-sm text-red-600 dark:bg-red-900/20">{error}</div>}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} required
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+          {!user && (
+            <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+          )}
+          {!user && (
+            <input type="password" placeholder="Password (min 8 chars)" value={password} onChange={(e) => setPassword(e.target.value)} required
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+          )}
+          <select value={role} onChange={(e) => setRole(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+            <option value="admin">Admin</option>
+            <option value="staff">Staff</option>
+            <option value="viewer">Viewer</option>
+          </select>
+          {user && (
+            <select value={status} onChange={(e) => setStatus(e.target.value as User['status'])}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="suspended">Suspended</option>
+            </select>
+          )}
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={onClose} className="rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50 dark:border-gray-600">Cancel</button>
+            <button type="submit" disabled={loading} className="rounded-lg bg-primary-600 px-4 py-2 text-sm text-white hover:bg-primary-700 disabled:opacity-50">
+              {loading ? 'Saving...' : user ? 'Update' : 'Create'}
+            </button>
           </div>
-        )}
-      </Card>
-
-      <ConfirmDialog
-        open={suspendConfirm !== null}
-        onConfirm={() => suspendConfirm && suspendMutation.mutate(suspendConfirm)}
-        onCancel={() => setSuspendConfirm(null)}
-        title="Suspend Account"
-        message="This will suspend the account and prevent them from sending messages. Are you sure?"
-        confirmLabel="Suspend"
-        variant="warning"
-        loading={suspendMutation.isPending}
-      />
-
-      <ConfirmDialog
-        open={deleteConfirm !== null}
-        onConfirm={() => deleteConfirm && deleteMutation.mutate(deleteConfirm)}
-        onCancel={() => setDeleteConfirm(null)}
-        title="Delete Account"
-        message="This action cannot be undone. All data associated with this account will be permanently deleted."
-        confirmLabel="Delete"
-        variant="danger"
-        loading={deleteMutation.isPending}
-      />
+        </form>
+      </div>
     </div>
   )
 }

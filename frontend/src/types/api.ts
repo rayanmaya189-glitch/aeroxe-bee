@@ -26,3 +26,11 @@ export interface ApiError {
   status: number
   code?: string
 }
+
+export interface PaginatedResponse<T> {
+  data: T[]
+  total: number
+  page: number
+  page_size: number
+  total_pages: number
+}
