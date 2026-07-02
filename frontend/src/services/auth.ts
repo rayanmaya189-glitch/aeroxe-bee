@@ -7,6 +7,12 @@ export async function login(data: LoginRequest): Promise<LoginResponse> {
   return res.data.data
 }
 
+export async function register(data: { name: string; email: string; password: string }): Promise<LoginResponse> {
+  const res = await api.post<ApiResponse<LoginResponse>>('/auth/register', data)
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Registration failed')
+  return res.data.data
+}
+
 export async function logout(): Promise<void> {
   try {
     await api.post('/auth/logout')

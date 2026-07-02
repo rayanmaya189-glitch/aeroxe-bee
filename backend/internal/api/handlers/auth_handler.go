@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/textbee/backend/internal/api/middleware"
@@ -56,12 +57,25 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate email format
+	if !strings.Contains(req.Email, "@") || !strings.Contains(req.Email, ".") {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid email format"})
+		return
+	}
+
+	// Check both users and accounts tables for duplicate email
 	existing, err := h.accountService.GetByEmail(r.Context(), req.Email)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "database error checking email"})
 		return
 	}
 	if existing != nil {
+		writeJSON(w, http.StatusConflict, APIResponse{Error: "email already registered"})
+		return
+	}
+
+	existingUser, _ := h.userService.GetByEmail(r.Context(), req.Email)
+	if existingUser != nil {
 		writeJSON(w, http.StatusConflict, APIResponse{Error: "email already registered"})
 		return
 	}
@@ -78,13 +92,38 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Create free subscription for new account
+	h.accountService.CreateFreeSubscription(r.Context(), account.ID)
+
+	// Generate JWT token so user is immediately logged in
+	token, err := h.authMiddleware.GenerateToken(account.ID, account.Email, false, 15*time.Minute)
+	if err != nil {
+		// Registration succeeded even without token
+		writeJSON(w, http.StatusCreated, APIResponse{
+			Success: true,
+			Data: map[string]interface{}{
+				"id":    account.ID,
+				"name":  account.Name,
+				"email": account.Email,
+				"plan":  account.PlanID,
+			},
+		})
+		return
+	}
+
+	refresh, _ := h.authMiddleware.GenerateToken(account.ID, account.Email, false, 7*24*time.Hour)
+
 	writeJSON(w, http.StatusCreated, APIResponse{
 		Success: true,
 		Data: map[string]interface{}{
-			"id":    account.ID,
-			"name":  account.Name,
-			"email": account.Email,
-			"plan":  account.PlanID,
+			"token":        token,
+			"refreshToken": refresh,
+			"user": map[string]interface{}{
+				"id":    account.ID,
+				"email": account.Email,
+				"name":  account.Name,
+				"role":  "member",
+			},
 		},
 	})
 }

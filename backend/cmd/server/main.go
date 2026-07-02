@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/textbee/backend/internal/api"
 	"github.com/textbee/backend/internal/api/handlers"
@@ -32,6 +33,7 @@ import (
 	"github.com/textbee/backend/internal/telemetry"
 	"github.com/textbee/backend/internal/webhook"
 	"github.com/textbee/backend/internal/worker"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func main() {
@@ -62,6 +64,9 @@ func main() {
 
 	svc := services.NewServiceRegistry(postgres.Pool, redisDB.Client, cfg.OTP)
 	userService := services.NewUserService(postgres.Pool)
+
+	// Seed admin user on startup
+	seedAdminUser(context.Background(), postgres.Pool, logger)
 
 	idempotencyStore := idempotency.NewStore(redisDB.Client, cfg.App.IdempotencyTTL)
 	rateMgr := ratecontrol.NewManager(redisDB.Client, cfg.RateLimit)
@@ -642,4 +647,83 @@ func corsMiddleware(metrics *telemetry.Metrics, next http.Handler) http.Handler 
 		next.ServeHTTP(w, r)
 		metrics.ObserveAPILatency(r.Method, r.URL.Path, 200, time.Since(start))
 	})
+}
+
+// seedAdminUser ensures the users table exists and a default admin user is available.
+// This runs on every server start and is idempotent.
+func seedAdminUser(ctx context.Context, pool *pgxpool.Pool, logger *telemetry.Logger) {
+	// Create users table
+	if _, err := pool.Exec(ctx, `CREATE TABLE IF NOT EXISTS users (
+		id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+		name VARCHAR(255) NOT NULL,
+		email VARCHAR(255) UNIQUE NOT NULL,
+		password_hash VARCHAR(255) NOT NULL,
+		role VARCHAR(50) NOT NULL DEFAULT 'staff',
+		status VARCHAR(50) NOT NULL DEFAULT 'active',
+		avatar VARCHAR(512) DEFAULT '',
+		last_login TIMESTAMPTZ,
+		created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+		updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+	)`); err != nil {
+		logger.Warn("seed: failed to create users table", "error", err)
+		return
+	}
+
+	// Create activity_log table
+	if _, err := pool.Exec(ctx, `CREATE TABLE IF NOT EXISTS activity_log (
+		id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+		user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+		user_name VARCHAR(255) NOT NULL DEFAULT '',
+		action VARCHAR(100) NOT NULL,
+		resource VARCHAR(100) NOT NULL,
+		resource_id VARCHAR(255) DEFAULT '',
+		details TEXT DEFAULT '',
+		ip_address VARCHAR(45) DEFAULT '',
+		created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+	)`); err != nil {
+		logger.Warn("seed: failed to create activity_log table", "error", err)
+		return
+	}
+
+	// Create indexes
+	indexes := []string{
+		`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`,
+		`CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)`,
+		`CREATE INDEX IF NOT EXISTS idx_users_status ON users(status)`,
+		`CREATE INDEX IF NOT EXISTS idx_activity_log_user_id ON activity_log(user_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_activity_log_action ON activity_log(action)`,
+		`CREATE INDEX IF NOT EXISTS idx_activity_log_created_at ON activity_log(created_at)`,
+	}
+	for _, idx := range indexes {
+		if _, err := pool.Exec(ctx, idx); err != nil {
+			logger.Warn("seed: failed to create index", "error", err)
+		}
+	}
+
+	// Check if admin user already exists
+	var exists bool
+	err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE email = 'admin@textbee.dev' LIMIT 1)`).Scan(&exists)
+	if err != nil {
+		logger.Warn("seed: failed to check admin user", "error", err)
+		return
+	}
+	if exists {
+		logger.Info("seed: admin user already exists, skipping creation", "email", "admin@textbee.dev")
+		return
+	}
+
+	// Create admin user
+	hash, err := bcrypt.GenerateFromPassword([]byte("admin123456"), bcrypt.DefaultCost)
+	if err != nil {
+		logger.Warn("seed: failed to hash password", "error", err)
+		return
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO users (name, email, password_hash, role, status) VALUES ($1, $2, $3, $4, $5)`,
+		"Admin", "admin@textbee.dev", string(hash), "admin", "active",
+	); err != nil {
+		logger.Warn("seed: failed to create admin user", "error", err)
+		return
+	}
+	logger.Info("seed: admin user created", "email", "admin@textbee.dev", "password", "admin123456")
 }

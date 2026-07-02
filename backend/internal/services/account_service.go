@@ -114,6 +114,18 @@ func (s *AccountService) Delete(ctx context.Context, id string) error {
 	return err
 }
 
+// CreateFreeSubscription creates a free plan subscription for a new account
+func (s *AccountService) CreateFreeSubscription(ctx context.Context, accountID string) error {
+	renewalDate := time.Now().AddDate(0, 1, 0)
+	_, err := s.db.Exec(ctx,
+		`INSERT INTO subscriptions (account_id, plan_type, billing_cycle, status, renewal_date, quota_daily, quota_monthly, overage_buffer_pct, max_queue_depth, dedicated_pool, default_routing_strategy)
+		 SELECT $1, id, 'monthly', 'active', $2, daily_quota, monthly_quota, overage_buffer_pct, max_queue_depth, dedicated_pool, default_routing_strategy
+		 FROM plans WHERE id = 'free'
+		 ON CONFLICT DO NOTHING`,
+		accountID, renewalDate)
+	return err
+}
+
 func (s *AccountService) GetOrCreateSubscription(ctx context.Context, accountID string) (*models.Subscription, error) {
 	sub := &models.Subscription{}
 	err := s.db.QueryRow(ctx,
