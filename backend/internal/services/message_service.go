@@ -152,6 +152,38 @@ func (s *MessageService) DeleteOld(ctx context.Context) error {
 	return err
 }
 
+func (s *MessageService) ListPendingByAccount(ctx context.Context, accountID string, limit int) ([]models.Message, error) {
+	rows, err := s.db.Query(ctx,
+		`SELECT m.id, m.device_id, m.api_key_id, m.direction, m.recipient, m.sender, m.encrypted_message,
+		        m.message_type, m.priority_lane, m.template_id, m.status, m.delivery_status, m.confidence_score,
+		        m.error_reason, m.created_at, m.delivered_at, m.purge_after, m.idempotency_key, m.routing_strategy_used
+		 FROM messages m
+		 JOIN api_keys ak ON m.api_key_id = ak.id
+		 WHERE ak.account_id = $1
+		   AND m.status = 'pending'
+		   AND m.delivery_status = 'SENT'
+		   AND m.device_id IS NULL
+		 ORDER BY CASE m.priority_lane WHEN 'otp' THEN 0 WHEN 'transactional' THEN 1 ELSE 2 END,
+		          m.created_at ASC LIMIT $2`, accountID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var msgs []models.Message
+	for rows.Next() {
+		var m models.Message
+		if err := rows.Scan(&m.ID, &m.DeviceID, &m.APIKeyID, &m.Direction, &m.Recipient, &m.Sender,
+			&m.EncryptedMessage, &m.MessageType, &m.PriorityLane, &m.TemplateID,
+			&m.Status, &m.DeliveryStatus, &m.ConfidenceScore, &m.ErrorReason,
+			&m.CreatedAt, &m.DeliveredAt, &m.PurgeAfter, &m.IdempotencyKey, &m.RoutingStrategyUsed); err != nil {
+			return nil, err
+		}
+		msgs = append(msgs, m)
+	}
+	return msgs, nil
+}
+
 func (s *MessageService) CountByAccount(ctx context.Context, accountID string) (int, error) {
 	var count int
 	err := s.db.QueryRow(ctx,

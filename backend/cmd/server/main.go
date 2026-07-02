@@ -115,7 +115,7 @@ func main() {
 	authHandler := handlers.NewAuthHandler(svc.Accounts, svc.Admin, authMiddleware)
 	messageHandler := handlers.NewMessageHandler(svc.Messages, svc.Devices, svc.Accounts,
 		idempotencyStore, queue, encMgr, cfg.App, metrics)
-	deviceHandler := handlers.NewDeviceHandler(svc.Devices)
+	deviceHandler := handlers.NewDeviceHandler(svc.Devices, svc.Messages, svc.APIKeys, svc.MQTTCredentials, authMiddleware)
 	accountHandler := handlers.NewAccountHandler(svc.Accounts, svc.APIKeys, svc.Subscriptions, svc.Billing)
 	adminHandler := handlers.NewAdminHandler(svc.Admin, cbManager, metrics)
 	templateHandler := handlers.NewTemplateHandler(svc.Templates)

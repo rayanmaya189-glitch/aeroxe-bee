@@ -14,6 +14,7 @@ data class DeviceInfo(
     val model: String = android.os.Build.MODEL,
     val osVersion: String = android.os.Build.VERSION.RELEASE,
     val sdkLevel: Int = android.os.Build.VERSION.SDK_INT,
+    val deviceState: DeviceState = DeviceState.ACTIVE,
 )
 
 data class SimSlotInfo(

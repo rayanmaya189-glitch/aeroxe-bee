@@ -1,8 +1,13 @@
 package com.textbee.client.data.repository
 
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.os.BatteryManager
+import android.os.Build
+import android.provider.Settings
 import android.telephony.SubscriptionManager
 import android.telephony.TelephonyManager
 import com.textbee.client.data.remote.api.TextBeeApi
@@ -20,17 +25,23 @@ class DeviceRepository @Inject constructor(
     private val api: TextBeeApi,
     private val tokenManager: TokenManager,
 ) {
-    suspend fun registerDevice(): Result<String> = runCatching {
+    suspend fun registerDevice(apiKey: String): Result<String> = runCatching {
         val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
-        val deviceId = tm.imei ?: android.provider.Settings.Secure.getString(
-            context.contentResolver, android.provider.Settings.Secure.ANDROID_ID
+        val deviceId = tm.imei ?: Settings.Secure.getString(
+            context.contentResolver, Settings.Secure.ANDROID_ID
         )
         val phoneNumber = tm.line1Number ?: ""
         val carrier = tm.networkOperatorName ?: ""
 
         val request = RegisterRequest(
-            deviceId = deviceId, phoneNumber = phoneNumber,
-            carrier = carrier, simSlot = 0, appVersion = "1.0.0",
+            physicalDeviceId = deviceId,
+            phoneNumber = phoneNumber,
+            carrier = carrier,
+            simSlot = 0,
+            appVersion = "1.0.0",
+            model = Build.MODEL,
+            osVersion = Build.VERSION.RELEASE,
+            apiKey = apiKey,
         )
         val response = api.registerDevice(request)
         val body = response.body()
@@ -50,11 +61,31 @@ class DeviceRepository @Inject constructor(
             isCharging = deviceInfo.isCharging,
             networkStrength = deviceInfo.networkStrength,
             networkType = deviceInfo.networkType,
-            simSlots = deviceInfo.simSlots.map {
-                SimSlotStatus(it.slot, it.carrier, it.phoneNumber, it.isAvailable, it.isRoaming)
+            simSlots = deviceInfo.simSlots.map { slot ->
+                SimSlotStatus(
+                    slot = slot.slot,
+                    carrier = slot.carrier,
+                    phoneNumber = slot.phoneNumber,
+                    isAvailable = slot.isAvailable,
+                    isRoaming = slot.isRoaming,
+                )
             },
         )
         try { api.sendHeartbeat(request) } catch (_: Exception) {}
+    }
+
+    suspend fun fetchTasks(deviceId: String): List<SMSCommand> {
+        return try {
+            val response = api.fetchTasks(deviceId)
+            val body = response.body()
+            if (response.isSuccessful && body?.success == true && body.data != null) {
+                body.data
+            } else emptyList()
+        } catch (_: Exception) { emptyList() }
+    }
+
+    suspend fun updateStatus(request: StatusUpdateRequest) {
+        try { api.updateStatus(request) } catch (_: Exception) {}
     }
 
     fun getDeviceInfo(): DeviceInfo {
@@ -91,17 +122,19 @@ class DeviceRepository @Inject constructor(
     }
 
     private fun getBatteryLevel(): Int {
-        val intent = context.registerReceiver(null, android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED))
-        val level = intent?.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1) ?: -1
-        val scale = intent?.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, -1) ?: -1
+        val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+        val intent = context.registerReceiver(null, filter)
+        val level = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+        val scale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
         return if (level >= 0 && scale > 0) (level * 100) / scale else 50
     }
 
     private fun isCharging(): Boolean {
-        val intent = context.registerReceiver(null, android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED))
-        val status = intent?.getIntExtra(android.os.BatteryManager.EXTRA_STATUS, -1) ?: -1
-        return status == android.os.BatteryManager.BATTERY_STATUS_CHARGING ||
-                status == android.os.BatteryManager.BATTERY_STATUS_FULL
+        val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+        val intent = context.registerReceiver(null, filter)
+        val status = intent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+        return status == BatteryManager.BATTERY_STATUS_CHARGING ||
+                status == BatteryManager.BATTERY_STATUS_FULL
     }
 
     private fun getNetworkType(tm: TelephonyManager): String {

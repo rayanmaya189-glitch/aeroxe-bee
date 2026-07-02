@@ -44,7 +44,7 @@ class SettingsViewModel @Inject constructor(
             tokenManager.saveServerUrl(serverUrl.trimEnd('/'))
             tokenManager.saveApiKey(apiKey.trim())
             try {
-                deviceRepository.registerDevice()
+                deviceRepository.registerDevice(apiKey.trim())
                 _state.update { it.copy(isLoading = false, saved = true) }
             } catch (e: Exception) {
                 _state.update { it.copy(isLoading = false, saved = false) }

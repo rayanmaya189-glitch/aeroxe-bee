@@ -16,31 +16,33 @@ type DatabaseQuerier interface {
 }
 
 type ServiceRegistry struct {
-	Accounts      *AccountService
-	APIKeys       *APIKeyService
-	Devices       *DeviceService
-	Messages      *MessageService
-	OTP           *OTPService
-	Templates     *TemplateService
-	Webhooks      *WebhookService
-	Subscriptions *SubscriptionService
-	CostTracking  *CostTrackingService
-	Billing       *BillingService
-	Admin         *AdminService
+	Accounts          *AccountService
+	APIKeys           *APIKeyService
+	Devices           *DeviceService
+	Messages          *MessageService
+	MQTTCredentials   *MQTTCredentialService
+	OTP               *OTPService
+	Templates         *TemplateService
+	Webhooks          *WebhookService
+	Subscriptions     *SubscriptionService
+	CostTracking      *CostTrackingService
+	Billing           *BillingService
+	Admin             *AdminService
 }
 
 func NewServiceRegistry(db DatabaseQuerier, rdb *redis.Client, otpCfg config.OTPConfig) *ServiceRegistry {
 	return &ServiceRegistry{
-		Accounts:      NewAccountService(db),
-		APIKeys:       NewAPIKeyService(db),
-		Devices:       NewDeviceService(db),
-		Messages:      NewMessageService(db),
-		OTP:           NewOTPService(rdb, db, otpCfg),
-		Templates:     NewTemplateService(db),
-		Webhooks:      NewWebhookService(db),
-		Subscriptions: NewSubscriptionService(db),
-		CostTracking:  NewCostTrackingService(db),
-		Billing:       NewBillingService(db),
-		Admin:         NewAdminService(db),
+		Accounts:          NewAccountService(db),
+		APIKeys:           NewAPIKeyService(db),
+		Devices:           NewDeviceService(db),
+		Messages:          NewMessageService(db),
+		MQTTCredentials:   NewMQTTCredentialService(db),
+		OTP:               NewOTPService(rdb, db, otpCfg),
+		Templates:         NewTemplateService(db),
+		Webhooks:          NewWebhookService(db),
+		Subscriptions:     NewSubscriptionService(db),
+		CostTracking:      NewCostTrackingService(db),
+		Billing:           NewBillingService(db),
+		Admin:             NewAdminService(db),
 	}
 }

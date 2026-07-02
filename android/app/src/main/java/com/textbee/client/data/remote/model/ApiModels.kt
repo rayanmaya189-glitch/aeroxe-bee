@@ -9,17 +9,22 @@ data class ApiResponse<T>(
 )
 
 data class RegisterRequest(
-    @SerializedName("device_id") val deviceId: String,
+    @SerializedName("physical_device_id") val physicalDeviceId: String,
     @SerializedName("phone_number") val phoneNumber: String,
     @SerializedName("carrier") val carrier: String,
     @SerializedName("sim_slot") val simSlot: Int,
     @SerializedName("app_version") val appVersion: String,
+    @SerializedName("model") val model: String,
+    @SerializedName("os_version") val osVersion: String,
+    @SerializedName("api_key") val apiKey: String,
 )
 
 data class RegisterResponse(
     @SerializedName("device_id") val deviceId: String,
     @SerializedName("token") val token: String,
     @SerializedName("mqtt_credential_id") val mqttCredentialId: String?,
+    @SerializedName("mqtt_username") val mqttUsername: String?,
+    @SerializedName("mqtt_password") val mqttPassword: String?,
 )
 
 data class SMSCommand(
@@ -34,6 +39,8 @@ data class StatusUpdateRequest(
     @SerializedName("message_id") val messageId: String,
     @SerializedName("device_id") val deviceId: String,
     @SerializedName("status") val status: String,
+    @SerializedName("delivery_status") val deliveryStatus: String = "SENT",
+    @SerializedName("confidence_score") val confidenceScore: Double = 0.0,
     @SerializedName("error") val error: String? = null,
     @SerializedName("sim_slot") val simSlot: Int = 0,
     @SerializedName("timestamp") val timestamp: Long = System.currentTimeMillis(),

@@ -78,7 +78,14 @@ class SMSTaskRepository @Inject constructor(
     suspend fun updateRemoteStatus(
         messageId: String, deviceId: String, status: String, error: String? = null, simSlot: Int = 0,
     ) {
-        val request = StatusUpdateRequest(messageId, deviceId, status, error, simSlot)
+        val request = StatusUpdateRequest(
+            messageId = messageId,
+            deviceId = deviceId,
+            status = status,
+            deliveryStatus = if (status == "FAILED") "FAILED" else "SENT",
+            error = error,
+            simSlot = simSlot,
+        )
         try {
             api.updateStatus(request)
         } catch (_: Exception) {}

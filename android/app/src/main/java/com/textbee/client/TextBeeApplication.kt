@@ -3,9 +3,12 @@ package com.textbee.client
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.Intent
 import android.os.Build
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import com.textbee.client.worker.JobSchedulerFallback
+import com.textbee.client.worker.WatchdogScheduler
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -13,6 +16,7 @@ import javax.inject.Inject
 class TextBeeApplication : Application(), Configuration.Provider {
 
     @Inject lateinit var workerFactory: HiltWorkerFactory
+    @Inject lateinit var watchdogScheduler: WatchdogScheduler
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
@@ -22,6 +26,8 @@ class TextBeeApplication : Application(), Configuration.Provider {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannels()
+        startWatchdog()
+        startJobSchedulerFallback()
     }
 
     private fun createNotificationChannels() {
@@ -36,10 +42,28 @@ class TextBeeApplication : Application(), Configuration.Provider {
                 description = "Notifications for SMS sending service"
             }
             manager.createNotificationChannel(smsChannel)
+
+            val revivalChannel = NotificationChannel(
+                CHANNEL_FCM_REVIVAL,
+                "Service Revival",
+                NotificationManager.IMPORTANCE_HIGH,
+            ).apply {
+                description = "Server-triggered app revival notifications"
+            }
+            manager.createNotificationChannel(revivalChannel)
         }
+    }
+
+    private fun startWatchdog() {
+        watchdogScheduler.schedule()
+    }
+
+    private fun startJobSchedulerFallback() {
+        JobSchedulerFallback.schedule(this)
     }
 
     companion object {
         const val CHANNEL_SMS = "textbee_sms_service"
+        const val CHANNEL_FCM_REVIVAL = "textbee_fcm_revival"
     }
 }
