@@ -38,7 +38,7 @@ func (s *DeviceService) GetByID(ctx context.Context, id string) (*models.Device,
 		`SELECT id, physical_device_id, account_id, sim_slot, carrier, status, sim_health_status,
 		        health_trend_slope, last_seen, last_ping_at, last_pong_at, messages_sent_count, last_used_at,
 		        mqtt_credential_id, reliability_score, reputation_score, complaint_count, block_event_count,
-		        fraud_flag_weight, success_rate_24h, uptime_ratio_24h, avg_latency_ms, country_code, region,
+		        fraud_flag_weight, name, success_rate_24h, uptime_ratio_24h, avg_latency_ms, country_code, region,
 		        max_per_minute, max_per_hour, isolated_pool_id, circuit_breaker_state, created_at, updated_at
 		 FROM devices WHERE id = $1`, id,
 	).Scan(&device.ID, &device.PhysicalDeviceID, &device.AccountID, &device.SIMSlot, &device.Carrier,
@@ -46,6 +46,7 @@ func (s *DeviceService) GetByID(ctx context.Context, id string) (*models.Device,
 		&device.LastPingAt, &device.LastPongAt, &device.MessagesSentCount, &device.LastUsedAt,
 		&device.MQTTCredentialID, &device.ReliabilityScore, &device.ReputationScore,
 		&device.ComplaintCount, &device.BlockEventCount, &device.FraudFlagWeight,
+		&device.Name,
 		&device.SuccessRate24h, &device.UptimeRatio24h, &device.AvgLatencyMs,
 		&device.CountryCode, &device.Region, &device.MaxPerMinute, &device.MaxPerHour,
 		&device.IsolatedPoolID, &device.CircuitBreakerState, &device.CreatedAt, &device.UpdatedAt)
@@ -62,7 +63,7 @@ func (s *DeviceService) ListByAccount(ctx context.Context, accountID string) ([]
 		`SELECT id, physical_device_id, account_id, sim_slot, carrier, status, sim_health_status,
 		        health_trend_slope, last_seen, last_ping_at, last_pong_at, messages_sent_count, last_used_at,
 		        mqtt_credential_id, reliability_score, reputation_score, complaint_count, block_event_count,
-		        fraud_flag_weight, success_rate_24h, uptime_ratio_24h, avg_latency_ms, country_code, region,
+		        fraud_flag_weight, name, success_rate_24h, uptime_ratio_24h, avg_latency_ms, country_code, region,
 		        max_per_minute, max_per_hour, isolated_pool_id, circuit_breaker_state, created_at, updated_at
 		 FROM devices WHERE account_id = $1 ORDER BY created_at DESC`, accountID)
 	if err != nil {
@@ -78,6 +79,7 @@ func (s *DeviceService) ListByAccount(ctx context.Context, accountID string) ([]
 			&d.LastPingAt, &d.LastPongAt, &d.MessagesSentCount, &d.LastUsedAt,
 			&d.MQTTCredentialID, &d.ReliabilityScore, &d.ReputationScore,
 			&d.ComplaintCount, &d.BlockEventCount, &d.FraudFlagWeight,
+			&d.Name,
 			&d.SuccessRate24h, &d.UptimeRatio24h, &d.AvgLatencyMs,
 			&d.CountryCode, &d.Region, &d.MaxPerMinute, &d.MaxPerHour,
 			&d.IsolatedPoolID, &d.CircuitBreakerState, &d.CreatedAt, &d.UpdatedAt); err != nil {
@@ -93,7 +95,7 @@ func (s *DeviceService) ListAll(ctx context.Context) ([]models.Device, error) {
 		`SELECT id, physical_device_id, account_id, sim_slot, carrier, status, sim_health_status,
 		        health_trend_slope, last_seen, last_ping_at, last_pong_at, messages_sent_count, last_used_at,
 		        mqtt_credential_id, reliability_score, reputation_score, complaint_count, block_event_count,
-		        fraud_flag_weight, success_rate_24h, uptime_ratio_24h, avg_latency_ms, country_code, region,
+		        fraud_flag_weight, name, success_rate_24h, uptime_ratio_24h, avg_latency_ms, country_code, region,
 		        max_per_minute, max_per_hour, isolated_pool_id, circuit_breaker_state, created_at, updated_at
 		 FROM devices ORDER BY created_at DESC`)
 	if err != nil {
@@ -109,6 +111,7 @@ func (s *DeviceService) ListAll(ctx context.Context) ([]models.Device, error) {
 			&d.LastPingAt, &d.LastPongAt, &d.MessagesSentCount, &d.LastUsedAt,
 			&d.MQTTCredentialID, &d.ReliabilityScore, &d.ReputationScore,
 			&d.ComplaintCount, &d.BlockEventCount, &d.FraudFlagWeight,
+			&d.Name,
 			&d.SuccessRate24h, &d.UptimeRatio24h, &d.AvgLatencyMs,
 			&d.CountryCode, &d.Region, &d.MaxPerMinute, &d.MaxPerHour,
 			&d.IsolatedPoolID, &d.CircuitBreakerState, &d.CreatedAt, &d.UpdatedAt); err != nil {
@@ -123,7 +126,7 @@ func (s *DeviceService) GetEligibleDevices(ctx context.Context, opts DeviceFilte
 	query := `SELECT id, physical_device_id, account_id, sim_slot, carrier, status, sim_health_status,
 		health_trend_slope, last_seen, last_ping_at, last_pong_at, messages_sent_count, last_used_at,
 		mqtt_credential_id, reliability_score, reputation_score, complaint_count, block_event_count,
-		fraud_flag_weight, success_rate_24h, uptime_ratio_24h, avg_latency_ms, country_code, region,
+		fraud_flag_weight, name, success_rate_24h, uptime_ratio_24h, avg_latency_ms, country_code, region,
 		max_per_minute, max_per_hour, isolated_pool_id, circuit_breaker_state, created_at, updated_at
 		FROM devices WHERE 1=1`
 
@@ -178,6 +181,7 @@ func (s *DeviceService) GetEligibleDevices(ctx context.Context, opts DeviceFilte
 			&d.LastPingAt, &d.LastPongAt, &d.MessagesSentCount, &d.LastUsedAt,
 			&d.MQTTCredentialID, &d.ReliabilityScore, &d.ReputationScore,
 			&d.ComplaintCount, &d.BlockEventCount, &d.FraudFlagWeight,
+			&d.Name,
 			&d.SuccessRate24h, &d.UptimeRatio24h, &d.AvgLatencyMs,
 			&d.CountryCode, &d.Region, &d.MaxPerMinute, &d.MaxPerHour,
 			&d.IsolatedPoolID, &d.CircuitBreakerState, &d.CreatedAt, &d.UpdatedAt); err != nil {
@@ -221,6 +225,18 @@ func (s *DeviceService) RecordSent(ctx context.Context, id string) error {
 	_, err := s.db.Exec(ctx,
 		`UPDATE devices SET messages_sent_count = messages_sent_count + 1, last_used_at=$1, updated_at=NOW() WHERE id=$2`,
 		now, id)
+	return err
+}
+
+func (s *DeviceService) UpdateName(ctx context.Context, id string, name string) error {
+	_, err := s.db.Exec(ctx,
+		`UPDATE devices SET name=$1, updated_at=NOW() WHERE id=$2`, name, id)
+	return err
+}
+
+func (s *DeviceService) Delete(ctx context.Context, id string) error {
+	_, err := s.db.Exec(ctx,
+		`DELETE FROM devices WHERE id=$1`, id)
 	return err
 }
 

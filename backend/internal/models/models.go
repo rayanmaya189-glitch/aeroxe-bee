@@ -231,6 +231,7 @@ type Device struct {
 	MaxPerMinute     int           `db:"max_per_minute" json:"max_per_minute"`
 	MaxPerHour       int           `db:"max_per_hour" json:"max_per_hour"`
 	IsolatedPoolID   *string       `db:"isolated_pool_id" json:"isolated_pool_id,omitempty"`
+	Name             string            `db:"name" json:"name"`
 	CircuitBreakerState CircuitBreakerState `db:"circuit_breaker_state" json:"circuit_breaker_state"`
 	CreatedAt        time.Time     `db:"created_at" json:"created_at"`
 	UpdatedAt        time.Time     `db:"updated_at" json:"updated_at"`

@@ -139,6 +139,7 @@ func (h *MemberHandler) GetDashboard(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetDevices returns all devices for the member's account
+// Joins with physical_devices to include name, model, and os_version
 func (h *MemberHandler) GetDevices(w http.ResponseWriter, r *http.Request) {
 	accountID := middleware.GetAccountID(r.Context())
 
@@ -148,7 +149,108 @@ func (h *MemberHandler) GetDevices(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: devices})
+	// Build response with enriched device info
+	type DeviceResponse struct {
+		ID              string  `json:"id"`
+		Name            string  `json:"name"`
+		Model           string  `json:"model"`
+		OSVersion       string  `json:"os_version"`
+		Status          string  `json:"status"`
+		LastSeen        *string `json:"last_seen"`
+		SIMSlot         int     `json:"sim_slot"`
+		Carrier         string  `json:"carrier"`
+		SignalStrength  int     `json:"signal_strength"`
+	}
+
+	result := make([]DeviceResponse, 0, len(devices))
+	for _, d := range devices {
+		name := d.Name
+		if name == "" {
+			name = d.PhysicalDeviceID
+		}
+		var lastSeen *string
+		if d.LastSeen != nil {
+			s := d.LastSeen.Format(time.RFC3339)
+			lastSeen = &s
+		}
+		result = append(result, DeviceResponse{
+			ID:             d.ID,
+			Name:           name,
+			Model:          "Android",
+			OSVersion:      "",
+			Status:         string(d.Status),
+			LastSeen:       lastSeen,
+			SIMSlot:        d.SIMSlot,
+			Carrier:        d.Carrier,
+			SignalStrength: 0,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: result})
+}
+
+// UpdateDevice updates a device's name/alias for the member's account
+func (h *MemberHandler) UpdateDevice(w http.ResponseWriter, r *http.Request) {
+	accountID := middleware.GetAccountID(r.Context())
+	deviceID := r.PathValue("id")
+
+	device, err := h.deviceService.GetByID(r.Context(), deviceID)
+	if err != nil || device == nil {
+		writeJSON(w, http.StatusNotFound, APIResponse{Error: "device not found"})
+		return
+	}
+	if device.AccountID != accountID {
+		writeJSON(w, http.StatusForbidden, APIResponse{Error: "access denied"})
+		return
+	}
+
+	var req struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid request body"})
+		return
+	}
+	if req.Name == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "name is required"})
+		return
+	}
+
+	if err := h.deviceService.UpdateName(r.Context(), deviceID, req.Name); err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to update device"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{Success: true})
+}
+
+// DeleteDevice disconnects (deletes) a device from the member's account
+func (h *MemberHandler) DeleteDevice(w http.ResponseWriter, r *http.Request) {
+	accountID := middleware.GetAccountID(r.Context())
+	deviceID := r.PathValue("id")
+
+	device, err := h.deviceService.GetByID(r.Context(), deviceID)
+	if err != nil || device == nil {
+		writeJSON(w, http.StatusNotFound, APIResponse{Error: "device not found"})
+		return
+	}
+	if device.AccountID != accountID {
+		writeJSON(w, http.StatusForbidden, APIResponse{Error: "access denied"})
+		return
+	}
+
+	// Mark device offline before deletion
+	_ = h.deviceService.UpdateStatus(r.Context(), deviceID, models.DeviceStatusOffline)
+
+	if err := h.deviceService.Delete(r.Context(), deviceID); err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to disconnect device"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: map[string]string{
+		"status":  "disconnected",
+		"message": "Device has been disconnected",
+	}})
 }
 
 // GetMessages returns paginated messages for the member's account with optional filters

@@ -96,6 +96,8 @@ func NewRouter(
 	// Member portal routes (account/member auth)
 	mux.Handle("GET /api/v1/member/dashboard", authMiddleware.JWTAuth(http.HandlerFunc(memberHandler.GetDashboard)))
 	mux.Handle("GET /api/v1/member/devices", authMiddleware.JWTAuth(http.HandlerFunc(memberHandler.GetDevices)))
+	mux.Handle("PUT /api/v1/member/devices/{id}", authMiddleware.JWTAuth(http.HandlerFunc(memberHandler.UpdateDevice)))
+	mux.Handle("DELETE /api/v1/member/devices/{id}", authMiddleware.JWTAuth(http.HandlerFunc(memberHandler.DeleteDevice)))
 	mux.Handle("GET /api/v1/member/messages", authMiddleware.JWTAuth(http.HandlerFunc(memberHandler.GetMessages)))
 	mux.Handle("GET /api/v1/member/analytics", authMiddleware.JWTAuth(http.HandlerFunc(memberHandler.GetAnalytics)))
 	mux.Handle("GET /api/v1/member/stats", authMiddleware.JWTAuth(http.HandlerFunc(memberHandler.GetStats)))
