@@ -1,0 +1,248 @@
+package handlers
+
+import (
+	"encoding/json"
+	"net/http"
+	"time"
+
+	"github.com/textbee/backend/internal/api/middleware"
+	"github.com/textbee/backend/internal/models"
+	"github.com/textbee/backend/internal/services"
+	"golang.org/x/crypto/bcrypt"
+)
+
+type AuthHandler struct {
+	accountService *services.AccountService
+	adminService   *services.AdminService
+	authMiddleware *middleware.AuthMiddleware
+}
+
+func NewAuthHandler(accountService *services.AccountService, adminService *services.AdminService, authMiddleware *middleware.AuthMiddleware) *AuthHandler {
+	return &AuthHandler{
+		accountService: accountService,
+		adminService:   adminService,
+		authMiddleware: authMiddleware,
+	}
+}
+
+type RegisterRequest struct {
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type APIResponse struct {
+	Success bool        `json:"success"`
+	Data    interface{} `json:"data,omitempty"`
+	Error   string      `json:"error,omitempty"`
+}
+
+func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
+	var req RegisterRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid request body"})
+		return
+	}
+
+	if req.Name == "" || req.Email == "" || req.Password == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "name, email, and password are required"})
+		return
+	}
+
+	if len(req.Password) < 8 {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "password must be at least 8 characters"})
+		return
+	}
+
+	existing, err := h.accountService.GetByEmail(r.Context(), req.Email)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "database error checking email"})
+		return
+	}
+	if existing != nil {
+		writeJSON(w, http.StatusConflict, APIResponse{Error: "email already registered"})
+		return
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to hash password"})
+		return
+	}
+
+	account, err := h.accountService.Create(r.Context(), req.Name, req.Email, string(hash))
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to create account"})
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, APIResponse{
+		Success: true,
+		Data: map[string]interface{}{
+			"id":    account.ID,
+			"name":  account.Name,
+			"email": account.Email,
+			"plan":  account.PlanID,
+		},
+	})
+}
+
+func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid request body"})
+		return
+	}
+
+	account, err := h.accountService.GetByEmail(r.Context(), req.Email)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "database error"})
+		return
+	}
+	if account == nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Error: "invalid email or password"})
+		return
+	}
+
+	if account.Status != models.AccountStatusActive {
+		writeJSON(w, http.StatusForbidden, APIResponse{Error: "account is " + string(account.Status)})
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(account.PasswordHash), []byte(req.Password)); err != nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Error: "invalid email or password"})
+		return
+	}
+
+	token, err := h.authMiddleware.GenerateToken(account.ID, account.Email, false, 15*time.Minute)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "token generation failed"})
+		return
+	}
+
+	refresh, err := h.authMiddleware.GenerateToken(account.ID, account.Email, false, 7*24*time.Hour)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "refresh token generation failed"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Data: map[string]interface{}{
+			"access_token":  token,
+			"refresh_token": refresh,
+			"token_type":    "Bearer",
+			"expires_in":    900,
+		},
+	})
+}
+
+func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
+	accountID := middleware.GetAccountID(r.Context())
+	account, err := h.accountService.GetByID(r.Context(), accountID)
+	if err != nil || account == nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Error: "account not found"})
+		return
+	}
+
+	token, err := h.authMiddleware.GenerateToken(account.ID, account.Email, false, 15*time.Minute)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "token generation failed"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Data: map[string]interface{}{
+			"access_token": token,
+			"token_type":   "Bearer",
+			"expires_in":   900,
+		},
+	})
+}
+
+func (h *AuthHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
+	accountID := middleware.GetAccountID(r.Context())
+	account, err := h.accountService.GetByID(r.Context(), accountID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "database error"})
+		return
+	}
+	if account == nil {
+		writeJSON(w, http.StatusNotFound, APIResponse{Error: "account not found"})
+		return
+	}
+
+	isAdmin := false
+	adminAccounts, err := h.adminService.ListAccounts(r.Context(), 0, 1000)
+	if err == nil {
+		for _, a := range adminAccounts {
+			if a.ID == accountID {
+				isAdmin = true
+				break
+			}
+		}
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Data: map[string]interface{}{
+			"id":        account.ID,
+			"name":      account.Name,
+			"email":     account.Email,
+			"plan":      account.PlanID,
+			"status":    account.Status,
+			"verified":  account.Verified,
+			"risk_score": account.RiskScore,
+			"created_at": account.CreatedAt,
+			"is_admin":  isAdmin,
+		},
+	})
+}
+
+func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
+	accountID := middleware.GetAccountID(r.Context())
+	var req struct {
+		OldPassword string `json:"old_password"`
+		NewPassword string `json:"new_password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid request"})
+		return
+	}
+
+	account, err := h.accountService.GetByID(r.Context(), accountID)
+	if err != nil || account == nil {
+		writeJSON(w, http.StatusNotFound, APIResponse{Error: "account not found"})
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(account.PasswordHash), []byte(req.OldPassword)); err != nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Error: "incorrect password"})
+		return
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to hash password"})
+		return
+	}
+
+	account.PasswordHash = string(hash)
+	if err := h.accountService.Update(r.Context(), account); err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to update password"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{Success: true})
+}
+
+func writeJSON(w http.ResponseWriter, status int, data interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(data)
+}
+

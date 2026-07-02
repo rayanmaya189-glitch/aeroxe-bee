@@ -1,0 +1,211 @@
+# =========================
+
+# 🟢 Go Backend
+
+# =========================
+
+bin/
+build/
+dist/
+tmp/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.prof
+*.cover
+coverage.out
+
+go.work
+go.work.sum
+
+# Dependencies
+
+vendor/
+backend/vendor/
+
+# =========================
+
+# 🔐 Environment & Secrets
+
+# =========================
+
+.env
+.env.*
+!.env.example
+!.env.local.example
+
+# =========================
+
+# 🧠 IDE & Editor Files
+
+# =========================
+
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# =========================
+
+# 🐳 Docker
+
+# =========================
+
+docker-compose.override.yml
+docker-compose.local.yml
+*.log
+
+# =========================
+
+# 🗃 Logs & Runtime Files
+
+# =========================
+
+logs/
+*.log
+*.pid
+*.seed
+
+# =========================
+
+# 🧪 Testing & Coverage
+
+# =========================
+
+coverage/
+*.coverprofile
+*.cov
+coverage.out
+
+# =========================
+
+# 🗄 Database / Local Dev
+
+# =========================
+
+*.db
+*.sqlite
+*.sqlite3
+
+# =========================
+
+# 📂 Migrations (Generated)
+
+# =========================
+
+backend/migrations/*.up.sql
+backend/migrations/*.down.sql
+
+# =========================
+
+# ⚛️ React Frontend (Vite + TS)
+
+# =========================
+
+node_modules/
+frontend/node_modules/
+
+# Build outputs
+
+dist/
+frontend/dist/
+build/
+frontend/build/
+
+# Vite cache
+
+.vite/
+frontend/.vite/
+
+# Logs
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Env files
+
+frontend/.env
+frontend/.env.*
+
+# TypeScript
+
+*.tsbuildinfo
+
+# =========================
+
+# 🤖 Android (Kotlin + Jetpack)
+
+# =========================
+
+# Gradle
+
+.gradle/
+**/build/
+android/.gradle/
+android/build/
+gradle/
+
+# Local config
+
+local.properties
+
+# Android Studio
+
+*.iml
+.idea/
+android/.idea/
+
+# Keystore & Signing
+
+*.jks
+*.keystore
+*.keystore.properties
+
+# APK / AAB
+
+*.apk
+*.aab
+
+# Logs
+
+*.log
+
+# Captures
+
+captures/
+
+# NDK
+
+.externalNativeBuild/
+.cxx/
+
+# =========================
+
+# ⚙️ OS / Misc
+
+# =========================
+
+*.bak
+*.tmp
+*.temp
+
+# =========================
+
+# 🚀 Optional (Uncomment if needed)
+
+# =========================
+
+# .air.toml              # Go hot reload
+
+# .cache/                # general cache
+
+# coverage.html          # coverage UI

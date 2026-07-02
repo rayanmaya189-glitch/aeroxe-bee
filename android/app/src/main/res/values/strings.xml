@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AeroXe Bee</string>
+    <string name="channel_sms">SMS Service</string>
+    <string name="channel_sms_desc">Background SMS sending service</string>
+    <string name="sending_sms">Sending SMS…</string>
+</resources>

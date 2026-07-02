@@ -1,0 +1,73 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: textbee
+      POSTGRES_PASSWORD: textbee
+      POSTGRES_DB: textbee
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U textbee"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mqttdata:/mosquitto/data
+
+  backend:
+    build: .
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    environment:
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: 8080
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: textbee
+      DB_PASSWORD: textbee
+      DB_NAME: textbee
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MQTT_BROKER: mosquitto
+      MQTT_PORT: 1883
+      JWT_SECRET: change-jwt-secret-in-production
+      ENCRYPTION_MASTER_KEY: change-encryption-key-in-production-32bytes!
+      APP_ENV: development
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+
+volumes:
+  pgdata:
+  redisdata:
+  mqttdata:
