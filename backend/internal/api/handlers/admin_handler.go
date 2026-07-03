@@ -220,13 +220,62 @@ func (h *AdminHandler) ResetCircuitBreaker(w http.ResponseWriter, r *http.Reques
 	writeJSON(w, http.StatusOK, APIResponse{Success: true})
 }
 
+func (h *AdminHandler) ListAllTemplates(w http.ResponseWriter, r *http.Request) {
+	status := r.URL.Query().Get("status")
+	dateFrom := r.URL.Query().Get("date_from")
+	dateTo := r.URL.Query().Get("date_to")
+
+	templates, err := h.adminService.ListAllTemplates(r.Context(), status, dateFrom, dateTo)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to list templates"})
+		return
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: templates})
+}
+
+func (h *AdminHandler) ListAllWebhooks(w http.ResponseWriter, r *http.Request) {
+	dateFrom := r.URL.Query().Get("date_from")
+	dateTo := r.URL.Query().Get("date_to")
+
+	webhooks, err := h.adminService.ListAllWebhooks(r.Context(), dateFrom, dateTo)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to list webhooks"})
+		return
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: webhooks})
+}
+
 func (h *AdminHandler) GetDeadLetters(w http.ResponseWriter, r *http.Request) {
-	letters, err := h.adminService.GetDeadLetters(r.Context(), 50)
+	page := parseIntOrDefault(r.URL.Query().Get("page"), 1)
+	pageSize := parseIntOrDefault(r.URL.Query().Get("pageSize"), 20)
+	if pageSize > 100 {
+		pageSize = 100
+	}
+	offset := (page - 1) * pageSize
+	dateFrom := r.URL.Query().Get("date_from")
+	dateTo := r.URL.Query().Get("date_to")
+
+	letters, total, err := h.adminService.GetDeadLetters(r.Context(), offset, pageSize, dateFrom, dateTo)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to get dead letters"})
 		return
 	}
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: letters})
+
+	totalPages := int(total) / pageSize
+	if int(total)%pageSize > 0 {
+		totalPages++
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Data: map[string]interface{}{
+			"data":        letters,
+			"total":       total,
+			"page":        page,
+			"page_size":   pageSize,
+			"total_pages": totalPages,
+		},
+	})
 }
 
 func (h *AdminHandler) RetryDeadLetter(w http.ResponseWriter, r *http.Request) {

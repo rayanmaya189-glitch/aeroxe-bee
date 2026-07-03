@@ -90,6 +90,7 @@ func NewRouter(
 
 	// Webhook routes (admin only)
 	mux.Handle("GET /api/v1/webhooks", authMiddleware.AdminAuth(http.HandlerFunc(webhookHandler.List)))
+	mux.Handle("GET /api/v1/admin/webhooks", authMiddleware.AdminAuth(http.HandlerFunc(adminHandler.ListAllWebhooks)))
 	mux.Handle("POST /api/v1/webhooks", authMiddleware.AdminAuth(http.HandlerFunc(webhookHandler.Create)))
 	mux.Handle("GET /api/v1/webhooks/{id}", authMiddleware.AdminAuth(http.HandlerFunc(webhookHandler.Get)))
 	mux.Handle("PUT /api/v1/webhooks/{id}", authMiddleware.AdminAuth(http.HandlerFunc(webhookHandler.Update)))
@@ -147,6 +148,7 @@ func NewRouter(
 	mux.Handle("GET /api/v1/admin/dead-letters", authMiddleware.AdminAuth(http.HandlerFunc(adminHandler.GetDeadLetters)))
 	mux.Handle("POST /api/v1/admin/dead-letters/{id}/retry", authMiddleware.AdminAuth(http.HandlerFunc(adminHandler.RetryDeadLetter)))
 	mux.Handle("GET /api/v1/admin/templates/pending", authMiddleware.AdminAuth(http.HandlerFunc(adminHandler.GetPendingTemplates)))
+	mux.Handle("GET /api/v1/admin/templates", authMiddleware.AdminAuth(http.HandlerFunc(adminHandler.ListAllTemplates)))
 	mux.Handle("POST /api/v1/admin/templates/{id}/approve", authMiddleware.AdminAuth(http.HandlerFunc(adminHandler.ApproveTemplate)))
 	mux.Handle("POST /api/v1/admin/templates/{id}/reject", authMiddleware.AdminAuth(http.HandlerFunc(adminHandler.RejectTemplate)))
 	mux.Handle("GET /api/v1/admin/fraud-flags", authMiddleware.AdminAuth(http.HandlerFunc(fraudHandler.ListFlags)))

@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"time"
 )
 
@@ -471,14 +472,14 @@ type QueueDeadLetter struct {
 // PaymentConfig represents an admin-configurable payment method
 
 type PaymentConfig struct {
-	ID        string    `db:"id" json:"id"`
-	Method    string    `db:"method" json:"method"`
-	Label     string    `db:"label" json:"label"`
-	Details   []byte    `db:"details" json:"details"` // JSONB
-	Enabled   bool      `db:"enabled" json:"enabled"`
-	CreatedBy *string   `db:"created_by" json:"created_by,omitempty"`
-	CreatedAt time.Time `db:"created_at" json:"created_at"`
-	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
+	ID        string          `db:"id" json:"id"`
+	Method    string          `db:"method" json:"method"`
+	Label     string          `db:"label" json:"label"`
+	Details   json.RawMessage `db:"details" json:"details"` // JSONB
+	Enabled   bool            `db:"enabled" json:"enabled"`
+	CreatedBy *string         `db:"created_by" json:"created_by,omitempty"`
+	CreatedAt time.Time       `db:"created_at" json:"created_at"`
+	UpdatedAt time.Time       `db:"updated_at" json:"updated_at"`
 }
 
 // PaymentRequest represents a member's payment/recharge request

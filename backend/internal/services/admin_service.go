@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/textbee/backend/internal/models"
@@ -166,19 +167,22 @@ func (s *AdminService) GetAnalytics(ctx context.Context, startDate, endDate stri
 	return analytics, nil
 }
 
-func (s *AdminService) GetPendingTemplateApprovals(ctx context.Context) ([]models.Template, error) {
+func (s *AdminService) GetPendingTemplateApprovals(ctx context.Context) ([]models.TemplateWithAccount, error) {
 	rows, err := s.db.Query(ctx,
-		`SELECT id, account_id, name, body, variables, approval_status, approved_at, created_at
-		 FROM templates WHERE approval_status = 'pending' ORDER BY created_at ASC`)
+		`SELECT t.id, t.account_id, COALESCE(a.name, '') as account_name,
+		        t.name, t.body, t.variables, t.approval_status, t.approved_at, t.created_at
+	 FROM templates t
+	 LEFT JOIN accounts a ON t.account_id = a.id
+	 WHERE t.approval_status = 'pending' ORDER BY t.created_at ASC`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var templates []models.Template
+	var templates []models.TemplateWithAccount
 	for rows.Next() {
-		var t models.Template
-		if err := rows.Scan(&t.ID, &t.AccountID, &t.Name, &t.Body, &t.Variables,
+		var t models.TemplateWithAccount
+		if err := rows.Scan(&t.ID, &t.AccountID, &t.AccountName, &t.Name, &t.Body, &t.Variables,
 			&t.ApprovalStatus, &t.ApprovedAt, &t.CreatedAt); err != nil {
 			return nil, err
 		}
@@ -187,12 +191,87 @@ func (s *AdminService) GetPendingTemplateApprovals(ctx context.Context) ([]model
 	return templates, nil
 }
 
-func (s *AdminService) GetDeadLetters(ctx context.Context, limit int) ([]models.QueueDeadLetter, error) {
-	rows, err := s.db.Query(ctx,
-		`SELECT id, stream, message_id, payload, fail_reason, failed_at, retry_count
-		 FROM queue_dead_letters ORDER BY failed_at DESC LIMIT $1`, limit)
+// ListAllTemplates returns all templates with account names (admin only)
+func (s *AdminService) ListAllTemplates(ctx context.Context, status string, dateFrom, dateTo string) ([]models.TemplateWithAccount, error) {
+	conditions := []string{"1=1"}
+	args := []interface{}{}
+	argIdx := 1
+
+	if status != "" {
+		conditions = append(conditions, fmt.Sprintf("t.approval_status = $%d", argIdx))
+		args = append(args, status)
+		argIdx++
+	}
+	if dateFrom != "" {
+		conditions = append(conditions, fmt.Sprintf("t.created_at >= $%d", argIdx))
+		args = append(args, dateFrom)
+		argIdx++
+	}
+	if dateTo != "" {
+		conditions = append(conditions, fmt.Sprintf("t.created_at <= $%d::date + INTERVAL '1 day'", argIdx))
+		args = append(args, dateTo)
+		argIdx++
+	}
+
+	query := fmt.Sprintf(
+		`SELECT t.id, t.account_id, COALESCE(a.name, '') as account_name,
+		        t.name, t.body, t.variables, t.approval_status, t.approved_at, t.created_at
+	 FROM templates t
+	 LEFT JOIN accounts a ON t.account_id = a.id
+	 WHERE %s
+	 ORDER BY t.created_at DESC`, strings.Join(conditions, " AND "))
+
+	rows, err := s.db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
+	}
+	defer rows.Close()
+
+	var templates []models.TemplateWithAccount
+	for rows.Next() {
+		var t models.TemplateWithAccount
+		if err := rows.Scan(&t.ID, &t.AccountID, &t.AccountName, &t.Name, &t.Body, &t.Variables,
+			&t.ApprovalStatus, &t.ApprovedAt, &t.CreatedAt); err != nil {
+			return nil, err
+		}
+		templates = append(templates, t)
+	}
+	return templates, nil
+}
+
+func (s *AdminService) GetDeadLetters(ctx context.Context, offset, limit int, dateFrom, dateTo string) ([]models.QueueDeadLetter, int64, error) {
+	conditions := []string{"1=1"}
+	args := []interface{}{}
+	argIdx := 1
+
+	if dateFrom != "" {
+		conditions = append(conditions, fmt.Sprintf("failed_at >= $%d", argIdx))
+		args = append(args, dateFrom)
+		argIdx++
+	}
+	if dateTo != "" {
+		conditions = append(conditions, fmt.Sprintf("failed_at <= $%d::date + INTERVAL '1 day'", argIdx))
+		args = append(args, dateTo)
+		argIdx++
+	}
+
+	whereClause := strings.Join(conditions, " AND ")
+
+	var total int64
+	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM queue_dead_letters WHERE %s`, whereClause)
+	if err := s.db.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	query := fmt.Sprintf(
+		`SELECT id, stream, message_id, payload, fail_reason, failed_at, retry_count
+	 FROM queue_dead_letters WHERE %s
+	 ORDER BY failed_at DESC LIMIT $%d OFFSET $%d`, whereClause, argIdx, argIdx+1)
+	args = append(args, limit, offset)
+
+	rows, err := s.db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, 0, err
 	}
 	defer rows.Close()
 
@@ -200,11 +279,54 @@ func (s *AdminService) GetDeadLetters(ctx context.Context, limit int) ([]models.
 	for rows.Next() {
 		var l models.QueueDeadLetter
 		if err := rows.Scan(&l.ID, &l.Stream, &l.MessageID, &l.Payload, &l.FailReason, &l.FailedAt, &l.RetryCount); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		letters = append(letters, l)
 	}
-	return letters, nil
+	return letters, total, nil
+}
+
+// ListAllWebhooks returns all webhooks with account names (admin only)
+func (s *AdminService) ListAllWebhooks(ctx context.Context, dateFrom, dateTo string) ([]models.WebhookWithAccount, error) {
+	conditions := []string{"1=1"}
+	args := []interface{}{}
+	argIdx := 1
+
+	if dateFrom != "" {
+		conditions = append(conditions, fmt.Sprintf("w.created_at >= $%d", argIdx))
+		args = append(args, dateFrom)
+		argIdx++
+	}
+	if dateTo != "" {
+		conditions = append(conditions, fmt.Sprintf("w.created_at <= $%d::date + INTERVAL '1 day'", argIdx))
+		args = append(args, dateTo)
+		argIdx++
+	}
+
+	query := fmt.Sprintf(
+		`SELECT w.id, w.account_id, COALESCE(a.name, '') as account_name,
+		        w.url, w.events, w.secret, w.active, w.last_rotated_at, w.created_at
+	 FROM webhooks w
+	 LEFT JOIN accounts a ON w.account_id = a.id
+	 WHERE %s
+	 ORDER BY w.created_at DESC`, strings.Join(conditions, " AND "))
+
+	rows, err := s.db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var webhooks []models.WebhookWithAccount
+	for rows.Next() {
+		var w models.WebhookWithAccount
+		if err := rows.Scan(&w.ID, &w.AccountID, &w.AccountName, &w.URL, &w.Events, &w.Secret,
+			&w.Active, &w.LastRotatedAt, &w.CreatedAt); err != nil {
+			return nil, err
+		}
+		webhooks = append(webhooks, w)
+	}
+	return webhooks, nil
 }
 
 func (s *AdminService) RecordAnalyticsDaily(ctx context.Context) error {

@@ -641,18 +641,15 @@ func (h *MemberHandler) DeleteWebhook(w http.ResponseWriter, r *http.Request) {
 // ─── Member Preferences & KYC ───────────────────────────────────────
 
 func (h *MemberHandler) GetPreferences(w http.ResponseWriter, r *http.Request) {
-	accountID := middleware.GetAccountID(r.Context())
-	// For now return defaults; preferences service needs pool injection
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
 		Data: map[string]interface{}{
-			"email_notifications":  true,
-			"sms_notifications":    true,
+			"email_notifications":   true,
+			"sms_notifications":     true,
 			"webhook_notifications": true,
-			"billing_alerts":       true,
-			"security_alerts":      true,
-			"two_fa_enabled":       false,
-			"account_id":           accountID,
+			"billing_alerts":        true,
+			"security_alerts":       true,
+			"two_fa_enabled":        false,
 		},
 	})
 }
