@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/utils/cn'
+import { CheckCircle, XCircle, AlertTriangle, Info, X } from 'lucide-react'
 
 type ToastVariant = 'success' | 'error' | 'warning' | 'info'
 
@@ -24,33 +26,17 @@ export function useToast() {
 }
 
 const variantStyles: Record<ToastVariant, string> = {
-  success: 'bg-success-600 text-white',
-  error: 'bg-danger-600 text-white',
-  warning: 'bg-warning-600 text-white',
-  info: 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900',
+  success: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400',
+  error: 'border-red-500/20 bg-red-500/10 text-red-400',
+  warning: 'border-amber-500/20 bg-amber-500/10 text-amber-400',
+  info: 'border-blue-500/20 bg-blue-500/10 text-blue-400',
 }
 
 const icons: Record<ToastVariant, React.ReactNode> = {
-  success: (
-    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-    </svg>
-  ),
-  error: (
-    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-    </svg>
-  ),
-  warning: (
-    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-    </svg>
-  ),
-  info: (
-    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
-    </svg>
-  ),
+  success: <CheckCircle className="h-4 w-4" />,
+  error: <XCircle className="h-4 w-4" />,
+  warning: <AlertTriangle className="h-4 w-4" />,
+  info: <Info className="h-4 w-4" />,
 }
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
@@ -77,26 +63,30 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
       {toasts.length > 0 && (
         <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
-          {toasts.map((toast) => (
-            <div
-              key={toast.id}
-              className={cn(
-                'animate-slideUp flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium shadow-lg',
-                variantStyles[toast.variant],
-              )}
-            >
-              {icons[toast.variant]}
-              <span>{toast.message}</span>
-              <button
-                onClick={() => removeToast(toast.id)}
-                className="ml-2 rounded p-0.5 hover:bg-white/20"
+          <AnimatePresence>
+            {toasts.map((toast) => (
+              <motion.div
+                key={toast.id}
+                initial={{ opacity: 0, y: 20, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 20, scale: 0.96 }}
+                transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                className={cn(
+                  'flex items-center gap-3 rounded-lg border px-4 py-3 text-sm font-medium shadow-xl backdrop-blur-xl',
+                  variantStyles[toast.variant],
+                )}
               >
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          ))}
+                {icons[toast.variant]}
+                <span>{toast.message}</span>
+                <button
+                  onClick={() => removeToast(toast.id)}
+                  className="ml-2 rounded p-0.5 hover:bg-white/10"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       )}
     </>

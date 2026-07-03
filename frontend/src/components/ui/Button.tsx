@@ -14,15 +14,15 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    'bg-primary-600 text-white shadow-sm hover:bg-primary-700 focus-visible:ring-primary-600 active:bg-primary-800',
+    'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:brightness-110 focus-visible:ring-blue-500 active:brightness-90',
   secondary:
-    'bg-white text-gray-700 border border-gray-300 shadow-sm hover:bg-gray-50 focus-visible:ring-gray-300 active:bg-gray-100 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700 dark:active:bg-gray-600',
+    'bg-white/[0.06] text-gray-300 border border-white/[0.08] hover:bg-white/[0.1] hover:text-white focus-visible:ring-gray-400 active:bg-white/[0.04]',
   ghost:
-    'text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus-visible:ring-gray-300 active:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100 dark:active:bg-gray-700',
+    'text-gray-400 hover:bg-white/5 hover:text-gray-200 focus-visible:ring-gray-400 active:bg-white/[0.08]',
   danger:
-    'bg-danger-600 text-white shadow-sm hover:bg-danger-700 focus-visible:ring-danger-600 active:bg-danger-800',
+    'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-lg shadow-red-500/25 hover:shadow-red-500/40 hover:brightness-110 focus-visible:ring-red-500 active:brightness-90',
   success:
-    'bg-success-600 text-white shadow-sm hover:bg-success-700 focus-visible:ring-success-600 active:bg-success-800',
+    'bg-gradient-to-r from-emerald-600 to-green-600 text-white shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:brightness-110 focus-visible:ring-emerald-500 active:brightness-90',
 }
 
 const sizeStyles: Record<ButtonSize, string> = {
@@ -52,9 +52,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={disabled || loading}
         className={cn(
-          'inline-flex items-center justify-center font-medium transition-all duration-150',
-          'outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
-          'dark:focus-visible:ring-offset-gray-950',
+          'inline-flex items-center justify-center font-medium transition-all duration-200',
+          'outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
           'disabled:cursor-not-allowed disabled:opacity-50',
           variantStyles[variant],
           sizeStyles[size],

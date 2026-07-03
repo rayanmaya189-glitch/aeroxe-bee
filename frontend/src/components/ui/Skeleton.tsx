@@ -13,7 +13,7 @@ export function Skeleton({ className, variant = 'text', width, height }: Skeleto
   return (
     <div
       className={cn(
-        'animate-shimmer rounded bg-gray-200 dark:bg-gray-800',
+        'animate-shimmer rounded bg-white/[0.06]',
         variant === 'text' && 'h-4 w-full rounded',
         variant === 'circular' && 'rounded-full',
         variant === 'rectangular' && 'rounded-xl',
@@ -26,7 +26,7 @@ export function Skeleton({ className, variant = 'text', width, height }: Skeleto
 
 export function CardSkeleton({ className }: { className?: string }) {
   return (
-    <div className={cn('rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900', className)}>
+    <div className={cn('rounded-xl border border-white/[0.06] bg-white/[0.03] p-5', className)}>
       <div className="space-y-3">
         <Skeleton className="h-4 w-1/3" />
         <Skeleton className="h-8 w-1/2" />
@@ -38,8 +38,8 @@ export function CardSkeleton({ className }: { className?: string }) {
 
 export function TableSkeleton({ rows = 5, cols = 4 }: { rows?: number; cols?: number }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-      <div className="border-b border-gray-200 bg-gray-50 px-5 py-3 dark:border-gray-800 dark:bg-gray-900/50">
+    <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.03]">
+      <div className="border-b border-white/[0.06] px-5 py-3">
         <div className="flex gap-4">
           {Array.from({ length: cols }).map((_, i) => (
             <Skeleton key={i} className="h-3 flex-1" />
@@ -49,7 +49,7 @@ export function TableSkeleton({ rows = 5, cols = 4 }: { rows?: number; cols?: nu
       {Array.from({ length: rows }).map((_, rowIdx) => (
         <div
           key={rowIdx}
-          className="border-b border-gray-100 px-5 py-3.5 last:border-0 dark:border-gray-800/50"
+          className="border-b border-white/[0.04] px-5 py-3.5 last:border-0"
         >
           <div className="flex gap-4">
             {Array.from({ length: cols }).map((_, colIdx) => (

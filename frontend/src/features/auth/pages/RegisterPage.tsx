@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { useAuthStore } from '@/store/authStore'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { Zap, Mail, Lock, User } from 'lucide-react'
 
 export function RegisterPage() {
   const [name, setName] = useState('')
@@ -51,33 +53,56 @@ export function RegisterPage() {
   }, [name, email, password, confirmPassword, storeLogin, navigate])
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 dark:bg-gray-950">
-      <div className="w-full max-w-sm">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#030712] px-4">
+      {/* Background grid */}
+      <div className="absolute inset-0" style={{
+        backgroundImage: `linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)`,
+        backgroundSize: '64px 64px',
+      }} />
+
+      {/* Ambient glows */}
+      <div className="absolute left-1/3 top-1/3 h-[400px] w-[400px] rounded-full bg-purple-600/10 blur-[128px]" />
+      <div className="absolute bottom-1/3 right-1/3 h-[300px] w-[300px] rounded-full bg-blue-600/10 blur-[128px]" />
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        className="relative w-full max-w-sm"
+      >
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary-600">
-            <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.1, duration: 0.5 }}
+            className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg shadow-blue-500/25"
+          >
+            <Zap className="h-6 w-6 text-white" strokeWidth={2.5} />
+          </motion.div>
+          <h1 className="text-2xl font-bold tracking-tight text-white">
             Create your account
           </h1>
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+          <p className="mt-2 text-sm text-gray-400">
             Start using AeroXe Bee today
           </p>
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-6 shadow-2xl shadow-black/20 backdrop-blur-xl">
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="rounded-lg border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700 dark:border-danger-800/50 dark:bg-danger-900/20 dark:text-danger-300">
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-lg border border-red-500/20 bg-red-500/5 p-3 text-sm text-red-400"
+              >
                 {error}
-              </div>
+              </motion.div>
             )}
             <Input
               label="Full name"
               type="text"
               placeholder="Jane Smith"
+              icon={<User className="h-4 w-4" />}
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
@@ -86,6 +111,7 @@ export function RegisterPage() {
               label="Email"
               type="email"
               placeholder="you@company.com"
+              icon={<Mail className="h-4 w-4" />}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -94,6 +120,7 @@ export function RegisterPage() {
               label="Password"
               type="password"
               placeholder="••••••••"
+              icon={<Lock className="h-4 w-4" />}
               hint="Minimum 8 characters"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -104,6 +131,7 @@ export function RegisterPage() {
               label="Confirm password"
               type="password"
               placeholder="••••••••"
+              icon={<Lock className="h-4 w-4" />}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               minLength={8}
@@ -115,13 +143,13 @@ export function RegisterPage() {
           </form>
         </div>
 
-        <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
+        <p className="mt-6 text-center text-sm text-gray-500">
           Already have an account?{' '}
-          <Link to="/login" className="font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400">
+          <Link to="/login" className="font-medium text-blue-400 hover:text-blue-300 transition-colors">
             Sign in
           </Link>
         </p>
-      </div>
+      </motion.div>
     </div>
   )
 }

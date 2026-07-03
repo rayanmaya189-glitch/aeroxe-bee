@@ -21,8 +21,10 @@ import { FloatingNotifications } from '../components/FloatingNotifications'
 export function LandingPage() {
   return (
     <div className="min-h-screen bg-[#030712]">
-      <AnnouncementBar />
-      <Navbar />
+      <div className="sticky top-0 z-50">
+        <AnnouncementBar />
+        <Navbar />
+      </div>
       <main>
         <Hero />
         <Features />

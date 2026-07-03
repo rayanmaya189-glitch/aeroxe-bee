@@ -1,9 +1,16 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useUIStore } from '@/store/uiStore'
 import { useAuthStore } from '@/store/authStore'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { cn } from '@/utils/cn'
+import {
+  LayoutDashboard, Users, BarChart3, FileText, Webhook,
+  CreditCard, Settings, Shield, Zap, ChevronLeft,
+  MessageSquare, AlertTriangle, BrainCircuit, UserCog,
+  Receipt, Crown,
+} from 'lucide-react'
 
 interface NavItem {
   label: string
@@ -13,130 +20,43 @@ interface NavItem {
 }
 
 const adminNav: NavItem[] = [
-  {
-    label: 'Dashboard',
-    path: '/dashboard',
-    icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" /></svg>,
-  },
-  {
-    label: 'Accounts',
-    path: '/accounts',
-    icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" /></svg>,
-    adminOnly: true,
-  },
-  {
-    label: 'Users',
-    path: '/users',
-    icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>,
-    adminOnly: true,
-  },
-  {
-    label: 'Analytics',
-    path: '/analytics',
-    icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>,
-    adminOnly: true,
-  },
-  {
-    label: 'Templates',
-    path: '/templates',
-    icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>,
-    adminOnly: true,
-  },
-  {
-    label: 'Webhooks',
-    path: '/webhooks',
-    icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-4.505a4.5 4.5 0 00-6.364-6.364L4.5 6.75l4.5 4.5" /></svg>,
-    adminOnly: true,
-  },
-  {
-    label: 'Plans',
-    path: '/plans',
-    icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" /></svg>,
-    adminOnly: true,
-  },
-  {
-    label: 'Billing',
-    path: '/billing',
-    icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" /></svg>,
-    adminOnly: true,
-  },
-  {
-    label: 'Billing Settings',
-    path: '/billing-settings',
-    icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>,
-    adminOnly: true,
-  },
-  {
-    label: 'Subscriptions',
-    path: '/admin/subscriptions',
-    icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
-    adminOnly: true,
-  },
-  {
-    label: 'Circuit Breakers',
-    path: '/circuit-breakers',
-    icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>,
-    adminOnly: true,
-  },
-  {
-    label: 'Dead Letters',
-    path: '/dead-letters',
-    icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25-2.25M12 13.875V7.5" /><path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25h.008v.008h-.008V11.25z" /></svg>,
-    adminOnly: true,
-  },
-  {
-    label: 'Fraud Flags',
-    path: '/fraud-flags',
-    icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 3v1.5M3 21v-6m0 0l2.77-.693a9 9 0 016.208.682l.108.054a9 9 0 006.086.71l3.114-.732a48.524 48.524 0 01-.005-10.499l-3.11.732a9 9 0 01-6.085-.711l-.108-.054a9 9 0 00-6.208-.682L3 4.5M3 15V4.5" /></svg>,
-    adminOnly: true,
-  },
+  { label: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard className="h-[18px] w-[18px]" /> },
+  { label: 'Accounts', path: '/accounts', icon: <Users className="h-[18px] w-[18px]" />, adminOnly: true },
+  { label: 'Users', path: '/users', icon: <UserCog className="h-[18px] w-[18px]" />, adminOnly: true },
+  { label: 'Analytics', path: '/analytics', icon: <BarChart3 className="h-[18px] w-[18px]" />, adminOnly: true },
+  { label: 'Templates', path: '/templates', icon: <FileText className="h-[18px] w-[18px]" />, adminOnly: true },
+  { label: 'Webhooks', path: '/webhooks', icon: <Webhook className="h-[18px] w-[18px]" />, adminOnly: true },
+  { label: 'Plans', path: '/plans', icon: <Receipt className="h-[18px] w-[18px]" />, adminOnly: true },
+  { label: 'Billing', path: '/billing', icon: <CreditCard className="h-[18px] w-[18px]" />, adminOnly: true },
+  { label: 'Billing Settings', path: '/billing-settings', icon: <Settings className="h-[18px] w-[18px]" />, adminOnly: true },
+  { label: 'Subscriptions', path: '/admin/subscriptions', icon: <Crown className="h-[18px] w-[18px]" />, adminOnly: true },
+  { label: 'Circuit Breakers', path: '/circuit-breakers', icon: <BrainCircuit className="h-[18px] w-[18px]" />, adminOnly: true },
+  { label: 'Dead Letters', path: '/dead-letters', icon: <MessageSquare className="h-[18px] w-[18px]" />, adminOnly: true },
+  { label: 'Fraud Flags', path: '/fraud-flags', icon: <AlertTriangle className="h-[18px] w-[18px]" />, adminOnly: true },
 ]
 
 const memberNav: NavItem[] = [
-  {
-    label: 'Dashboard',
-    path: '/member',
-    icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6z" /></svg>,
-  },
-  {
-    label: 'Devices',
-    path: '/member/devices',
-    icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" /></svg>,
-  },
-  {
-    label: 'Messages',
-    path: '/member/messages',
-    icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>,
-  },
-  {
-    label: 'Analytics',
-    path: '/member/analytics',
-    icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75z" /></svg>,
-  },
-  {
-    label: 'Templates',
-    path: '/member/templates',
-    icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>,
-  },
-  {
-    label: 'Webhooks',
-    path: '/member/webhooks',
-    icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-4.505a4.5 4.5 0 00-6.364-6.364L4.5 6.75l4.5 4.5" /></svg>,
-  },
-  {
-    label: 'Upgrade Plan',
-    path: '/member/upgrade',
-    icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>,
-  },
+  { label: 'Dashboard', path: '/member', icon: <LayoutDashboard className="h-[18px] w-[18px]" /> },
+  { label: 'Devices', path: '/member/devices', icon: <Zap className="h-[18px] w-[18px]" /> },
+  { label: 'Messages', path: '/member/messages', icon: <MessageSquare className="h-[18px] w-[18px]" /> },
+  { label: 'Analytics', path: '/member/analytics', icon: <BarChart3 className="h-[18px] w-[18px]" /> },
+  { label: 'Templates', path: '/member/templates', icon: <FileText className="h-[18px] w-[18px]" /> },
+  { label: 'Webhooks', path: '/member/webhooks', icon: <Webhook className="h-[18px] w-[18px]" /> },
+  { label: 'Upgrade Plan', path: '/member/upgrade', icon: <Crown className="h-[18px] w-[18px]" /> },
 ]
 
 const bottomNav: NavItem[] = [
-  {
-    label: 'Settings',
-    path: '/settings',
-    icon: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>,
-  },
+  { label: 'Settings', path: '/settings', icon: <Settings className="h-[18px] w-[18px]" /> },
 ]
+
+const navItemVariants = {
+  hidden: { opacity: 0, x: -12 },
+  visible: (i: number) => ({
+    opacity: 1,
+    x: 0,
+    transition: { delay: i * 0.03, duration: 0.3, ease: [0.22, 1, 0.36, 1] },
+  }),
+}
 
 export function Sidebar() {
   const location = useLocation()
@@ -163,35 +83,48 @@ export function Sidebar() {
   if (isMobile) {
     return (
       <>
-        {sidebarOpen && (
-          <div className="fixed inset-0 z-40 bg-gray-900/40 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
-        )}
-        <div
-          className={cn(
-            'fixed inset-y-0 left-0 z-50 flex w-64 flex-col glass-sidebar transition-transform duration-200',
-            sidebarOpen ? 'translate-x-0' : '-translate-x-full',
+        <AnimatePresence>
+          {sidebarOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+              onClick={() => setSidebarOpen(false)}
+            />
           )}
-        >
-          <SidebarContent
-            navItems={navItems}
-            bottomNav={bottomNav}
-            isActive={isActive}
-            hoveredItem={hoveredItem}
-            setHoveredItem={setHoveredItem}
-            onNavClick={handleNavClick}
-            collapsed={false}
-          />
-        </div>
+        </AnimatePresence>
+        <AnimatePresence>
+          {sidebarOpen && (
+            <motion.div
+              initial={{ x: -280 }}
+              animate={{ x: 0 }}
+              exit={{ x: -280 }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className="fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col border-r border-white/[0.06] bg-[#0a0f1e]"
+            >
+              <SidebarContent
+                navItems={navItems}
+                bottomNav={bottomNav}
+                isActive={isActive}
+                hoveredItem={hoveredItem}
+                setHoveredItem={setHoveredItem}
+                onNavClick={handleNavClick}
+                collapsed={false}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </>
     )
   }
 
   return (
-    <div
-      className={cn(
-        'fixed inset-y-0 left-0 z-40 flex flex-col glass-sidebar transition-all duration-200',
-        sidebarOpen ? 'w-60' : 'w-16',
-      )}
+    <motion.div
+      animate={{ width: sidebarOpen ? 240 : 64 }}
+      transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+      className="fixed inset-y-0 left-0 z-40 flex flex-col border-r border-white/[0.06] bg-[#0a0f1e]"
     >
       <SidebarContent
         navItems={navItems}
@@ -203,7 +136,7 @@ export function Sidebar() {
         collapsed={!sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
       />
-    </div>
+    </motion.div>
   )
 }
 
@@ -228,75 +161,107 @@ function SidebarContent({
 }) {
   return (
     <>
-      <div className="flex h-16 items-center justify-between border-b border-gray-200/60 px-4 dark:border-gray-800/60">
+      {/* Logo */}
+      <div className="flex h-16 items-center justify-between px-4">
         <Link to="/" className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600">
-            <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-            </svg>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg shadow-blue-500/25">
+            <Zap className="h-4 w-4 text-white" strokeWidth={2.5} />
           </div>
           {!collapsed && (
-            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-              AeroXe <span className="text-gray-400 dark:text-gray-500">Bee</span>
-            </span>
+            <motion.span
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-sm font-bold tracking-tight text-white"
+            >
+              AeroXe <span className="text-gray-500">Bee</span>
+            </motion.span>
           )}
         </Link>
         {onToggle && (
           <button
             onClick={onToggle}
-            className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300"
+            className="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-white/5 hover:text-gray-300"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-            </svg>
+            <ChevronLeft className={cn('h-4 w-4 transition-transform duration-300', collapsed && 'rotate-180')} />
           </button>
         )}
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 py-3">
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto px-3 py-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
         <div className="space-y-0.5">
-          {navItems.map((item) => (
-            <button
-              key={item.path}
-              onClick={() => onNavClick(item.path)}
-              onMouseEnter={() => setHoveredItem(item.path)}
-              onMouseLeave={() => setHoveredItem(null)}
-              className={cn(
-                'group relative flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                isActive(item.path)
-                  ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100',
-              )}
-            >
-              <span className="shrink-0">{item.icon}</span>
-              {!collapsed && <span>{item.label}</span>}
-              {collapsed && hoveredItem === item.path && (
-                <div className="absolute left-full z-50 ml-2 rounded-lg bg-gray-900 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg dark:bg-gray-100 dark:text-gray-900">
-                  {item.label}
-                </div>
-              )}
-            </button>
-          ))}
+          {navItems.map((item, index) => {
+            const active = isActive(item.path)
+            return (
+              <motion.button
+                key={item.path}
+                custom={index}
+                variants={navItemVariants}
+                initial="hidden"
+                animate="visible"
+                onClick={() => onNavClick(item.path)}
+                onMouseEnter={() => setHoveredItem(item.path)}
+                onMouseLeave={() => setHoveredItem(null)}
+                className={cn(
+                  'group relative flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200',
+                  active
+                    ? 'bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-white'
+                    : 'text-gray-400 hover:bg-white/5 hover:text-gray-200',
+                )}
+              >
+                {active && (
+                  <motion.div
+                    layoutId="sidebar-active"
+                    className="absolute inset-0 rounded-lg bg-gradient-to-r from-blue-500/10 to-purple-500/10"
+                    transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+                  />
+                )}
+                <span className={cn(
+                  'relative z-10 shrink-0 transition-colors',
+                  active ? 'text-blue-400' : 'text-gray-500 group-hover:text-gray-300',
+                )}>
+                  {item.icon}
+                </span>
+                {!collapsed && (
+                  <span className="relative z-10 truncate">{item.label}</span>
+                )}
+                {collapsed && hoveredItem === item.path && (
+                  <div className="absolute left-full z-50 ml-2 rounded-lg border border-white/10 bg-gray-900 px-2.5 py-1.5 text-xs font-medium text-white shadow-xl backdrop-blur-sm">
+                    {item.label}
+                  </div>
+                )}
+              </motion.button>
+            )
+          })}
         </div>
       </nav>
 
-      <div className="border-t border-gray-200/60 px-3 py-3 dark:border-gray-800/60">
+      {/* Bottom nav */}
+      <div className="border-t border-white/[0.06] px-3 py-3">
         <div className="space-y-0.5">
-          {bottomNav.map((item) => (
-            <button
-              key={item.path}
-              onClick={() => onNavClick(item.path)}
-              className={cn(
-                'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                isActive(item.path)
-                  ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100',
-              )}
-            >
-              <span className="shrink-0">{item.icon}</span>
-              {!collapsed && <span>{item.label}</span>}
-            </button>
-          ))}
+          {bottomNav.map((item) => {
+            const active = isActive(item.path)
+            return (
+              <button
+                key={item.path}
+                onClick={() => onNavClick(item.path)}
+                className={cn(
+                  'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200',
+                  active
+                    ? 'bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-white'
+                    : 'text-gray-400 hover:bg-white/5 hover:text-gray-200',
+                )}
+              >
+                <span className={cn(
+                  'shrink-0 transition-colors',
+                  active ? 'text-blue-400' : 'text-gray-500',
+                )}>
+                  {item.icon}
+                </span>
+                {!collapsed && <span>{item.label}</span>}
+              </button>
+            )
+          })}
         </div>
       </div>
     </>

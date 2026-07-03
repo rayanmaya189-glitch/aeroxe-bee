@@ -25,7 +25,7 @@ function StatCounter({ value, label, suffix }: { value: number; label: string; s
 
 export function Hero() {
   return (
-    <section className="relative min-h-screen overflow-hidden bg-[#030712] pt-20">
+    <section className="relative min-h-screen overflow-hidden bg-[#030712]">
       {/* Background grid */}
       <div className="absolute inset-0" style={{
         backgroundImage: `linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)`,

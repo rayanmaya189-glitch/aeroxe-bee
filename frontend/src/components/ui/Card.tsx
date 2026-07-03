@@ -19,8 +19,7 @@ export function Card({ children, className, hover = false, padding = 'md' }: Car
   return (
     <div
       className={cn(
-        'rounded-xl border border-gray-200 bg-white shadow-xs',
-        'dark:border-gray-800 dark:bg-gray-900',
+        'rounded-xl border border-white/[0.06] bg-white/[0.03] shadow-lg shadow-black/10',
         paddingStyles[padding],
         hover && 'card-hover',
         className,
@@ -53,7 +52,7 @@ export function CardTitle({
   className?: string
 }) {
   return (
-    <h3 className={cn('text-sm font-semibold text-gray-900 dark:text-gray-100', className)}>
+    <h3 className={cn('text-sm font-semibold text-gray-200', className)}>
       {children}
     </h3>
   )
@@ -81,7 +80,7 @@ export function CardDescription({
   className?: string
 }) {
   return (
-    <p className={cn('text-sm text-gray-500 dark:text-gray-400', className)}>
+    <p className={cn('text-sm text-gray-400', className)}>
       {children}
     </p>
   )
