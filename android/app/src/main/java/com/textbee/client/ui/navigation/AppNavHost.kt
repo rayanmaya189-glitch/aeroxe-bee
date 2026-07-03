@@ -2,13 +2,19 @@ package com.textbee.client.ui.navigation
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -23,6 +29,7 @@ import com.textbee.client.ui.screens.device.DeviceScreen
 import com.textbee.client.ui.screens.logs.LogsScreen
 import com.textbee.client.ui.screens.registration.RegistrationScreen
 import com.textbee.client.ui.screens.settings.SettingsScreen
+import com.textbee.client.ui.theme.*
 import com.textbee.client.util.TokenManager
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -39,18 +46,11 @@ private val bottomNavItems = listOf(
     Screen.Dashboard, Screen.Logs, Screen.Device, Screen.Settings,
 )
 
-/** Slide direction: left↔right based on route index */
 private val routeOrder = listOf(
-    Screen.Dashboard.route,
-    Screen.Logs.route,
-    Screen.Device.route,
-    Screen.Settings.route,
+    Screen.Dashboard.route, Screen.Logs.route, Screen.Device.route, Screen.Settings.route,
 )
 
-private fun slideTransitionForRoute(
-    targetRoute: String,
-    initialRoute: String?,
-): EnterTransition {
+private fun slideTransitionForRoute(targetRoute: String, initialRoute: String?): EnterTransition {
     val targetIndex = routeOrder.indexOf(targetRoute).coerceAtLeast(0)
     val initialIndex = initialRoute?.let { routeOrder.indexOf(it) }?.coerceAtLeast(0) ?: targetIndex
     return if (targetIndex >= initialIndex) {
@@ -60,10 +60,7 @@ private fun slideTransitionForRoute(
     }
 }
 
-private fun slideExitForRoute(
-    exitRoute: String,
-    targetRoute: String?,
-): ExitTransition {
+private fun slideExitForRoute(exitRoute: String, targetRoute: String?): ExitTransition {
     val exitIndex = routeOrder.indexOf(exitRoute).coerceAtLeast(0)
     val targetIndex = targetRoute?.let { routeOrder.indexOf(it) }?.coerceAtLeast(0) ?: exitIndex
     return if (targetIndex >= exitIndex) {
@@ -122,54 +119,80 @@ fun AppNavHost() {
     }
 
     if (showBottomBar) {
-        Scaffold(
-            containerColor = MaterialTheme.colorScheme.background,
-            bottomBar = {
-                NavigationBar(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 0.dp,
-                ) {
-                    bottomNavItems.forEach { screen ->
-                        val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
-                        NavigationBarItem(
-                            icon = {
-                                Icon(
-                                    imageVector = if (selected) screen.selectedIcon else screen.icon,
-                                    contentDescription = screen.title,
-                                    modifier = Modifier
-                                        .padding(vertical = 0.dp),
-                                )
-                            },
-                            label = {
-                                Text(
-                                    screen.title,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                                )
-                            },
-                            selected = selected,
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.primary,
-                                selectedTextColor = MaterialTheme.colorScheme.primary,
-                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                            ),
-                            onClick = {
-                                navController.navigate(screen.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            }
-                        )
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Main content
+            navHostContent(Modifier.weight(1f))
+
+            // Custom bottom nav bar
+            CustomBottomNavBar(
+                items = bottomNavItems,
+                currentRoute = currentRoute,
+                onNavigate = { screen ->
+                    navController.navigate(screen.route) {
+                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
                     }
                 }
-            }
-        ) { innerPadding ->
-            navHostContent(Modifier.padding(innerPadding))
+            )
         }
     } else {
         navHostContent(Modifier)
+    }
+}
+
+@Composable
+private fun CustomBottomNavBar(
+    items: List<Screen>,
+    currentRoute: String?,
+    onNavigate: (Screen) -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(AppColors.SecondaryBg)
+            .padding(horizontal = AppSpacing.LG, vertical = AppSpacing.SM)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+        ) {
+            items.forEach { screen ->
+                val selected = currentRoute == screen.route
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(AppShapes.Medium))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = { onNavigate(screen) }
+                        )
+                        .then(
+                            if (selected) {
+                                Modifier.background(AppColors.Blue.copy(alpha = 0.12f))
+                            } else {
+                                Modifier
+                            }
+                        )
+                        .padding(vertical = AppSpacing.SM, horizontal = AppSpacing.XS),
+                ) {
+                    Icon(
+                        imageVector = if (selected) screen.selectedIcon else screen.icon,
+                        contentDescription = screen.title,
+                        tint = if (selected) AppColors.Blue else AppColors.TextMuted,
+                        modifier = Modifier.size(22.dp),
+                    )
+                    Spacer(Modifier.height(AppSpacing.XS))
+                    Text(
+                        text = screen.title,
+                        style = AppTypography.Small,
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (selected) AppColors.Blue else AppColors.TextMuted,
+                    )
+                }
+            }
+        }
     }
 }

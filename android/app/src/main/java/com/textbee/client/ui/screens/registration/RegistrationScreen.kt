@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.textbee.client.ui.components.*
 import com.textbee.client.ui.theme.*
 
 private enum class Step(val index: Int, val label: String, val icon: ImageVector) {
@@ -37,7 +38,6 @@ private enum class Step(val index: Int, val label: String, val icon: ImageVector
     CONFIRM(3, "Connect", Icons.Outlined.Link),
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegistrationScreen(
     onRegistered: () -> Unit,
@@ -56,98 +56,73 @@ fun RegistrationScreen(
         RegistrationStep.CONFIRM -> Step.CONFIRM
     }
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        "AeroXe Bee",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                ),
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .imePadding()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp),
-        ) {
-            Spacer(Modifier.height(8.dp))
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(AppColors.Background)
+            .imePadding()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = AppSpacing.XXL),
+    ) {
+        Spacer(Modifier.height(AppSpacing.XXL))
 
-            // ─── Welcome Hero ───────────────────────────────────
-            Text(
-                text = "Welcome",
-                style = MaterialTheme.typography.displayMedium,
-                fontWeight = FontWeight.Black,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
+        // ─── Welcome Hero ───────────────────────────────────
+        Text(
+            text = "Welcome",
+            style = AppTypography.Hero,
+            fontWeight = FontWeight.Black,
+            color = AppColors.TextPrimary,
+        )
 
-            Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(AppSpacing.XS))
 
-            Text(
-                text = "Connect to your SMS gateway server",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        Text(
+            text = "Connect to your SMS gateway server",
+            style = AppTypography.BodyLarge,
+            color = AppColors.TextMuted,
+        )
 
-            Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(AppSpacing.XXXL))
 
-            // ─── Step Progress Indicator ────────────────────────
-            StepProgressIndicator(currentStep)
+        // ─── Step Progress Indicator ────────────────────────
+        StepProgressIndicator(currentStep)
 
-            Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(AppSpacing.XXXL))
 
-            // ─── Step Content ───────────────────────────────────
-            AnimatedContent(
-                targetState = state.step,
-                transitionSpec = {
-                    if (targetState.ordinal > initialState.ordinal) {
-                        slideInHorizontally(tween(300)) { it / 4 } + fadeIn(tween(300)) togetherWith
-                        slideOutHorizontally(tween(250)) { -it / 4 } + fadeOut(tween(250))
-                    } else {
-                        slideInHorizontally(tween(300)) { -it / 4 } + fadeIn(tween(300)) togetherWith
-                        slideOutHorizontally(tween(250)) { it / 4 } + fadeOut(tween(250))
-                    }
-                },
-                label = "stepContent",
-            ) { step ->
-                when (step) {
-                    RegistrationStep.CREDENTIALS -> CredentialsStep(state, viewModel)
-                    RegistrationStep.SIM_SELECTION -> SimSelectionStep(state, viewModel)
-                    RegistrationStep.BATTERY_OPT -> BatteryOptStep(state, viewModel)
-                    RegistrationStep.CONFIRM -> ConfirmStep(state, viewModel)
+        // ─── Step Content ───────────────────────────────────
+        AnimatedContent(
+            targetState = state.step,
+            transitionSpec = {
+                if (targetState.ordinal > initialState.ordinal) {
+                    slideInHorizontally(tween(300)) { it / 4 } + fadeIn(tween(300)) togetherWith
+                    slideOutHorizontally(tween(250)) { -it / 4 } + fadeOut(tween(250))
+                } else {
+                    slideInHorizontally(tween(300)) { -it / 4 } + fadeIn(tween(300)) togetherWith
+                    slideOutHorizontally(tween(250)) { it / 4 } + fadeOut(tween(250))
                 }
+            },
+            label = "stepContent",
+        ) { step ->
+            when (step) {
+                RegistrationStep.CREDENTIALS -> CredentialsStep(state, viewModel)
+                RegistrationStep.SIM_SELECTION -> SimSelectionStep(state, viewModel)
+                RegistrationStep.BATTERY_OPT -> BatteryOptStep(state, viewModel)
+                RegistrationStep.CONFIRM -> ConfirmStep(state, viewModel)
             }
-
-            state.error?.let { error ->
-                Spacer(Modifier.height(16.dp))
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = DangerDark.copy(alpha = 0.15f),
-                    ),
-                ) {
-                    Text(
-                        text = error,
-                        modifier = Modifier.padding(14.dp),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = DangerDark,
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(32.dp))
         }
+
+        state.error?.let { error ->
+            Spacer(Modifier.height(AppSpacing.LG))
+            GlassCard {
+                Text(
+                    text = error,
+                    style = AppTypography.Body,
+                    color = AppColors.Error,
+                )
+            }
+        }
+
+        Spacer(Modifier.height(AppSpacing.XXXL))
     }
 }
 
@@ -171,9 +146,9 @@ private fun StepProgressIndicator(currentStep: Step) {
                         .clip(CircleShape)
                         .background(
                             when {
-                                step.index < currentStep.index -> MaterialTheme.colorScheme.primary
-                                isCurrent -> MaterialTheme.colorScheme.primary
-                                else -> MaterialTheme.colorScheme.surfaceVariant
+                                step.index < currentStep.index -> AppColors.Blue
+                                isCurrent -> AppColors.Blue
+                                else -> AppColors.Glass
                             }
                         ),
                     contentAlignment = Alignment.Center,
@@ -182,27 +157,25 @@ private fun StepProgressIndicator(currentStep: Step) {
                         Icon(
                             imageVector = Icons.Filled.Check,
                             contentDescription = "Done",
-                            tint = MaterialTheme.colorScheme.onPrimary,
+                            tint = AppColors.TextPrimary,
                             modifier = Modifier.size(16.dp),
                         )
                     } else {
                         Icon(
                             imageVector = step.icon,
                             contentDescription = step.label,
-                            tint = if (isActive) MaterialTheme.colorScheme.onPrimary
-                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            tint = if (isActive) AppColors.TextPrimary else AppColors.TextDisabled,
                             modifier = Modifier.size(16.dp),
                         )
                     }
                 }
 
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(AppSpacing.SM))
 
                 Text(
                     text = step.label,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (isActive) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    style = AppTypography.Small,
+                    color = if (isActive) AppColors.Blue else AppColors.TextDisabled,
                     textAlign = TextAlign.Center,
                 )
             }
@@ -212,54 +185,46 @@ private fun StepProgressIndicator(currentStep: Step) {
 
 @Composable
 private fun CredentialsStep(state: RegistrationState, viewModel: RegistrationViewModel) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        StyledTextField(
+    Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.LG)) {
+        AeroTextField(
             value = state.serverUrl,
             onValueChange = viewModel::onServerUrlChange,
             label = "Server URL",
             placeholder = "http://10.0.2.2:8080",
             leadingIcon = Icons.Outlined.Cloud,
-            keyboardType = KeyboardType.Uri,
-            imeAction = ImeAction.Next,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
             isError = state.serverUrlError != null,
             errorText = state.serverUrlError,
         )
 
-        StyledTextField(
+        AeroTextField(
             value = state.email,
             onValueChange = viewModel::onEmailChange,
             label = "Email",
             leadingIcon = Icons.Outlined.Email,
-            keyboardType = KeyboardType.Email,
-            imeAction = ImeAction.Next,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
             isError = state.emailError != null,
             errorText = state.emailError,
         )
 
-        StyledTextField(
+        AeroTextField(
             value = state.password,
             onValueChange = viewModel::onPasswordChange,
             label = "Password",
             leadingIcon = Icons.Outlined.Lock,
-            keyboardType = KeyboardType.Password,
-            imeAction = ImeAction.Done,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { viewModel.nextStep() }),
             visualTransformation = PasswordVisualTransformation(),
             isError = state.passwordError != null,
             errorText = state.passwordError,
         )
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(AppSpacing.SM))
 
-        Button(
+        AeroButton(
+            text = "Next",
             onClick = { viewModel.nextStep() },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-            shape = RoundedCornerShape(14.dp),
-        ) {
-            Text("Next", style = MaterialTheme.typography.titleSmall)
-        }
+        )
     }
 }
 
@@ -267,59 +232,40 @@ private fun CredentialsStep(state: RegistrationState, viewModel: RegistrationVie
 private fun SimSelectionStep(state: RegistrationState, viewModel: RegistrationViewModel) {
     Column {
         if (state.availableSlots.isEmpty()) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                ),
-            ) {
+            GlassCard {
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(32.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = "No SIM slots detected",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = AppTypography.Body,
+                        color = AppColors.TextMuted,
                     )
                 }
             }
         } else {
             state.availableSlots.forEachIndexed { index, slot ->
                 val isSelected = index == state.selectedSlotIndex
-                Card(
-                    onClick = { viewModel.onSlotSelected(index) },
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (isSelected)
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                        else MaterialTheme.colorScheme.surfaceVariant,
-                    ),
-                ) {
+                GlassCard(onClick = { viewModel.onSlotSelected(index) }) {
                     Row(
-                        modifier = Modifier.padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(AppSpacing.MD),
                     ) {
                         Box(
                             modifier = Modifier
                                 .size(40.dp)
                                 .clip(CircleShape)
                                 .background(
-                                    if (isSelected) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                                    if (isSelected) AppColors.Blue
+                                    else AppColors.Glass
                                 ),
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.SimCard,
                                 contentDescription = "SIM",
-                                tint = if (isSelected) MaterialTheme.colorScheme.onPrimary
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = if (isSelected) AppColors.TextPrimary else AppColors.TextMuted,
                                 modifier = Modifier.size(20.dp),
                             )
                         }
@@ -327,21 +273,25 @@ private fun SimSelectionStep(state: RegistrationState, viewModel: RegistrationVi
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "SIM ${slot.slotId + 1}",
-                                style = MaterialTheme.typography.titleSmall,
+                                style = AppTypography.Card,
                                 fontWeight = FontWeight.SemiBold,
+                                color = AppColors.TextPrimary,
                             )
                             Text(
                                 text = slot.carrierName.ifBlank { "Unknown carrier" },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = AppTypography.Caption,
+                                color = AppColors.TextMuted,
                             )
                         }
                     }
                 }
+                if (index < state.availableSlots.lastIndex) {
+                    Spacer(Modifier.height(AppSpacing.SM))
+                }
             }
         }
 
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(AppSpacing.XXXL))
 
         NavigationButtons(
             onBack = { viewModel.previousStep() },
@@ -353,82 +303,65 @@ private fun SimSelectionStep(state: RegistrationState, viewModel: RegistrationVi
 @Composable
 private fun BatteryOptStep(state: RegistrationState, viewModel: RegistrationViewModel) {
     Column {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = if (state.isBatteryOptimized)
-                    SuccessDark.copy(alpha = 0.12f) else DangerDark.copy(alpha = 0.12f),
-            ),
-        ) {
-            Column(modifier = Modifier.padding(20.dp)) {
+        GlassCard {
+            Column {
                 Text(
                     text = if (state.isBatteryOptimized) "Battery optimization is disabled" else "Battery optimization is enabled",
-                    style = MaterialTheme.typography.titleSmall,
+                    style = AppTypography.Card,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (state.isBatteryOptimized) SuccessDark else DangerDark,
+                    color = if (state.isBatteryOptimized) AppColors.Success else AppColors.Error,
                 )
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(AppSpacing.XS))
                 Text(
                     text = if (state.isBatteryOptimized) "Your app will run reliably in the background."
                     else "Background operation may be restricted. We recommend disabling it.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = AppTypography.Caption,
+                    color = AppColors.TextMuted,
                     lineHeight = 18.sp,
                 )
             }
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(AppSpacing.LG))
 
         if (!state.isBatteryOptimized) {
-            Button(
+            AeroButton(
+                text = "Disable Battery Optimization",
                 onClick = { viewModel.requestBatteryOptimization() },
-                modifier = Modifier.fillMaxWidth().height(48.dp),
-                shape = RoundedCornerShape(14.dp),
-            ) {
-                Text("Disable Battery Optimization")
-            }
+            )
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(AppSpacing.SM))
 
-            OutlinedButton(
+            AeroButton(
+                text = "Check Status",
                 onClick = { viewModel.refreshBatteryOptStatus() },
-                modifier = Modifier.fillMaxWidth().height(48.dp),
-                shape = RoundedCornerShape(14.dp),
-            ) {
-                Text("Check Status")
-            }
+                variant = ButtonVariant.Secondary,
+            )
         }
 
         state.batteryGuide?.let { guide ->
-            Spacer(Modifier.height(16.dp))
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                ),
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+            Spacer(Modifier.height(AppSpacing.LG))
+            GlassCard {
+                Column {
                     Text(
                         text = "Guide for ${guide.displayName}",
-                        style = MaterialTheme.typography.labelLarge,
+                        style = AppTypography.Label,
+                        color = AppColors.Blue,
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(AppSpacing.SM))
                     guide.instructions.forEachIndexed { index, instruction ->
                         Text(
                             text = "${index + 1}. $instruction",
-                            style = MaterialTheme.typography.bodySmall,
+                            style = AppTypography.Caption,
+                            color = AppColors.TextMuted,
                             modifier = Modifier.padding(top = 3.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
             }
         }
 
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(AppSpacing.XXXL))
 
         NavigationButtons(
             onBack = { viewModel.previousStep() },
@@ -440,132 +373,50 @@ private fun BatteryOptStep(state: RegistrationState, viewModel: RegistrationView
 @Composable
 private fun ConfirmStep(state: RegistrationState, viewModel: RegistrationViewModel) {
     Column {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-            ),
-        ) {
-            Column(modifier = Modifier.padding(20.dp)) {
+        GlassCard {
+            Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.SM)) {
                 ConfirmRow("Server", state.serverUrl)
-                HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 12.dp),
-                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
-                )
                 ConfirmRow("Email", state.email)
-                HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 12.dp),
-                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
-                )
                 ConfirmRow("SIM Slot", "SIM ${state.selectedSlotIndex + 1}")
-                HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 12.dp),
-                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
-                )
-                ConfirmRow(
-                    "Battery optimization",
-                    if (state.isBatteryOptimized) "Disabled ✓" else "Enabled",
-                )
+                ConfirmRow("Battery optimization", if (state.isBatteryOptimized) "Disabled ✓" else "Enabled")
             }
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(AppSpacing.XXL))
 
-        Button(
+        AeroButton(
+            text = "Connect",
             onClick = { viewModel.register() },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-            shape = RoundedCornerShape(14.dp),
-            enabled = !state.isLoading,
-        ) {
-            if (state.isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    strokeWidth = 2.dp,
-                )
-            } else {
-                Text("Connect", style = MaterialTheme.typography.titleSmall)
-            }
-        }
+            loading = state.isLoading,
+        )
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(AppSpacing.SM))
 
-        OutlinedButton(
+        AeroButton(
+            text = "Back",
             onClick = { viewModel.previousStep() },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            shape = RoundedCornerShape(14.dp),
-        ) {
-            Text("Back")
-        }
+            variant = ButtonVariant.Secondary,
+        )
     }
-}
-
-@Composable
-private fun StyledTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    placeholder: String = "",
-    leadingIcon: ImageVector,
-    keyboardType: KeyboardType = KeyboardType.Text,
-    imeAction: ImeAction = ImeAction.Next,
-    keyboardActions: KeyboardActions = KeyboardActions(),
-    visualTransformation: androidx.compose.ui.text.input.VisualTransformation =
-        androidx.compose.ui.text.input.VisualTransformation.None,
-    isError: Boolean = false,
-    errorText: String? = null,
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(label) },
-        placeholder = if (placeholder.isNotEmpty()) {{ Text(placeholder) }} else null,
-        leadingIcon = {
-            Icon(leadingIcon, contentDescription = null, modifier = Modifier.size(20.dp))
-        },
-        singleLine = true,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
-        keyboardActions = keyboardActions,
-        visualTransformation = visualTransformation,
-        isError = isError,
-        supportingText = errorText?.let { { Text(it) } },
-        colors = OutlinedTextFieldDefaults.colors(
-            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-        ),
-    )
 }
 
 @Composable
 private fun NavigationButtons(onBack: () -> Unit, onNext: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(AppSpacing.MD),
     ) {
-        OutlinedButton(
+        AeroButton(
+            text = "Back",
             onClick = onBack,
-            modifier = Modifier
-                .weight(1f)
-                .height(48.dp),
-            shape = RoundedCornerShape(14.dp),
-        ) {
-            Text("Back")
-        }
-        Button(
+            variant = ButtonVariant.Secondary,
+            modifier = Modifier.weight(1f),
+        )
+        AeroButton(
+            text = "Next",
             onClick = onNext,
-            modifier = Modifier
-                .weight(1f)
-                .height(48.dp),
-            shape = RoundedCornerShape(14.dp),
-        ) {
-            Text("Next")
-        }
+            modifier = Modifier.weight(1f),
+        )
     }
 }
 
@@ -577,13 +428,14 @@ private fun ConfirmRow(label: String, value: String) {
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = AppTypography.Body,
+            color = AppColors.TextMuted,
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.bodyMedium,
+            style = AppTypography.Body,
             fontWeight = FontWeight.Medium,
+            color = AppColors.TextPrimary,
         )
     }
 }
