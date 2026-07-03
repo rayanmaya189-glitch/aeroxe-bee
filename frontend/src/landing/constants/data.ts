@@ -144,7 +144,6 @@ export const INTEGRATIONS = [
   { icon: CreditCard, name: 'Stripe' },
 ] as const
 
-// ── Testimonials: replaced with Architecture Credibility (no fake reviews) ──
 export const CREDIBILITY_POINTS = [
   {
     icon: Route,
