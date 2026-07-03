@@ -1,7 +1,7 @@
 import {
   Zap, Shield, Globe, BarChart3,
-  Smartphone, Lock, Gauge, Users,
-  Clock, Layers, Settings, Bell, Workflow, Database,
+  Smartphone, Lock, Users,
+  Settings, Workflow, Database,
   Cloud, Code, Terminal, GitBranch, Cpu, Eye,
   Route, MessageSquare, Server, CreditCard,
   ShieldCheck, FileCheck, Key,
