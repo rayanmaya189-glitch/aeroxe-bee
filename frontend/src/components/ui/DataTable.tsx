@@ -72,12 +72,13 @@ export function DataTable<T extends object>({
   )
 
   if (loading) {
+    const colCount = Array.isArray(columns) ? columns.length : 0
     return (
       <div className={cn('overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900', className)}>
         <div className="space-y-0">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="flex items-center gap-4 border-b border-gray-100 px-5 py-3.5 last:border-0 dark:border-gray-800/50">
-              {columns.map((col) => (<div key={col.key} className="flex-1"><Skeleton className="h-3.5" /></div>))}
+              {Array.from({ length: colCount }).map((_, j) => (<div key={j} className="flex-1"><Skeleton className="h-3.5" /></div>))}
             </div>
           ))}
         </div>

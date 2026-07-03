@@ -53,8 +53,8 @@ export async function deleteAccount(id: string): Promise<void> {
 // Analytics (admin)
 export async function getAnalytics(params?: { start?: string; end?: string }): Promise<AnalyticsDaily[]> {
   const res = await api.get<ApiResponse<AnalyticsDaily[]>>('/admin/analytics', { params })
-  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load analytics')
-  return res.data.data
+  if (!res.data.success) throw new Error(res.data.error ?? 'Failed to load analytics')
+  return Array.isArray(res.data.data) ? res.data.data : []
 }
 
 // Webhooks (admin)
@@ -153,9 +153,10 @@ export async function resetCircuitBreaker(scope: string, id: string): Promise<vo
 
 // Dead letters (admin)
 export async function getDeadLetters(): Promise<DeadLetter[]> {
-  const res = await api.get<ApiResponse<DeadLetter[]>>('/admin/dead-letters')
-  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load dead letters')
-  return res.data.data
+  const res = await api.get<ApiResponse<{ data: DeadLetter[]; total: number; page: number; page_size: number; total_pages: number }>>('/admin/dead-letters')
+  if (!res.data.success || !res.data.data) return []
+  const wrapper = res.data.data
+  return Array.isArray(wrapper) ? wrapper : (wrapper?.data ?? [])
 }
 
 export async function retryDeadLetter(id: string): Promise<void> {
