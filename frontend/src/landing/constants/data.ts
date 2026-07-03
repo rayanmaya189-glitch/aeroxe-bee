@@ -1,6 +1,6 @@
 import {
-  Zap, Shield, Globe, BarChart3, Brain, MessageSquare,
-  Smartphone, Lock, Gauge, Radio, Users, TrendingUp,
+  Zap, Shield, Globe, BarChart3, Brain,
+  Smartphone, Lock, Gauge, Users, TrendingUp,
   Clock, Layers, Settings, Bell, Workflow, Database,
   Cloud, Code, Terminal, GitBranch, Cpu, Eye
 } from 'lucide-react'
