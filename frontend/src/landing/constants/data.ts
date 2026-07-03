@@ -4,7 +4,7 @@ import {
   Clock, Layers, Settings, Bell, Workflow, Database,
   Cloud, Code, Terminal, GitBranch, Cpu, Eye,
   Route, MessageSquare, Server, CreditCard,
-  ShieldCheck, FileCheck,
+  ShieldCheck, FileCheck, Key,
 } from 'lucide-react'
 
 export const NAV_LINKS = [
