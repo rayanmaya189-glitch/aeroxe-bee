@@ -1,13 +1,121 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useInView } from 'react-intersection-observer'
 import { Check, Sparkles } from 'lucide-react'
 import { PRICING_PLANS } from '../constants/data'
 import { staggerContainer, fadeInUp } from '../animations/variants'
 
+interface ApiPlan {
+  id: string
+  name: string
+  monthly_price: number
+  daily_quota: number
+  monthly_quota: number
+  price_per_sms: number
+  default_routing_strategy: string
+  dedicated_pool: boolean
+}
+
+interface PricingPlan {
+  name: string
+  planId: string
+  monthlyPrice: number
+  yearlyPrice: number
+  description: string
+  features: string[]
+  cta: string
+  popular: boolean
+}
+
+function formatQuota(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(0)}M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`
+  return String(n)
+}
+
+function mapApiPlanToPricing(apiPlan: ApiPlan, index: number): PricingPlan {
+  // Match against known hardcoded plans for feature lists
+  const fallback = PRICING_PLANS.find((p) => p.planId === apiPlan.id)
+  if (fallback) {
+    return {
+      ...fallback,
+      monthlyPrice: apiPlan.monthly_price || fallback.monthlyPrice,
+      yearlyPrice: Math.round((apiPlan.monthly_price || fallback.monthlyPrice) * 10),
+    }
+  }
+  // Unknown plan from API — render with generic features
+  return {
+    name: apiPlan.name,
+    planId: apiPlan.id,
+    monthlyPrice: apiPlan.monthly_price,
+    yearlyPrice: Math.round(apiPlan.monthly_price * 10),
+    description: `${formatQuota(apiPlan.monthly_quota)} SMS/month`,
+    features: [
+      `${formatQuota(apiPlan.monthly_quota)} SMS/month`,
+      `${formatQuota(apiPlan.daily_quota)} daily quota`,
+      `$${apiPlan.price_per_sms.toFixed(4)} per SMS`,
+      `${apiPlan.default_routing_strategy} routing`,
+      apiPlan.dedicated_pool ? 'Dedicated device pool' : 'Shared device pool',
+      'API access',
+    ],
+    cta: index === 0 ? 'Get Started' : 'Contact Sales',
+    popular: index === 1,
+  }
+}
+
+function PricingSkeleton() {
+  return (
+    <div className="grid gap-6 lg:grid-cols-3">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div key={i} className="animate-pulse rounded-2xl border border-white/[0.06] bg-white/[0.02] p-8">
+          <div className="h-5 w-20 rounded bg-white/[0.06]" />
+          <div className="mt-3 h-3 w-40 rounded bg-white/[0.04]" />
+          <div className="mt-6 h-10 w-24 rounded bg-white/[0.06]" />
+          <div className="mt-8 h-10 w-full rounded-xl bg-white/[0.06]" />
+          <div className="mt-6 space-y-3">
+            {Array.from({ length: 5 }).map((_, j) => (
+              <div key={j} className="h-4 rounded bg-white/[0.04]" />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function Pricing() {
   const [annual, setAnnual] = useState(false)
+  const [plans, setPlans] = useState<PricingPlan[]>(PRICING_PLANS)
+  const [loading, setLoading] = useState(true)
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.1 })
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    async function fetchPlans() {
+      try {
+        const res = await fetch('/api/v1/public/plans', { signal: controller.signal })
+        if (!res.ok) throw new Error('API not available')
+        const json = await res.json()
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+          const mapped = json.data
+            .filter((p: ApiPlan) => p.monthly_price !== undefined)
+            .sort((a: ApiPlan, b: ApiPlan) => a.monthly_price - b.monthly_price)
+            .map((p: ApiPlan, i: number) => mapApiPlanToPricing(p, i))
+          if (mapped.length > 0) {
+            setPlans(mapped)
+          }
+        }
+      } catch {
+        // API unavailable — keep hardcoded fallback
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchPlans()
+    return () => controller.abort()
+  }, [])
 
   return (
     <section id="pricing" className="relative bg-[#030712] py-24 lg:py-32">
@@ -47,55 +155,68 @@ export function Pricing() {
             </div>
           </motion.div>
 
-          <div className="grid gap-6 lg:grid-cols-3">
-            {PRICING_PLANS.map((plan) => (
-              <motion.div
-                key={plan.name}
-                variants={fadeInUp}
-                className={`relative rounded-2xl border p-8 transition-all duration-300 ${
-                  plan.popular
-                    ? 'border-blue-500/30 bg-gradient-to-b from-blue-500/[0.08] to-transparent shadow-2xl shadow-blue-500/10'
-                    : 'border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12]'
-                }`}
-              >
-                {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="flex items-center gap-1 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-1 text-xs font-semibold text-white shadow-lg shadow-blue-500/25">
-                      <Sparkles className="h-3 w-3" />
-                      Most Popular
-                    </span>
-                  </div>
-                )}
-
-                <h3 className="text-lg font-semibold text-white">{plan.name}</h3>
-                <p className="mt-1 text-sm text-gray-400">{plan.description}</p>
-
-                <div className="mt-6 flex items-baseline gap-1">
-                  <span className="text-5xl font-bold text-white">${annual ? plan.yearlyPrice : plan.monthlyPrice}</span>
-                  <span className="text-sm text-gray-500">/{annual ? 'year' : 'mo'}</span>
-                </div>
-
-                <button
-                  className={`mt-8 w-full rounded-xl py-3 text-sm font-semibold transition-all ${
+          {loading ? (
+            <PricingSkeleton />
+          ) : (
+            <div className="grid gap-6 lg:grid-cols-3">
+              {plans.map((plan) => (
+                <motion.div
+                  key={plan.name}
+                  variants={fadeInUp}
+                  className={`relative rounded-2xl border p-8 transition-all duration-300 ${
                     plan.popular
-                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40'
-                      : 'border border-white/[0.1] bg-white/[0.04] text-white hover:bg-white/[0.08]'
+                      ? 'border-blue-500/30 bg-gradient-to-b from-blue-500/[0.08] to-transparent shadow-2xl shadow-blue-500/10'
+                      : 'border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12]'
                   }`}
                 >
-                  {plan.cta}
-                </button>
+                  {plan.popular && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                      <span className="flex items-center gap-1 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-1 text-xs font-semibold text-white shadow-lg shadow-blue-500/25">
+                        <Sparkles className="h-3 w-3" />
+                        Most Popular
+                      </span>
+                    </div>
+                  )}
 
-                <ul className="mt-8 space-y-3">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-3 text-sm text-gray-300">
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-400" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-              </motion.div>
-            ))}
-          </div>
+                  <h3 className="text-lg font-semibold text-white">{plan.name}</h3>
+                  <p className="mt-1 text-sm text-gray-400">{plan.description}</p>
+
+                  <div className="mt-6 flex items-baseline gap-1">
+                    <span className="text-5xl font-bold text-white">
+                      {plan.monthlyPrice === 0 ? 'Free' : `$${annual ? plan.yearlyPrice : plan.monthlyPrice}`}
+                    </span>
+                    {plan.monthlyPrice > 0 && (
+                      <span className="text-sm text-gray-500">/{annual ? 'year' : 'mo'}</span>
+                    )}
+                  </div>
+
+                  <button
+                    className={`mt-8 w-full rounded-xl py-3 text-sm font-semibold transition-all ${
+                      plan.popular
+                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40'
+                        : 'border border-white/[0.1] bg-white/[0.04] text-white hover:bg-white/[0.08]'
+                    }`}
+                  >
+                    {plan.cta}
+                  </button>
+
+                  <ul className="mt-8 space-y-3">
+                    {plan.features.map((feature) => (
+                      <li key={feature} className="flex items-start gap-3 text-sm text-gray-300">
+                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-400" />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                </motion.div>
+              ))}
+            </div>
+          )}
+
+          {/* API integration note */}
+          <motion.p variants={fadeInUp} className="mt-8 text-center text-xs text-gray-600">
+            Plans loaded from <code className="rounded bg-white/[0.04] px-1.5 py-0.5 text-gray-500">GET /api/v1/public/plans</code> • Falls back to default if unavailable
+          </motion.p>
         </motion.div>
       </div>
     </section>
