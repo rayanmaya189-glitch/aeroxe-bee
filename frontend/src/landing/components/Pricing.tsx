@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useInView } from 'react-intersection-observer'
-import { Check, Sparkles } from 'lucide-react'
+import { Check, Sparkles, CreditCard, Banknote, QrCode } from 'lucide-react'
 import { PRICING_PLANS } from '../constants/data'
 import { staggerContainer, fadeInUp } from '../animations/variants'
 
@@ -86,24 +86,37 @@ function PricingSkeleton() {
 export function Pricing() {
   const [annual, setAnnual] = useState(false)
   const [plans, setPlans] = useState<PricingPlan[]>(PRICING_PLANS)
+  const [paymentMethods, setPaymentMethods] = useState<{ method: string; label: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.1 })
 
   useEffect(() => {
     const controller = new AbortController()
 
-    async function fetchPlans() {
+    async function fetchData() {
       try {
-        const res = await fetch('/api/v1/public/plans', { signal: controller.signal })
-        if (!res.ok) throw new Error('API not available')
-        const json = await res.json()
-        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-          const mapped = json.data
-            .filter((p: ApiPlan) => p.monthly_price !== undefined)
-            .sort((a: ApiPlan, b: ApiPlan) => a.monthly_price - b.monthly_price)
-            .map((p: ApiPlan, i: number) => mapApiPlanToPricing(p, i))
-          if (mapped.length > 0) {
-            setPlans(mapped)
+        const [plansRes, methodsRes] = await Promise.allSettled([
+          fetch('/api/v1/public/plans', { signal: controller.signal }),
+          fetch('/api/v1/public/payment-methods', { signal: controller.signal }),
+        ])
+
+        if (plansRes.status === 'fulfilled' && plansRes.value.ok) {
+          const json = await plansRes.value.json()
+          if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+            const mapped = json.data
+              .filter((p: ApiPlan) => p.monthly_price !== undefined)
+              .sort((a: ApiPlan, b: ApiPlan) => a.monthly_price - b.monthly_price)
+              .map((p: ApiPlan, i: number) => mapApiPlanToPricing(p, i))
+            if (mapped.length > 0) {
+              setPlans(mapped)
+            }
+          }
+        }
+
+        if (methodsRes.status === 'fulfilled' && methodsRes.value.ok) {
+          const json = await methodsRes.value.json()
+          if (json.success && Array.isArray(json.data)) {
+            setPaymentMethods(json.data)
           }
         }
       } catch {
@@ -113,7 +126,7 @@ export function Pricing() {
       }
     }
 
-    fetchPlans()
+    fetchData()
     return () => controller.abort()
   }, [])
 
@@ -213,9 +226,30 @@ export function Pricing() {
             </div>
           )}
 
+          {/* Payment methods footer */}
+          {paymentMethods.length > 0 && (
+            <motion.div variants={fadeInUp} className="mt-12 flex flex-col items-center gap-3">
+              <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Accepted payment methods</p>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                {paymentMethods.map((pm) => {
+                  const Icon = pm.method === 'bank_transfer' ? Banknote : pm.method === 'trc20' ? CreditCard : QrCode
+                  return (
+                    <span
+                      key={pm.method}
+                      className="flex items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-2.5 text-sm text-gray-300 transition-colors hover:border-white/[0.12] hover:text-white"
+                    >
+                      <Icon className="h-4 w-4 text-blue-400" />
+                      {pm.label}
+                    </span>
+                  )
+                })}
+              </div>
+            </motion.div>
+          )}
+
           {/* API integration note */}
           <motion.p variants={fadeInUp} className="mt-8 text-center text-xs text-gray-600">
-            Plans loaded from <code className="rounded bg-white/[0.04] px-1.5 py-0.5 text-gray-500">GET /api/v1/public/plans</code> • Falls back to default if unavailable
+            Plans loaded from <code className="rounded bg-white/[0.04] px-1.5 py-0.5 text-gray-500">GET /api/v1/public/plans</code> • Payment methods from <code className="rounded bg-white/[0.04] px-1.5 py-0.5 text-gray-500">GET /api/v1/public/payment-methods</code>
           </motion.p>
         </motion.div>
       </div>

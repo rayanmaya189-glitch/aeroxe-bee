@@ -28,6 +28,7 @@ func NewRouter(
 	paymentRequestHandler *handlers.PaymentRequestHandler,
 	subscriptionRequestHandler *handlers.SubscriptionRequestHandler,
 	billingService *services.BillingService,
+	paymentConfigService *services.PaymentConfigService,
 	authMiddleware *middleware.AuthMiddleware,
 	metrics *telemetry.Metrics,
 	pg *database.PostgresDB,
@@ -40,8 +41,9 @@ func NewRouter(
 	mux.HandleFunc("GET /api/v1/health", healthHandler.Check)
 
 	// Public routes (no auth required)
-	publicBillingHandler := handlers.NewPublicBillingHandler(billingService)
+	publicBillingHandler := handlers.NewPublicBillingHandler(billingService, paymentConfigService)
 	mux.HandleFunc("GET /api/v1/public/plans", publicBillingHandler.ListPublicPlans)
+	mux.HandleFunc("GET /api/v1/public/payment-methods", publicBillingHandler.ListPublicPaymentMethods)
 
 	// Auth routes
 	mux.HandleFunc("POST /api/v1/auth/register", authHandler.Register)
