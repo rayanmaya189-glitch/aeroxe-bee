@@ -64,6 +64,14 @@ const (
 	PlanTypeEnterprise PlanType = "enterprise"
 )
 
+type PlanVisibility string
+
+const (
+	PlanVisibilityPublic  PlanVisibility = "public"
+	PlanVisibilityPrivate PlanVisibility = "private"
+	PlanVisibilityCustom  PlanVisibility = "custom"
+)
+
 type DeviceState string
 
 const (
@@ -327,16 +335,17 @@ type WebhookDelivery struct {
 
 // Plan represents a pricing plan
 type Plan struct {
-	ID                   PlanType `db:"id" json:"id"`
-	Name                 string   `db:"name" json:"name"`
-	DailyQuota           int64    `db:"daily_quota" json:"daily_quota"`
-	MonthlyQuota         int64    `db:"monthly_quota" json:"monthly_quota"`
-	OverageBufferPct     float64  `db:"overage_buffer_pct" json:"overage_buffer_pct"`
-	MaxQueueDepth        int      `db:"max_queue_depth" json:"max_queue_depth"`
-	DedicatedPool        bool     `db:"dedicated_pool" json:"dedicated_pool"`
+	ID                   PlanType       `db:"id" json:"id"`
+	Name                 string         `db:"name" json:"name"`
+	Visibility           PlanVisibility `db:"visibility" json:"visibility"`
+	DailyQuota           int64          `db:"daily_quota" json:"daily_quota"`
+	MonthlyQuota         int64          `db:"monthly_quota" json:"monthly_quota"`
+	OverageBufferPct     float64        `db:"overage_buffer_pct" json:"overage_buffer_pct"`
+	MaxQueueDepth        int            `db:"max_queue_depth" json:"max_queue_depth"`
+	DedicatedPool        bool           `db:"dedicated_pool" json:"dedicated_pool"`
 	DefaultRoutingStrategy RoutingStrategy `db:"default_routing_strategy" json:"default_routing_strategy"`
-	PricePerSMS          float64  `db:"price_per_sms" json:"price_per_sms"`
-	MonthlyPrice         float64  `db:"monthly_price" json:"monthly_price"`
+	PricePerSMS          float64        `db:"price_per_sms" json:"price_per_sms"`
+	MonthlyPrice         float64        `db:"monthly_price" json:"monthly_price"`
 }
 
 // Subscription ties an account to a plan

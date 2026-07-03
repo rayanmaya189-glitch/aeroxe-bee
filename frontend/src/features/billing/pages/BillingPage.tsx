@@ -34,7 +34,11 @@ export function BillingPage() {
                     ${plan.monthly_price}<span className="text-sm font-normal text-gray-400">/mo</span>
                   </p>
                 </div>
-                {plan.dedicated_pool && <Badge variant="primary" size="sm">Dedicated</Badge>}
+                <div className="flex flex-wrap gap-1">
+                  {plan.visibility === 'private' && <Badge variant="danger" size="sm">Private</Badge>}
+                  {plan.visibility === 'custom' && <Badge variant="warning" size="sm">Custom</Badge>}
+                  {plan.dedicated_pool && <Badge variant="primary" size="sm">Dedicated</Badge>}
+                </div>
               </div>
 
               <div className="mt-6 space-y-3 text-sm">

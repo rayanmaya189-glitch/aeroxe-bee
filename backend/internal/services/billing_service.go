@@ -106,10 +106,10 @@ func (s *BillingService) GetInvoiceData(ctx context.Context, accountID string, y
 func (s *BillingService) GetPlan(ctx context.Context, planID string) (*models.Plan, error) {
 	plan := &models.Plan{}
 	err := s.db.QueryRow(ctx,
-		`SELECT id, name, daily_quota, monthly_quota, overage_buffer_pct, max_queue_depth,
+		`SELECT id, name, visibility, daily_quota, monthly_quota, overage_buffer_pct, max_queue_depth,
 		        dedicated_pool, default_routing_strategy, price_per_sms, monthly_price
 		 FROM plans WHERE id = $1`, planID,
-	).Scan(&plan.ID, &plan.Name, &plan.DailyQuota, &plan.MonthlyQuota, &plan.OverageBufferPct,
+	).Scan(&plan.ID, &plan.Name, &plan.Visibility, &plan.DailyQuota, &plan.MonthlyQuota, &plan.OverageBufferPct,
 		&plan.MaxQueueDepth, &plan.DedicatedPool, &plan.DefaultRoutingStrategy,
 		&plan.PricePerSMS, &plan.MonthlyPrice)
 	if err == pgx.ErrNoRows {
@@ -120,9 +120,10 @@ func (s *BillingService) GetPlan(ctx context.Context, planID string) (*models.Pl
 	return plan, nil
 }
 
-func (s *BillingService) ListPlans(ctx context.Context) ([]models.Plan, error) {
+// ListPlansForAdmin returns all plans (admin sees everything)
+func (s *BillingService) ListPlansForAdmin(ctx context.Context) ([]models.Plan, error) {
 	rows, err := s.db.Query(ctx,
-		`SELECT id, name, daily_quota, monthly_quota, overage_buffer_pct, max_queue_depth,
+		`SELECT id, name, visibility, daily_quota, monthly_quota, overage_buffer_pct, max_queue_depth,
 		        dedicated_pool, default_routing_strategy, price_per_sms, monthly_price
 		 FROM plans ORDER BY monthly_price ASC`)
 	if err != nil {
@@ -133,7 +134,41 @@ func (s *BillingService) ListPlans(ctx context.Context) ([]models.Plan, error) {
 	var plans []models.Plan
 	for rows.Next() {
 		var p models.Plan
-		if err := rows.Scan(&p.ID, &p.Name, &p.DailyQuota, &p.MonthlyQuota, &p.OverageBufferPct,
+		if err := rows.Scan(&p.ID, &p.Name, &p.Visibility, &p.DailyQuota, &p.MonthlyQuota, &p.OverageBufferPct,
+			&p.MaxQueueDepth, &p.DedicatedPool, &p.DefaultRoutingStrategy,
+			&p.PricePerSMS, &p.MonthlyPrice); err != nil {
+			return nil, err
+		}
+		plans = append(plans, p)
+	}
+	return plans, nil
+}
+
+// ListPlansForMember returns plans visible to a member:
+//  - public plans are always visible
+//  - custom plans are visible only if the member is subscribed to that plan
+//  - private plans are never visible to members
+func (s *BillingService) ListPlansForMember(ctx context.Context, accountID string) ([]models.Plan, error) {
+	rows, err := s.db.Query(ctx,
+		`SELECT p.id, p.name, p.visibility, p.daily_quota, p.monthly_quota, p.overage_buffer_pct,
+		        p.max_queue_depth, p.dedicated_pool, p.default_routing_strategy,
+		        p.price_per_sms, p.monthly_price
+	 FROM plans p
+	 WHERE p.visibility = 'public'
+	    OR (p.visibility = 'custom' AND EXISTS (
+	            SELECT 1 FROM subscriptions s
+	             WHERE s.account_id = $1 AND s.plan_type = p.id AND s.status = 'active'
+	        ))
+	 ORDER BY p.monthly_price ASC`, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var plans []models.Plan
+	for rows.Next() {
+		var p models.Plan
+		if err := rows.Scan(&p.ID, &p.Name, &p.Visibility, &p.DailyQuota, &p.MonthlyQuota, &p.OverageBufferPct,
 			&p.MaxQueueDepth, &p.DedicatedPool, &p.DefaultRoutingStrategy,
 			&p.PricePerSMS, &p.MonthlyPrice); err != nil {
 			return nil, err
@@ -144,11 +179,14 @@ func (s *BillingService) ListPlans(ctx context.Context) ([]models.Plan, error) {
 }
 
 func (s *BillingService) CreatePlan(ctx context.Context, plan *models.Plan) error {
+	if plan.Visibility == "" {
+		plan.Visibility = models.PlanVisibilityPublic
+	}
 	_, err := s.db.Exec(ctx,
-		`INSERT INTO plans (id, name, daily_quota, monthly_quota, overage_buffer_pct, max_queue_depth,
+		`INSERT INTO plans (id, name, visibility, daily_quota, monthly_quota, overage_buffer_pct, max_queue_depth,
 		        dedicated_pool, default_routing_strategy, price_per_sms, monthly_price)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-		plan.ID, plan.Name, plan.DailyQuota, plan.MonthlyQuota, plan.OverageBufferPct,
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+		plan.ID, plan.Name, plan.Visibility, plan.DailyQuota, plan.MonthlyQuota, plan.OverageBufferPct,
 		plan.MaxQueueDepth, plan.DedicatedPool, plan.DefaultRoutingStrategy,
 		plan.PricePerSMS, plan.MonthlyPrice)
 	return err
@@ -156,10 +194,10 @@ func (s *BillingService) CreatePlan(ctx context.Context, plan *models.Plan) erro
 
 func (s *BillingService) UpdatePlan(ctx context.Context, plan *models.Plan) error {
 	_, err := s.db.Exec(ctx,
-		`UPDATE plans SET name=$2, daily_quota=$3, monthly_quota=$4, overage_buffer_pct=$5,
-		        max_queue_depth=$6, dedicated_pool=$7, default_routing_strategy=$8,
-		        price_per_sms=$9, monthly_price=$10 WHERE id=$1`,
-		plan.ID, plan.Name, plan.DailyQuota, plan.MonthlyQuota, plan.OverageBufferPct,
+		`UPDATE plans SET name=$2, visibility=$3, daily_quota=$4, monthly_quota=$5, overage_buffer_pct=$6,
+		        max_queue_depth=$7, dedicated_pool=$8, default_routing_strategy=$9,
+		        price_per_sms=$10, monthly_price=$11 WHERE id=$1`,
+		plan.ID, plan.Name, plan.Visibility, plan.DailyQuota, plan.MonthlyQuota, plan.OverageBufferPct,
 		plan.MaxQueueDepth, plan.DedicatedPool, plan.DefaultRoutingStrategy,
 		plan.PricePerSMS, plan.MonthlyPrice)
 	return err

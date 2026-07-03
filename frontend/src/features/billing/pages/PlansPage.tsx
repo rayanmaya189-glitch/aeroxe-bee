@@ -30,6 +30,7 @@ export function PlansPage() {
   const [maxQueueDepth, setMaxQueueDepth] = useState('')
   const [routingStrategy, setRoutingStrategy] = useState('fastest_delivery')
   const [dedicatedPool, setDedicatedPool] = useState(false)
+  const [visibility, setVisibility] = useState<'public' | 'private' | 'custom'>('public')
 
   const { data: plans = [], isLoading } = useQuery({
     queryKey: ['admin-plans'],
@@ -41,6 +42,7 @@ export function PlansPage() {
       const payload: Plan = {
         id: planId,
         name,
+        visibility,
         daily_quota: Number(dailyQuota) || 0,
         monthly_quota: Number(monthlyQuota) || 0,
         monthly_price: Number(monthlyPrice) || 0,
@@ -82,6 +84,7 @@ export function PlansPage() {
     setMaxQueueDepth(String(plan?.max_queue_depth ?? ''))
     setRoutingStrategy(plan?.default_routing_strategy || 'fastest_delivery')
     setDedicatedPool(plan?.dedicated_pool || false)
+    setVisibility(plan?.visibility || 'public')
     setError('')
     setShowForm(true)
   }
@@ -121,7 +124,11 @@ export function PlansPage() {
                     ${plan.monthly_price}<span className="text-sm font-normal text-gray-400">/mo</span>
                   </p>
                 </div>
-                {plan.dedicated_pool && <Badge variant="primary" size="sm">Dedicated</Badge>}
+                <div className="flex flex-wrap gap-1">
+                  {plan.visibility === 'private' && <Badge variant="danger" size="sm">Private</Badge>}
+                  {plan.visibility === 'custom' && <Badge variant="warning" size="sm">Custom</Badge>}
+                  {plan.dedicated_pool && <Badge variant="primary" size="sm">Dedicated</Badge>}
+                </div>
               </div>
 
               <div className="mt-5 space-y-2.5 text-sm">
@@ -194,6 +201,18 @@ export function PlansPage() {
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Visibility</label>
+              <select
+                value={visibility}
+                onChange={(e) => setVisibility(e.target.value as 'public' | 'private' | 'custom')}
+                className="block w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+              >
+                <option value="public">Public — visible to all members</option>
+                <option value="custom">Custom — visible only to subscribed members</option>
+                <option value="private">Private — visible only to admins</option>
+              </select>
+            </div>
+            <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Routing strategy</label>
               <select
                 value={routingStrategy}
@@ -207,17 +226,17 @@ export function PlansPage() {
                 <option value="profit_optimized">Profit optimized</option>
               </select>
             </div>
-            <div className="flex items-end">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={dedicatedPool}
-                  onChange={(e) => setDedicatedPool(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Dedicated pool</span>
-              </label>
-            </div>
+          </div>
+          <div className="flex items-center">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={dedicatedPool}
+                onChange={(e) => setDedicatedPool(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Dedicated pool</span>
+            </label>
           </div>
         </div>
       </Modal>

@@ -23,7 +23,18 @@ func NewBillingHandler(billingService *services.BillingService, subscriptionServ
 }
 
 func (h *BillingHandler) ListPlans(w http.ResponseWriter, r *http.Request) {
-	plans, err := h.billingService.ListPlans(r.Context())
+	var plans []models.Plan
+	var err error
+
+	if middleware.GetIsAdmin(r.Context()) {
+		// Admin sees all plans
+		plans, err = h.billingService.ListPlansForAdmin(r.Context())
+	} else {
+		// Member sees public + custom plans they're subscribed to
+		accountID := middleware.GetAccountID(r.Context())
+		plans, err = h.billingService.ListPlansForMember(r.Context(), accountID)
+	}
+
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to list plans"})
 		return
@@ -42,6 +53,24 @@ func (h *BillingHandler) GetPlan(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusNotFound, APIResponse{Error: "plan not found"})
 		return
 	}
+
+	// Enforce visibility: admins can see everything
+	if !middleware.GetIsAdmin(r.Context()) {
+		if plan.Visibility == models.PlanVisibilityPrivate {
+			writeJSON(w, http.StatusNotFound, APIResponse{Error: "plan not found"})
+			return
+		}
+		// Custom plans are only visible to subscribed members
+		if plan.Visibility == models.PlanVisibilityCustom {
+			accountID := middleware.GetAccountID(r.Context())
+			sub, _ := h.subscriptionService.GetByAccountID(r.Context(), accountID)
+			if sub == nil || sub.PlanType != plan.ID || sub.Status != models.SubStatusActive {
+				writeJSON(w, http.StatusNotFound, APIResponse{Error: "plan not found"})
+				return
+			}
+		}
+	}
+
 	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: plan})
 }
 
@@ -115,6 +144,10 @@ func (h *BillingHandler) CreatePlan(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "id and name are required"})
 		return
 	}
+	if plan.Visibility != "" && plan.Visibility != models.PlanVisibilityPublic && plan.Visibility != models.PlanVisibilityPrivate && plan.Visibility != models.PlanVisibilityCustom {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "visibility must be public, private, or custom"})
+		return
+	}
 	if err := h.billingService.CreatePlan(r.Context(), &plan); err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to create plan"})
 		return
@@ -130,6 +163,10 @@ func (h *BillingHandler) UpdatePlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	plan.ID = models.PlanType(id)
+	if plan.Visibility != "" && plan.Visibility != models.PlanVisibilityPublic && plan.Visibility != models.PlanVisibilityPrivate && plan.Visibility != models.PlanVisibilityCustom {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "visibility must be public, private, or custom"})
+		return
+	}
 	if err := h.billingService.UpdatePlan(r.Context(), &plan); err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to update plan"})
 		return

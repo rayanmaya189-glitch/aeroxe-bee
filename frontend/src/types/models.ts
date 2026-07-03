@@ -104,6 +104,7 @@ export interface Template {
 export interface Plan {
   id: string
   name: string
+  visibility: 'public' | 'private' | 'custom'
   daily_quota: number
   monthly_quota: number
   overage_buffer_pct: number
