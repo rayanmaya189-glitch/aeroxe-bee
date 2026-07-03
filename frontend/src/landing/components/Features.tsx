@@ -19,16 +19,16 @@ export function Features() {
           <motion.div variants={fadeInUp} className="mb-16 text-center">
             <span className="mb-4 inline-block rounded-full border border-blue-500/20 bg-blue-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-blue-400">Features</span>
             <h2 className="mt-4 text-4xl font-bold tracking-tight text-white lg:text-5xl">
-              Everything you need to{' '}
-              <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">scale SMS</span>
+              Every capability{' '}
+              <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">you actually need</span>
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-lg text-gray-400">
-              Built for teams that demand performance, reliability, and intelligence from their messaging infrastructure.
+              Real features backed by real infrastructure — authentication, routing, fleet management, analytics, and more.
             </p>
           </motion.div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map((feature, i) => (
+            {FEATURES.map((feature) => (
               <motion.div
                 key={feature.title}
                 variants={fadeInUp}

@@ -7,7 +7,7 @@ export function Integrations() {
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.1 })
 
   return (
-    <section id="resources" className="relative bg-[#030712] py-24 lg:py-32">
+    <section className="relative bg-[#030712] py-24 lg:py-32">
       <div className="absolute left-0 right-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
       <div className="relative mx-auto max-w-[1280px] px-6">
         <motion.div
@@ -20,11 +20,11 @@ export function Integrations() {
           <motion.div variants={fadeInUp}>
             <span className="mb-4 inline-block rounded-full border border-cyan-500/20 bg-cyan-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-cyan-400">Integrations</span>
             <h2 className="mt-4 text-4xl font-bold tracking-tight text-white lg:text-5xl">
-              Connects with{' '}
-              <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">everything</span>
+              Built with the{' '}
+              <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">right infrastructure</span>
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-lg text-gray-400">
-              REST APIs, SDKs, webhooks, and native integrations with the tools you already use.
+              REST APIs, MQTT messaging, Redis queues, webhooks, and native Android SDK — the real stack behind every message.
             </p>
           </motion.div>
 

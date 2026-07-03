@@ -1,16 +1,7 @@
 import { motion } from 'framer-motion'
 import { useInView } from 'react-intersection-observer'
 import { staggerContainer, fadeInUp } from '../animations/variants'
-import { ShieldCheck, FileCheck, Lock, Server, Cloud, Shield } from 'lucide-react'
-
-const COMPLIANCE_ITEMS = [
-  { icon: ShieldCheck, title: 'SOC 2 Type II', desc: 'Independently audited security controls for enterprise trust.', color: 'text-blue-400' },
-  { icon: FileCheck, title: 'ISO 27001', desc: 'International standard for information security management.', color: 'text-purple-400' },
-  { icon: Shield, title: 'GDPR Compliant', desc: 'Full data privacy compliance for EU and global regulations.', color: 'text-green-400' },
-  { icon: Lock, title: 'End-to-End Encryption', desc: 'AES-256 encryption for all data in transit and at rest.', color: 'text-cyan-400' },
-  { icon: Server, title: '99.99% Uptime SLA', desc: 'Multi-region infrastructure with automatic failover.', color: 'text-amber-400' },
-  { icon: Cloud, title: 'Cloud Infrastructure', desc: 'Hosted on enterprise-grade cloud with DDoS protection.', color: 'text-rose-400' },
-]
+import { SECURITY_FEATURES } from '../constants/data'
 
 export function SecurityCompliance() {
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.1 })
@@ -29,15 +20,15 @@ export function SecurityCompliance() {
             <span className="mb-4 inline-block rounded-full border border-blue-500/20 bg-blue-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-blue-400">Security</span>
             <h2 className="mt-4 text-4xl font-bold tracking-tight text-white lg:text-5xl">
               Enterprise-grade{' '}
-              <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">security & compliance</span>
+              <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">security built in</span>
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-lg text-gray-400">
-              Your data is protected by industry-leading security standards and compliance certifications.
+              Zero-trust architecture with encryption at rest and in transit, scoped API keys, and automated fraud detection.
             </p>
           </motion.div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {COMPLIANCE_ITEMS.map((item) => (
+            {SECURITY_FEATURES.map((item) => (
               <motion.div
                 key={item.title}
                 variants={fadeInUp}

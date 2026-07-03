@@ -6,6 +6,7 @@ import (
 	"github.com/textbee/backend/internal/api/handlers"
 	"github.com/textbee/backend/internal/api/middleware"
 	"github.com/textbee/backend/internal/database"
+	"github.com/textbee/backend/internal/services"
 	"github.com/textbee/backend/internal/telemetry"
 )
 
@@ -26,6 +27,7 @@ func NewRouter(
 	paymentConfigHandler *handlers.PaymentConfigHandler,
 	paymentRequestHandler *handlers.PaymentRequestHandler,
 	subscriptionRequestHandler *handlers.SubscriptionRequestHandler,
+	billingService *services.BillingService,
 	authMiddleware *middleware.AuthMiddleware,
 	metrics *telemetry.Metrics,
 	pg *database.PostgresDB,
@@ -36,6 +38,10 @@ func NewRouter(
 	healthHandler := handlers.NewHealthHandler(pg, rdb, metrics)
 
 	mux.HandleFunc("GET /api/v1/health", healthHandler.Check)
+
+	// Public routes (no auth required)
+	publicBillingHandler := handlers.NewPublicBillingHandler(billingService)
+	mux.HandleFunc("GET /api/v1/public/plans", publicBillingHandler.ListPublicPlans)
 
 	// Auth routes
 	mux.HandleFunc("POST /api/v1/auth/register", authHandler.Register)

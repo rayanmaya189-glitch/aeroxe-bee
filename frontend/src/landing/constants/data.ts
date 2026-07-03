@@ -1,15 +1,17 @@
 import {
-  Zap, Shield, Globe, BarChart3, Brain,
-  Smartphone, Lock, Gauge, Users, TrendingUp,
+  Zap, Shield, Globe, BarChart3,
+  Smartphone, Lock, Gauge, Users,
   Clock, Layers, Settings, Bell, Workflow, Database,
-  Cloud, Code, Terminal, GitBranch, Cpu, Eye
+  Cloud, Code, Terminal, GitBranch, Cpu, Eye,
+  Route, MessageSquare, Server, CreditCard,
+  ShieldCheck, FileCheck,
 } from 'lucide-react'
 
 export const NAV_LINKS = [
   { label: 'Features', href: '#features' },
-  { label: 'Solutions', href: '#solutions' },
+  { label: 'Ecosystem', href: '#ecosystem' },
   { label: 'Pricing', href: '#pricing' },
-  { label: 'Resources', href: '#resources' },
+  { label: 'Developers', href: '#developers' },
 ] as const
 
 export const TRUSTED_COMPANIES = [
@@ -18,189 +20,207 @@ export const TRUSTED_COMPANIES = [
   'StackBuild', 'WebForge',
 ] as const
 
+// ── Features: ONLY real system capabilities from the PRD ──
 export const FEATURES = [
   {
-    icon: Zap,
-    title: 'Lightning Fast Delivery',
-    description: 'Sub-second SMS delivery with intelligent routing across 200+ carriers worldwide. Our edge network ensures your messages arrive instantly.',
+    icon: Lock,
+    title: 'Authentication & 2FA',
+    description: 'JWT-based auth with optional TOTP two-factor authentication. Role-based access control for admin, staff, and viewer roles.',
     color: 'from-blue-500 to-cyan-400',
-    span: 'col-span-1 md:col-span-2',
+    span: 'col-span-1',
   },
   {
-    icon: Shield,
-    title: 'Enterprise Security',
-    description: 'Bank-grade encryption, SOC 2 compliance, and role-based access control protect every message.',
+    icon: Route,
+    title: 'Smart Routing Strategies',
+    description: '5 selectable routing strategies: fastest delivery, lowest cost, highest reliability, geo-affinity, and profit-optimized.',
     color: 'from-purple-500 to-pink-400',
-    span: 'col-span-1',
-  },
-  {
-    icon: Brain,
-    title: 'AI-Powered Routing',
-    description: 'Machine learning algorithms optimize delivery paths in real-time, reducing costs by up to 40%.',
-    color: 'from-cyan-500 to-blue-400',
-    span: 'col-span-1',
-  },
-  {
-    icon: BarChart3,
-    title: 'Real-Time Analytics',
-    description: 'Track delivery rates, latency, and costs across every device and carrier with live dashboards.',
-    color: 'from-green-500 to-emerald-400',
-    span: 'col-span-1 md:col-span-2',
-  },
-  {
-    icon: Globe,
-    title: 'Global Coverage',
-    description: 'Reach 6 billion phones across 195 countries with automatic carrier detection and failover.',
-    color: 'from-orange-500 to-amber-400',
     span: 'col-span-1',
   },
   {
     icon: Smartphone,
     title: 'Device Fleet Management',
-    description: 'Monitor hundreds of Android devices from a single dashboard. Health scoring, alerts, and remote management.',
+    description: 'Monitor Android devices with real SIM cards. Track SIM health, battery, network type, and device risk state (Active / Doze Risk / OEM Kill Risk).',
     color: 'from-rose-500 to-pink-400',
+    span: 'col-span-1',
+  },
+  {
+    icon: BarChart3,
+    title: 'Real-Time Analytics',
+    description: 'Delivery confidence scores, per-carrier success rates, queue depth monitoring, and cost/profit tracking across your fleet.',
+    color: 'from-green-500 to-emerald-400',
+    span: 'col-span-1',
+  },
+  {
+    icon: MessageSquare,
+    title: 'Priority Queue System',
+    description: 'Three priority lanes — OTP (highest), transactional (medium), marketing (lowest) — with strict drain order and backpressure controls.',
+    color: 'from-orange-500 to-amber-400',
+    span: 'col-span-1',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'Circuit Breakers',
+    description: 'Automatic circuit breakers at device, account, and carrier level. Self-healing with configurable cooldown and half-open trials.',
+    color: 'from-cyan-500 to-blue-400',
     span: 'col-span-1',
   },
 ] as const
 
-export const AI_FEATURES = [
+// ── Ecosystem: the 4 real products ──
+export const ECOSYSTEM = [
   {
-    icon: Brain,
-    title: 'Smart Route Optimization',
-    description: 'AI continuously analyzes carrier performance and routes messages through the fastest, most reliable paths.',
-  },
-  {
-    icon: TrendingUp,
-    title: 'Predictive Analytics',
-    description: 'Forecast message volumes, predict device health issues, and optimize costs before problems occur.',
-  },
-  {
-    icon: Workflow,
-    title: 'Automated Workflows',
-    description: 'Build intelligent message pipelines with conditional routing, templates, and automated retry logic.',
-  },
-  {
-    icon: Eye,
-    title: 'Anomaly Detection',
-    description: 'Real-time fraud detection and abuse prevention powered by machine learning models.',
-  },
-] as const
-
-export const BENEFITS = [
-  {
-    icon: Gauge,
-    title: '99.99% Uptime',
-    description: 'Enterprise-grade infrastructure with automatic failover ensures your messages always get through.',
-  },
-  {
-    icon: Clock,
-    title: '< 200ms Latency',
-    description: 'Edge-optimized delivery network routes messages in under 200 milliseconds on average.',
+    icon: Settings,
+    title: 'Admin Dashboard',
+    description: 'Full control panel with account management, template approvals, fraud review, billing oversight, circuit breaker status, and platform-wide analytics.',
+    color: 'from-blue-500 to-indigo-500',
+    tech: 'React + Tailwind CSS',
   },
   {
     icon: Users,
-    title: 'Scale Without Limits',
-    description: 'From 100 to 100 million messages — our infrastructure scales seamlessly with your growth.',
+    title: 'Member Portal',
+    description: 'Customer-facing portal for device management, message history, analytics, template CRUD, webhook configuration, and subscription management.',
+    color: 'from-purple-500 to-violet-500',
+    tech: 'React + Tailwind CSS',
   },
   {
-    icon: Lock,
-    title: 'SOC 2 Compliant',
-    description: 'Enterprise security certifications, end-to-end encryption, and full audit logging.',
+    icon: Smartphone,
+    title: 'Android Client',
+    description: 'Kotlin + Jetpack Compose app that turns Android phones into SMS-sending nodes. MQTT client, SIM health monitoring, foreground service with watchdog.',
+    color: 'from-green-500 to-emerald-500',
+    tech: 'Kotlin + Jetpack Compose',
   },
   {
-    icon: Layers,
-    title: 'Simple API',
-    description: 'RESTful APIs and SDKs for every major language. Get started in under 5 minutes.',
-  },
-  {
-    icon: Bell,
-    title: 'Smart Notifications',
-    description: 'Webhooks, real-time dashboards, and intelligent alerting keep you informed.',
+    icon: Server,
+    title: 'Backend Platform',
+    description: 'Go API with Redis Streams queues, PostgreSQL storage, MQTT broker cluster, delivery confidence engine, fraud detection, and webhook dispatch.',
+    color: 'from-amber-500 to-orange-500',
+    tech: 'Go + PostgreSQL + Redis + MQTT',
   },
 ] as const
 
+// ── Smart Routing: real routing strategies from the backend ──
+export const ROUTING_STRATEGIES = [
+  {
+    icon: Zap,
+    title: 'Fastest Delivery',
+    description: 'Weights latency and uptime heavily to minimize time-to-delivery for time-sensitive messages.',
+  },
+  {
+    icon: CreditCard,
+    title: 'Lowest Cost',
+    description: 'Weights device cost profiles to minimize per-message cost. Default for marketing and bulk traffic.',
+  },
+  {
+    icon: Shield,
+    title: 'Highest Reliability',
+    description: 'Weights reliability scores heavily. Default for OTP traffic to maximize delivery guarantees.',
+  },
+  {
+    icon: Globe,
+    title: 'Geo-Affinity',
+    description: 'Prefers devices whose SIM country/region matches the recipient for better local delivery rates.',
+  },
+] as const
+
+// ── Security: real features from the PRD ──
+export const SECURITY_FEATURES = [
+  { icon: Lock, title: 'AES-256-GCM Encryption', desc: 'All message content, OTPs, and PII encrypted at rest with envelope encryption.', color: 'text-blue-400' },
+  { icon: Shield, title: 'TLS Everywhere', desc: 'TLS 1.2+ for all API traffic. MQTT exclusively over TLS — plaintext disabled.', color: 'text-purple-400' },
+  { icon: ShieldCheck, title: 'JWT + 2FA Auth', desc: 'Secure JWT authentication with optional TOTP two-factor for admin accounts.', color: 'text-green-400' },
+  { icon: Key, title: 'Scoped API Keys', desc: 'Pre-shared, hashed, revocable API keys with per-key rate limiting and scope restrictions.', color: 'text-cyan-400' },
+  { icon: Eye, title: 'HMAC Webhooks', desc: 'All webhook payloads signed with HMAC-SHA256. Automatic retry with exponential backoff.', color: 'text-amber-400' },
+  { icon: FileCheck, title: 'Fraud Detection', desc: 'Pattern-based fraud and abuse detection with velocity anomaly monitoring and manual review queue.', color: 'text-rose-400' },
+] as const
+
+// ── Integrations: only real backend-supported integrations ──
 export const INTEGRATIONS = [
   { icon: Code, name: 'REST API' },
   { icon: Terminal, name: 'CLI Tool' },
   { icon: Database, name: 'PostgreSQL' },
-  { icon: Cloud, name: 'MQTT' },
+  { icon: Cloud, name: 'MQTT Broker' },
   { icon: GitBranch, name: 'Webhooks' },
   { icon: Cpu, name: 'Android SDK' },
-  { icon: Zap, name: 'Zapier' },
-  { icon: Settings, name: 'n8n' },
+  { icon: Server, name: 'Redis Streams' },
+  { icon: CreditCard, name: 'Stripe' },
 ] as const
 
-export const TESTIMONIALS = [
+// ── Testimonials: replaced with Architecture Credibility (no fake reviews) ──
+export const CREDIBILITY_POINTS = [
   {
-    quote: 'AeroXe Bee transformed our SMS infrastructure. We went from 15% delivery failures to 99.7% in just one week.',
-    author: 'Sarah Chen',
-    role: 'CTO, TechFlow Inc.',
-    rating: 5,
+    icon: Route,
+    title: 'Multi-Strategy Routing',
+    description: '5 routing strategies with weighted scoring across reliability, reputation, cost, and geo-affinity — not a single hardcoded path.',
   },
   {
-    quote: 'The AI routing saved us $40K per month while improving delivery speed by 3x. The ROI was immediate.',
-    author: 'Marcus Rodriguez',
-    role: 'VP Engineering, DataSync',
-    rating: 5,
+    icon: Shield,
+    title: 'Predictive SIM Health',
+    description: 'Proactive health monitoring with trend slope detection. Devices are load-reduced before hitting hard failure thresholds.',
   },
   {
-    quote: 'Managing 500 devices used to be a nightmare. Now I have full visibility from a single dashboard.',
-    author: 'Anika Patel',
-    role: 'DevOps Lead, CloudBase',
-    rating: 5,
+    icon: Eye,
+    title: 'Delivery Confidence Model',
+    description: 'Honest delivery reporting with confidence scores based on carrier receipt patterns, device history, and signal sources.',
+  },
+  {
+    icon: Workflow,
+    title: 'Circuit Breaker System',
+    description: 'Three-level circuit breakers (device, account, carrier) with automatic open/half-open/close state machines.',
   },
 ] as const
 
+// ── Pricing: mapped to real plan types from the backend ──
 export const PRICING_PLANS = [
   {
-    name: 'Starter',
-    monthlyPrice: 29,
-    yearlyPrice: 290,
-    description: 'Perfect for small teams getting started',
+    name: 'Free',
+    planId: 'free',
+    monthlyPrice: 0,
+    yearlyPrice: 0,
+    description: 'For getting started and testing',
     features: [
-      '10,000 SMS/month',
-      '5 device connections',
+      '1,000 SMS/month',
+      '2 device connections',
       'Basic analytics',
-      'Email support',
+      'Community support',
       'Standard routing',
       'API access',
     ],
-    cta: 'Start Free Trial',
+    cta: 'Get Started Free',
     popular: false,
   },
   {
-    name: 'Professional',
-    monthlyPrice: 79,
-    yearlyPrice: 790,
-    description: 'For growing businesses that need more',
+    name: 'Pro',
+    planId: 'pro',
+    monthlyPrice: 49,
+    yearlyPrice: 490,
+    description: 'For growing businesses',
     features: [
-      '100,000 SMS/month',
-      '25 device connections',
+      '50,000 SMS/month',
+      '10 device connections',
       'Advanced analytics & charts',
       'Priority support',
-      'AI-powered routing',
+      'Routing strategy selection',
       'Custom webhooks',
       'Template management',
-      'Team collaboration',
+      'OTP system',
     ],
     cta: 'Start Free Trial',
     popular: true,
   },
   {
-    name: 'Enterprise',
-    monthlyPrice: 299,
-    yearlyPrice: 2990,
-    description: 'For organizations that need it all',
+    name: 'Scale',
+    planId: 'scale',
+    monthlyPrice: 199,
+    yearlyPrice: 1990,
+    description: 'For high-volume operations',
     features: [
-      'Unlimited SMS',
-      'Unlimited devices',
+      '500,000 SMS/month',
+      '50 device connections',
       'Full analytics suite',
       'Dedicated support',
-      'AI routing + optimization',
+      'All routing strategies',
+      'Dedicated device pools',
+      'Cost/profit tracking',
       'Custom integrations',
-      'SSO & RBAC',
-      'SLA guarantee',
-      'Dedicated infrastructure',
     ],
     cta: 'Contact Sales',
     popular: false,
@@ -209,45 +229,47 @@ export const PRICING_PLANS = [
 
 export const FAQ_ITEMS = [
   {
-    question: 'How does the AI routing work?',
-    answer: 'Our machine learning models analyze real-time carrier performance data, delivery success rates, and latency metrics across 200+ carriers to automatically route each message through the optimal path. The system continuously learns and adapts to changing conditions.',
+    question: 'How does the routing strategy system work?',
+    answer: 'AeroXe Bee offers 5 selectable routing strategies: fastest delivery, lowest cost, highest reliability, geo-affinity, and profit-optimized. Each strategy applies different weights to device reliability scores, reputation scores, and cost profiles to select the optimal device for each message.',
   },
   {
-    question: 'Can I migrate from my current SMS provider?',
-    answer: 'Absolutely. We provide migration tools and dedicated support to help you switch from Twilio, Vonage, or any other provider. Most migrations are completed within 24 hours with zero downtime.',
+    question: 'How does device fleet management work?',
+    answer: 'Install the Android app on phones with SIM cards, pair them via QR code, and they become SMS-sending nodes. Each device is monitored for SIM health, battery, network quality, and risk state. The platform automatically manages device selection, rate limiting, and circuit breaking.',
   },
   {
-    question: 'What Android devices are supported?',
-    answer: 'AeroXe Bee works with any Android device running Android 8.0 or later. We support all major manufacturers including Samsung, Google Pixel, OnePlus, and more. Our fleet management dashboard makes it easy to monitor device health.',
+    question: 'What is delivery confidence scoring?',
+    answer: 'Android SMS delivery reports are not fully reliable. Our confidence model combines delivery report signals, historical success patterns, and carrier reporting reliability to produce an honest confidence score — not a false binary "delivered" claim.',
   },
   {
-    question: 'Is there a free trial?',
-    answer: 'Yes! We offer a 14-day free trial with 1,000 SMS credits. No credit card required. You get full access to all Professional plan features during the trial.',
+    question: 'How does the OTP system work?',
+    answer: 'Generate 4-6 digit codes via API, routed through the highest-priority OTP queue with a 90-second max queue age. Codes are stored as HMAC-SHA256 hashes with 5-minute TTL and 5-attempt lockout. OTP audit metadata is retained for 1 year.',
   },
   {
-    question: 'How does pricing work?',
-    answer: 'Plans are based on monthly SMS volume and number of device connections. Overage is billed at competitive per-message rates. Enterprise plans include unlimited everything with custom pricing.',
+    question: 'What security measures are in place?',
+    answer: 'AES-256-GCM encryption at rest, TLS 1.2+ everywhere, JWT auth with optional 2FA, scoped and revocable API keys, HMAC-signed webhooks, fraud detection, and circuit breakers at device/account/carrier level.',
   },
   {
-    question: 'What kind of support do you offer?',
-    answer: 'Starter plans include email support with 24-hour response time. Professional plans get priority support with 4-hour response. Enterprise customers receive a dedicated account manager and 24/7 phone support.',
+    question: 'Can I self-host the platform?',
+    answer: 'Yes. AeroXe Bee ships as both a managed SaaS product and an open-source, self-hostable platform via Docker Compose. The same codebase supports both deployment models.',
   },
 ] as const
 
+// ── Real system stats (marked as sample/illustrative) ──
 export const STATS = [
-  { value: 2_500_000_000, label: 'Messages Delivered', suffix: '+' },
-  { value: 99.99, label: 'Uptime', suffix: '%' },
-  { value: 195, label: 'Countries', suffix: '+' },
-  { value: 200, label: 'Carrier Partners', suffix: '+' },
+  { value: 95, label: 'Delivery Rate Target', suffix: '%+' },
+  { value: 150, label: 'API Latency (p95)', suffix: 'ms' },
+  { value: 99.5, label: 'API Uptime', suffix: '%+' },
+  { value: 5, label: 'Routing Strategies', suffix: '' },
 ] as const
 
 export const COMPARISON_ROWS = [
-  { feature: 'AI-Powered Routing', us: true, competitor1: false, competitor2: false },
+  { feature: '5 Routing Strategies', us: true, competitor1: false, competitor2: false },
   { feature: 'Device Fleet Management', us: true, competitor1: false, competitor2: true },
-  { feature: 'Real-Time Analytics', us: true, competitor1: true, competitor2: false },
-  { feature: 'Sub-200ms Delivery', us: true, competitor1: false, competitor2: false },
-  { feature: 'Smart Retry Logic', us: true, competitor1: true, competitor2: false },
-  { feature: 'Custom Webhooks', us: true, competitor1: true, competitor2: true },
-  { feature: 'Team Collaboration', us: true, competitor1: false, competitor2: false },
-  { feature: '99.99% SLA', us: true, competitor1: false, competitor2: false },
+  { feature: 'Delivery Confidence Scores', us: true, competitor1: false, competitor2: false },
+  { feature: 'SIM Health Prediction', us: true, competitor1: false, competitor2: false },
+  { feature: 'Circuit Breakers', us: true, competitor1: true, competitor2: false },
+  { feature: 'Priority Queue (OTP/TX/Mkt)', us: true, competitor1: true, competitor2: false },
+  { feature: 'HMAC Webhook Signatures', us: true, competitor1: true, competitor2: true },
+  { feature: 'Self-Hostable (Docker)', us: true, competitor1: false, competitor2: false },
+  { feature: 'Fraud Detection', us: true, competitor1: false, competitor2: false },
 ] as const

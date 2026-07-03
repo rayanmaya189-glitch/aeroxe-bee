@@ -49,7 +49,7 @@ export function Hero() {
             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-r from-blue-500 to-purple-500">
               <Star className="h-3 w-3 text-white" fill="currentColor" />
             </span>
-            <span>New: AI-powered message routing is here</span>
+            <span>New: 5 smart routing strategies now available</span>
             <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
           </a>
         </motion.div>
@@ -70,8 +70,8 @@ export function Hero() {
           </motion.h1>
 
           <motion.p variants={fadeInUp} className="mx-auto mt-6 max-w-2xl text-lg text-gray-400 lg:mt-8 lg:text-xl">
-            AI-powered routing, real-time analytics, and fleet management — all from a single platform.
-            Send billions of messages with 99.99% uptime.
+            Smart routing strategies, real-time delivery confidence scoring, device fleet management, and priority queues — all from a single platform.
+            Self-hostable or managed SaaS.
           </motion.p>
 
           {/* CTAs */}
@@ -91,7 +91,7 @@ export function Hero() {
               <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white/10">
                 <Play className="h-3 w-3 fill-white" />
               </div>
-              Watch Demo
+              View Documentation
             </a>
           </motion.div>
 
@@ -114,9 +114,9 @@ export function Hero() {
                 <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                   {[
                     { label: 'Messages Sent', value: '1.2M', change: '+12.5%', changeClass: 'text-blue-400' },
-                    { label: 'Delivery Rate', value: '99.7%', change: '+0.3%', changeClass: 'text-green-400' },
+                    { label: 'Delivery Confidence', value: '94.2%', change: '+2.1%', changeClass: 'text-green-400' },
                     { label: 'Active Devices', value: '248', change: '+18', changeClass: 'text-purple-400' },
-                    { label: 'Avg Latency', value: '142ms', change: '-23ms', changeClass: 'text-cyan-400' },
+                    { label: 'Avg Latency (p95)', value: '142ms', change: '-23ms', changeClass: 'text-cyan-400' },
                   ].map((stat) => (
                     <div key={stat.label} className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-4">
                       <div className="text-xs text-gray-500">{stat.label}</div>
@@ -161,8 +161,8 @@ export function Hero() {
                   <Globe className="h-4 w-4 text-purple-400" />
                 </div>
                 <div>
-                  <div className="text-xs font-medium text-white">Global Reach</div>
-                  <div className="text-xs text-purple-400">195 countries</div>
+                  <div className="text-xs font-medium text-white">Queue Depth</div>
+                  <div className="text-xs text-purple-400">3 priority lanes</div>
                 </div>
               </div>
             </motion.div>
@@ -170,7 +170,7 @@ export function Hero() {
 
           {/* Trust */}
           <motion.div variants={fadeInUp} className="mt-16 pb-8">
-            <p className="mb-6 text-sm text-gray-500">Trusted by 500+ companies worldwide</p>
+            <p className="mb-6 text-sm text-gray-500">Open-source core • Self-hostable • Managed SaaS</p>
             <div className="relative overflow-hidden">
               <div className="flex w-fit gap-12" style={{ animation: 'marquee 30s linear infinite' }}>
                 {[...TRUSTED_COMPANIES, ...TRUSTED_COMPANIES, ...TRUSTED_COMPANIES].map((name, i) => (

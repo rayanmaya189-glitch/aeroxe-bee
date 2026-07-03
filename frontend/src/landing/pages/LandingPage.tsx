@@ -2,18 +2,15 @@ import { AnnouncementBar } from '../components/AnnouncementBar'
 import { Navbar } from '../components/Navbar'
 import { Hero } from '../components/Hero'
 import { Features } from '../components/Features'
-import { ProductShowcase } from '../components/ProductShowcase'
-import { AIFeatures } from '../components/AIFeatures'
-import { Benefits } from '../components/Benefits'
-import { Industries } from '../components/Industries'
-import { CustomerSuccess } from '../components/CustomerSuccess'
+import { ProductEcosystem } from '../components/ProductEcosystem'
+import { SmartRouting } from '../components/SmartRouting'
 import { Statistics } from '../components/Statistics'
 import { Integrations } from '../components/Integrations'
 import { SecurityCompliance } from '../components/SecurityCompliance'
+import { ArchitectureCredibility } from '../components/ArchitectureCredibility'
+import { DeveloperSection } from '../components/DeveloperSection'
 import { ComparisonTable } from '../components/ComparisonTable'
 import { Pricing } from '../components/Pricing'
-import { Testimonials } from '../components/Testimonials'
-import { VideoSection } from '../components/VideoSection'
 import { FAQ } from '../components/FAQ'
 import { CTABanner } from '../components/CTABanner'
 import { Footer } from '../components/Footer'
@@ -29,18 +26,15 @@ export function LandingPage() {
       <main>
         <Hero />
         <Features />
-        <ProductShowcase />
-        <AIFeatures />
-        <Benefits />
-        <Industries />
-        <CustomerSuccess />
+        <ProductEcosystem />
+        <SmartRouting />
         <Statistics />
         <Integrations />
         <SecurityCompliance />
+        <ArchitectureCredibility />
+        <DeveloperSection />
         <ComparisonTable />
         <Pricing />
-        <Testimonials />
-        <VideoSection />
         <FAQ />
         <CTABanner />
       </main>
