@@ -233,4 +233,9 @@
   .animate-slideUp { animation: slideUp 0.2s ease-out forwards; }
   .animate-slideDown { animation: slideDown 0.2s ease-out forwards; }
   .animate-scaleIn { animation: scaleIn 0.15s ease-out forwards; }
+
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-33.333%); }
+  }
 }

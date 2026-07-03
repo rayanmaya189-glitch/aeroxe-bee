@@ -1,4 +1,4 @@
-import { Zap } from 'lucide-react'
+import { Zap, ArrowRight } from 'lucide-react'
 
 const FOOTER_LINKS = {
   Product: ['Features', 'Pricing', 'Integrations', 'API Docs', 'Changelog'],
@@ -11,6 +11,25 @@ export function Footer() {
   return (
     <footer className="relative bg-[#030712] border-t border-white/[0.06]">
       <div className="mx-auto max-w-[1280px] px-6 py-16">
+        {/* Newsletter */}
+        <div className="mb-12 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-8 lg:flex lg:items-center lg:justify-between lg:gap-8">
+          <div className="mb-4 lg:mb-0">
+            <h3 className="text-lg font-semibold text-white">Stay in the loop</h3>
+            <p className="mt-1 text-sm text-gray-400">Get the latest product updates, engineering insights, and industry news.</p>
+          </div>
+          <form className="flex w-full max-w-md gap-2" onSubmit={(e) => e.preventDefault()}>
+            <input
+              type="email"
+              placeholder="Enter your email"
+              className="flex-1 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-sm text-white placeholder-gray-500 outline-none transition-all focus:border-blue-500/40 focus:ring-1 focus:ring-blue-500/20"
+            />
+            <button className="group flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:shadow-blue-500/40 hover:brightness-110">
+              Subscribe
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </button>
+          </form>
+        </div>
+
         <div className="grid gap-12 lg:grid-cols-5">
           {/* Brand */}
           <div className="lg:col-span-1">

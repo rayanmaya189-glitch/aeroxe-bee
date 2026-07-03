@@ -54,7 +54,7 @@ export function AIFeatures() {
             initial="hidden"
             animate={inView ? 'visible' : 'hidden'}
             variants={slideInLeft}
-            className="relative hidden lg:block"
+            className="relative"
           >
             <div className="relative rounded-2xl border border-white/[0.08] bg-[#0a0f1e] p-8">
               {/* Neural network visualization */}

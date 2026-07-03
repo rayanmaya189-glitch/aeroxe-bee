@@ -171,10 +171,14 @@ export function Hero() {
           {/* Trust */}
           <motion.div variants={fadeInUp} className="mt-16 pb-8">
             <p className="mb-6 text-sm text-gray-500">Trusted by 500+ companies worldwide</p>
-            <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4">
-              {TRUSTED_COMPANIES.map((name) => (
-                <span key={name} className="text-sm font-medium text-gray-600 transition-colors hover:text-gray-400">{name}</span>
-              ))}
+            <div className="relative overflow-hidden">
+              <div className="flex w-fit gap-12" style={{ animation: 'marquee 30s linear infinite' }}>
+                {[...TRUSTED_COMPANIES, ...TRUSTED_COMPANIES, ...TRUSTED_COMPANIES].map((name, i) => (
+                  <span key={`${name}-${i}`} className="whitespace-nowrap text-sm font-medium text-gray-600 transition-colors hover:text-gray-400">{name}</span>
+                ))}
+              </div>
+              <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-[#030712] to-transparent" />
+              <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-[#030712] to-transparent" />
             </div>
             <div className="mx-auto mt-10 grid max-w-3xl grid-cols-2 gap-8 lg:grid-cols-4">
               {STATS.map((stat) => (
