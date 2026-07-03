@@ -27,8 +27,12 @@ import androidx.navigation.compose.rememberNavController
 import com.textbee.client.ui.screens.dashboard.DashboardScreen
 import com.textbee.client.ui.screens.device.DeviceScreen
 import com.textbee.client.ui.screens.logs.LogsScreen
+import com.textbee.client.ui.screens.notifications.NotificationsScreen
+import com.textbee.client.ui.screens.onboarding.OnboardingScreen
+import com.textbee.client.ui.screens.profile.ProfileScreen
 import com.textbee.client.ui.screens.registration.RegistrationScreen
 import com.textbee.client.ui.screens.settings.SettingsScreen
+import com.textbee.client.ui.screens.splash.SplashScreen
 import com.textbee.client.ui.theme.*
 import com.textbee.client.util.TokenManager
 import dagger.hilt.EntryPoint
@@ -40,6 +44,8 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector,
     data object Logs : Screen("logs", "SMS Logs", Icons.Outlined.MailOutline, Icons.Filled.Mail)
     data object Device : Screen("device", "Device", Icons.Outlined.PhoneAndroid, Icons.Filled.PhoneAndroid)
     data object Settings : Screen("settings", "Settings", Icons.Outlined.Settings, Icons.Filled.Settings)
+    data object Profile : Screen("profile", "Profile", Icons.Outlined.Person, Icons.Filled.Person)
+    data object Notifications : Screen("notifications", "Alerts", Icons.Outlined.Notifications, Icons.Filled.Notifications)
 }
 
 private val bottomNavItems = listOf(
@@ -75,13 +81,14 @@ fun AppNavHost() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
-    val showBottomBar = currentDestination?.route != "registration"
+    val hideBottomBarRoutes = listOf("splash", "onboarding", "registration")
+    val showBottomBar = currentDestination?.route !in hideBottomBarRoutes
     val currentRoute = currentDestination?.route
 
     val navHostContent: @Composable (Modifier) -> Unit = { modifier ->
         NavHost(
             navController = navController,
-            startDestination = "registration",
+            startDestination = "splash",
             modifier = modifier,
             enterTransition = {
                 slideTransitionForRoute(
@@ -102,6 +109,24 @@ fun AppNavHost() {
                 slideOutHorizontally(tween(300)) { it / 3 } + fadeOut(tween(200))
             },
         ) {
+            composable("splash") {
+                SplashScreen(
+                    onReady = {
+                        navController.navigate("onboarding") {
+                            popUpTo("splash") { inclusive = true }
+                        }
+                    }
+                )
+            }
+            composable("onboarding") {
+                OnboardingScreen(
+                    onComplete = {
+                        navController.navigate("registration") {
+                            popUpTo("onboarding") { inclusive = true }
+                        }
+                    }
+                )
+            }
             composable("registration") {
                 RegistrationScreen(
                     onRegistered = {
@@ -115,6 +140,8 @@ fun AppNavHost() {
             composable(Screen.Logs.route) { LogsScreen() }
             composable(Screen.Device.route) { DeviceScreen() }
             composable(Screen.Settings.route) { SettingsScreen() }
+            composable(Screen.Profile.route) { ProfileScreen() }
+            composable(Screen.Notifications.route) { NotificationsScreen() }
         }
     }
 
