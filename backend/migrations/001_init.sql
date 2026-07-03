@@ -1,5 +1,5 @@
 -- AeroXe Bee - Initial Schema
--- Aeroxe Enterprises Pvt. Ltd.
+-- Copyright (c) Aeroxe Enterprises Pvt. Ltd., Jalgaon, Maharashtra, India
 -- All tables for the distributed Android SMS gateway platform
 
 BEGIN;

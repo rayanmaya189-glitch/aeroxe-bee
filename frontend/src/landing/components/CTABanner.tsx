@@ -26,7 +26,7 @@ export function CTABanner() {
               Ready to transform your SMS infrastructure?
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-lg text-white/80">
-              Join 500+ companies already using AeroXe Bee. Start your free trial today — no credit card required.
+              Join teams using AeroXe Bee for reliable SMS delivery. Start your free trial today — no credit card required.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <a

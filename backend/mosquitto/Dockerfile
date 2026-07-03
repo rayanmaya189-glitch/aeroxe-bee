@@ -1,5 +1,6 @@
 # ============================================================================
 # AeroXe Bee - Mosquitto MQTT Broker
+# Aeroxe Enterprises Pvt. Ltd., Jalgaon, Maharashtra, India
 # Authentication via password file managed by the backend Go service
 # ============================================================================
 

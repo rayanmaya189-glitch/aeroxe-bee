@@ -1,4 +1,5 @@
 -- AeroXe Bee - Plan Visibility
+-- Copyright (c) Aeroxe Enterprises Pvt. Ltd., Jalgaon, Maharashtra, India
 -- Migration 006
 
 BEGIN;

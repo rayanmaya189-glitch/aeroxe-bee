@@ -1,5 +1,6 @@
 # ============================================================================
 # AeroXe Bee Mosquitto ACL
+# Aeroxe Enterprises Pvt. Ltd., Jalgaon, Maharashtra, India
 # Two users: "backend" (Go service) and "devices" (all Android devices)
 # ============================================================================
 

@@ -1,5 +1,5 @@
 # AeroXe Bee ProGuard Rules
-# Aeroxe Enterprises Pvt. Ltd.
+# Copyright (c) Aeroxe Enterprises Pvt. Ltd., Jalgaon, Maharashtra, India
 -keepattributes *Annotation*
 -keep class com.textbee.client.** { *; }
 -keepclassmembers class * extends androidx.room.RoomDatabase { *; }

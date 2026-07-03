@@ -1,4 +1,5 @@
 -- AeroXe Bee - Payment Configs, Payment Requests, Subscription Requests
+-- Copyright (c) Aeroxe Enterprises Pvt. Ltd., Jalgaon, Maharashtra, India
 -- Migration 004
 
 BEGIN;

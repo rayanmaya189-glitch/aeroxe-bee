@@ -39,7 +39,7 @@ import (
 func main() {
 	cfg := config.Load()
 	logger := telemetry.NewLogger(cfg.Telemetry.LogLevel, cfg.Telemetry.LogFormat)
-	logger.Info("starting AeroXe Bee backend", "version", "1.0.0", "env", cfg.App.Environment)
+	logger.Info("starting AeroXe Bee backend", "version", "1.0.0", "env", cfg.App.Environment, "copyright", "Aeroxe Enterprises Pvt. Ltd., Jalgaon, Maharashtra, India")
 
 	postgres, err := database.NewPostgres(cfg.Database)
 	if err != nil {

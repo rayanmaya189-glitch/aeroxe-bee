@@ -40,7 +40,7 @@ export function Footer() {
               <span className="text-lg font-bold tracking-tight text-white">AeroXe Bee</span>
             </a>
             <p className="mt-4 text-sm leading-relaxed text-gray-400">
-              AI-powered SMS delivery platform for the modern enterprise.
+              Distributed SMS gateway platform with intelligent routing.
             </p>
             <div className="mt-6 flex gap-3">
               {['X', 'GH', 'LI', 'YT'].map((s) => (
@@ -74,7 +74,7 @@ export function Footer() {
 
         {/* Bottom bar */}
         <div className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-white/[0.06] pt-8 sm:flex-row">
-          <p className="text-xs text-gray-500">&copy; {new Date().getFullYear()} AeroXe Bee. All rights reserved.</p>
+          <p className="text-xs text-gray-500">&copy; {new Date().getFullYear()} Aeroxe Enterprises Pvt. Ltd., Jalgaon, Maharashtra, India. All rights reserved.</p>
           <div className="flex gap-6">
             {['Privacy Policy', 'Terms of Service', 'Cookie Policy'].map((link) => (
               <a key={link} href="#" className="text-xs text-gray-500 transition-colors hover:text-gray-400">
