@@ -29,6 +29,7 @@ const PlansPage = lazy(() => import('@/features/billing/pages/PlansPage').then((
 const BillingSettingsPage = lazy(() => import('@/features/billing/pages/BillingSettingsPage').then((m) => ({ default: m.BillingSettingsPage })))
 const AdminSubscriptionsPage = lazy(() => import('@/features/billing/pages/AdminSubscriptionsPage').then((m) => ({ default: m.AdminSubscriptionsPage })))
 const MemberUpgradePage = lazy(() => import('@/features/member/pages/MemberUpgradePage').then((m) => ({ default: m.MemberUpgradePage })))
+const LandingPage = lazy(() => import('@/landing/pages/LandingPage').then((m) => ({ default: m.LandingPage })))
 
 function LazyLoader({ children }: { children: React.ReactNode }) {
   return (
@@ -73,13 +74,22 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function DefaultRedirect() {
   const user = useAuthStore((s) => s.user)
-  if (!user || user.role === 'member') {
+  if (!user) return <Navigate to="/home" replace />
+  if (user.role === 'member') {
     return <Navigate to="/member" replace />
   }
   return <Navigate to="/dashboard" replace />
 }
 
 const routes: RouteObject[] = [
+  {
+    path: '/home',
+    element: (
+      <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-[#030712]"><div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" /></div>}>
+        <LandingPage />
+      </Suspense>
+    ),
+  },
   {
     path: '/login',
     element: (
