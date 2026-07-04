@@ -26,9 +26,20 @@ function setMeta(property: string, content: string, attribute: 'name' | 'propert
   el.setAttribute('content', content)
 }
 
+function setCanonical(href: string) {
+  let el = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')
+  if (!el) {
+    el = document.createElement('link')
+    el.setAttribute('rel', 'canonical')
+    document.head.appendChild(el)
+  }
+  el.setAttribute('href', href)
+}
+
 export function useSEO({ title, description, ogImage, ogUrl }: SEOData) {
   useEffect(() => {
     const prevTitle = document.title
+    const prevCanonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href ?? ''
 
     document.title = title
     setMeta('og:title', title)
@@ -40,6 +51,9 @@ export function useSEO({ title, description, ogImage, ogUrl }: SEOData) {
     setMeta('twitter:image', ogImage ?? DEFAULTS.ogImage)
     setMeta('description', description, 'name')
 
+    const url = ogUrl ?? DEFAULTS.ogUrl
+    if (url) setCanonical(url)
+
     return () => {
       document.title = prevTitle
       setMeta('og:title', DEFAULTS.title)
@@ -50,6 +64,7 @@ export function useSEO({ title, description, ogImage, ogUrl }: SEOData) {
       setMeta('twitter:description', DEFAULTS.description)
       setMeta('twitter:image', DEFAULTS.ogImage)
       setMeta('description', DEFAULTS.description, 'name')
+      if (prevCanonical) setCanonical(prevCanonical)
     }
   }, [title, description, ogImage, ogUrl])
 }
