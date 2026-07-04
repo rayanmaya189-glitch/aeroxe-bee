@@ -73,23 +73,18 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
-function DefaultRedirect() {
-  const user = useAuthStore((s) => s.user)
-  if (!user) return <Navigate to="/home" replace />
-  if (user.role === 'member') {
-    return <Navigate to="/member" replace />
-  }
-  return <Navigate to="/dashboard" replace />
-}
-
 const routes: RouteObject[] = [
   {
-    path: '/home',
+    path: '/',
     element: (
       <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-[#030712]"><div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" /></div>}>
         <LandingPage />
       </Suspense>
     ),
+  },
+  {
+    path: '/home',
+    element: <Navigate to="/" replace />,
   },
   {
     element: <AuthLayout />,
@@ -116,11 +111,6 @@ const routes: RouteObject[] = [
     path: '/',
     element: <ProtectedRoute><AppLayout /></ProtectedRoute>,
     children: [
-      // Default redirect based on role
-      {
-        index: true,
-        element: <DefaultRedirect />,
-      },
       // Admin-only routes
       {
         element: <AdminRoute><Outlet /></AdminRoute>,
