@@ -32,6 +32,7 @@ export function ContactSalesPage() {
 
   const updateField = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }))
+    if (formError) setFormError('')
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
