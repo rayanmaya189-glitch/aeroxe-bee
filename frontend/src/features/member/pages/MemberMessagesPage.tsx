@@ -10,14 +10,12 @@ import { Badge } from '@/components/ui/Badge'
 import { Input } from '@/components/ui/Input'
 import { PageSkeleton } from '@/components/ui/Skeleton'
 import { useDebounce } from '@/hooks/useDebounce'
-import { Search } from 'lucide-react'
+import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
+import { Search, MessageSquare } from 'lucide-react'
 
 const deliveryVariant: Record<string, 'success' | 'warning' | 'danger' | 'info'> = {
   PROBABLE_DELIVERED: 'success', CARRIER_ACCEPTED: 'info', SENT: 'warning', FAILED: 'danger',
 }
-
-const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.06 } } }
-const itemVariants = { hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] } } }
 
 export function MemberMessagesPage() {
   const [page, setPage] = useState(1)
@@ -51,10 +49,23 @@ export function MemberMessagesPage() {
 
   return (
     <PageTransition>
-    <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
-      <motion.div variants={itemVariants}>
-        <h1 className="text-2xl font-bold tracking-tight text-gray-100">Messages</h1>
-        <p className="mt-1 text-sm text-gray-400">View your message delivery history</p>
+    <motion.div initial="hidden" animate="visible" variants={staggerContainer} className="space-y-8">
+      <motion.div variants={fadeInUp}>
+        <div className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] p-8">
+          <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-cyan-600/10 blur-[80px]" />
+          <div className="pointer-events-none absolute -left-8 bottom-0 h-32 w-32 rounded-full bg-blue-600/10 blur-[60px]" />
+          <div className="relative flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 shadow-lg shadow-cyan-500/25">
+              <MessageSquare className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-extrabold tracking-tight text-white lg:text-4xl">
+                <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">Messages</span>
+              </h1>
+              <p className="mt-1 text-sm text-gray-400">View your message delivery history</p>
+            </div>
+          </div>
+        </div>
       </motion.div>
 
       <motion.div variants={itemVariants}>

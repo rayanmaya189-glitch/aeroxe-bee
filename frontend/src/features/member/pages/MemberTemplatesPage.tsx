@@ -13,10 +13,8 @@ import { Modal } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { PageSkeleton } from '@/components/ui/Skeleton'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { Plus } from 'lucide-react'
-
-const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.06 } } }
-const itemVariants = { hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] } } }
+import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
+import { Plus, FileText } from 'lucide-react'
 
 export function MemberTemplatesPage() {
   const queryClient = useQueryClient()
@@ -53,13 +51,29 @@ export function MemberTemplatesPage() {
 
   return (
     <PageTransition>
-    <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
-      <motion.div variants={itemVariants} className="flex items-center justify-between">
-        <div><h1 className="text-2xl font-bold tracking-tight text-gray-100">Templates</h1><p className="mt-1 text-sm text-gray-400">Manage your message templates</p></div>
-        <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => openForm()}>New template</Button>
+    <motion.div initial="hidden" animate="visible" variants={staggerContainer} className="space-y-8">
+      <motion.div variants={fadeInUp}>
+        <div className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] p-8">
+          <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-violet-600/10 blur-[80px]" />
+          <div className="pointer-events-none absolute -left-8 bottom-0 h-32 w-32 rounded-full bg-indigo-600/10 blur-[60px]" />
+          <div className="relative flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 shadow-lg shadow-violet-500/25">
+                <FileText className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-extrabold tracking-tight text-white lg:text-4xl">
+                  <span className="bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">Templates</span>
+                </h1>
+                <p className="mt-1 text-sm text-gray-400">Manage your message templates</p>
+              </div>
+            </div>
+            <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => openForm()}>New template</Button>
+          </div>
+        </div>
       </motion.div>
 
-      <motion.div variants={itemVariants} className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3 text-sm text-cyan-400">
+      <motion.div variants={itemVariants} className="rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-3 text-sm text-cyan-400">
         Templates require admin approval after creation. You can edit or delete templates while they are pending.
       </motion.div>
 
@@ -88,10 +102,10 @@ export function MemberTemplatesPage() {
       <Modal open={showForm} onClose={closeForm} title={editing ? 'Edit template' : 'New template'}
         footer={<><Button variant="ghost" size="sm" onClick={closeForm} disabled={saveMutation.isPending}>Cancel</Button><Button size="sm" onClick={() => saveMutation.mutate()} loading={saveMutation.isPending}>{editing ? 'Update' : 'Create'}</Button></>}>
         <div className="space-y-4">
-          {error && <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3 text-sm text-red-400">{error}</div>}
+          {error && <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-3 text-sm text-red-400">{error}</div>}
           <Input label="Template name" value={name} onChange={(e) => setName(e.target.value)} required />
           <div><label className="mb-1.5 block text-sm font-medium text-gray-300">Body</label>
-            <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={5} className="block w-full rounded-lg border border-white/[0.08] bg-white/[0.05] px-3.5 py-2.5 text-sm text-gray-100 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 placeholder:text-gray-500" required /></div>
+            <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={5} className="block w-full rounded-xl border border-white/[0.08] bg-white/[0.05] px-3.5 py-2.5 text-sm text-gray-100 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 placeholder:text-gray-500" required /></div>
         </div>
       </Modal>
 

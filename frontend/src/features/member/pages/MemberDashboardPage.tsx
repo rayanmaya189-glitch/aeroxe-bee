@@ -8,10 +8,8 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { PageSkeleton } from '@/components/ui/Skeleton'
 import { formatNumber } from '@/utils/format'
-import { Send, CheckCircle, XCircle, TrendingUp } from 'lucide-react'
-
-const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.06 } } }
-const itemVariants = { hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] } } }
+import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
+import { Send, CheckCircle, XCircle, TrendingUp, LayoutDashboard } from 'lucide-react'
 
 interface StatCardProps { title: string; value: string | number; subtitle?: string; icon: React.ReactNode; gradient: string }
 function StatCard({ title, value, subtitle, icon, gradient }: StatCardProps) {
@@ -23,7 +21,7 @@ function StatCard({ title, value, subtitle, icon, gradient }: StatCardProps) {
           <p className="text-2xl font-bold tracking-tight text-gray-100">{value}</p>
           {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
         </div>
-        <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${gradient}`}>{icon}</div>
+        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${gradient} ring-1 ring-white/[0.06]`}>{icon}</div>
       </div>
     </Card>
   )
@@ -36,15 +34,28 @@ export function MemberDashboardPage() {
   })
 
   if (isLoading) return <PageTransition><PageSkeleton /></PageTransition>
-  if (error) return <PageTransition><div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-400">Failed to load dashboard data</div></PageTransition>
+  if (error) return <PageTransition><div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-400">Failed to load dashboard data</div></PageTransition>
   if (!data) return null
 
   return (
     <PageTransition>
-    <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
-      <motion.div variants={itemVariants}>
-        <h1 className="text-2xl font-bold tracking-tight text-gray-100">Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-400">Welcome back, {data.account.name}</p>
+    <motion.div initial="hidden" animate="visible" variants={staggerContainer} className="space-y-8">
+      <motion.div variants={fadeInUp}>
+        <div className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] p-8">
+          <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-blue-600/10 blur-[80px]" />
+          <div className="pointer-events-none absolute -left-8 bottom-0 h-32 w-32 rounded-full bg-cyan-600/10 blur-[60px]" />
+          <div className="relative flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-600 shadow-lg shadow-blue-500/25">
+              <LayoutDashboard className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-extrabold tracking-tight text-white lg:text-4xl">
+                <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">Dashboard</span>
+              </h1>
+              <p className="mt-1 text-sm text-gray-400">Welcome back, {data.account.name}</p>
+            </div>
+          </div>
+        </div>
       </motion.div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
