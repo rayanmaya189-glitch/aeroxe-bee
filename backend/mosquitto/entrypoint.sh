@@ -7,23 +7,22 @@ PASSWD_FILE="$PASSWD_DIR/passwords"
 mkdir -p "$PASSWD_DIR"
 
 BACKEND_PASS="${MQTT_BACKEND_PASSWORD:-dev-backend-password}"
-DEVICE_PASS="${MQTT_DEVICE_PASSWORD:-dev-device-password}"
 
 # Remove any existing password file
 rm -f "$PASSWD_FILE"
 
 # Create hashed password file with backend admin user
+# -b = batch mode (no prompts), -c = create new file
 mosquitto_passwd -b -c "$PASSWD_FILE" backend "$BACKEND_PASS"
 
-# Fix ownership and permissions
-chown mosquitto:mosquitto "$PASSWD_FILE"
-chmod 0700 "$PASSWD_FILE"
+# Fix ownership and permissions (mosquitto user = UID 1883)
+chown 1883:1883 "$PASSWD_FILE"
+chmod 0600 "$PASSWD_FILE"
 
-echo "[auth] Password file created successfully (backend user only)"
-echo "[auth] Device users are managed dynamically by the Go backend service"
+# Ensure data directory is writable by mosquitto user
+chown -R 1883:1883 /mosquitto/data 2>/dev/null || true
 
-# Write PID file so the backend can signal reload via SIGHUP
-echo $$ > /mosquitto/mosquitto.pid
-chown mosquitto:mosquitto /mosquitto/mosquitto.pid
+echo "[auth] Password file created successfully"
 
-exec /docker-entrypoint.sh "$@"
+# Drop to mosquitto user (UID 1883) before starting the broker
+exec su-exec 1883 "$@"
