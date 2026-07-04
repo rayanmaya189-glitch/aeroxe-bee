@@ -29,6 +29,7 @@ const FraudFlagsPage = lazy(() => import('@/features/fraud/pages/FraudFlagsPage'
 const PlansPage = lazy(() => import('@/features/billing/pages/PlansPage').then((m) => ({ default: m.PlansPage })))
 const BillingSettingsPage = lazy(() => import('@/features/billing/pages/BillingSettingsPage').then((m) => ({ default: m.BillingSettingsPage })))
 const AdminSubscriptionsPage = lazy(() => import('@/features/billing/pages/AdminSubscriptionsPage').then((m) => ({ default: m.AdminSubscriptionsPage })))
+const KycReviewPage = lazy(() => import('@/features/accounts/pages/KycReviewPage').then((m) => ({ default: m.KycReviewPage })))
 const MemberUpgradePage = lazy(() => import('@/features/member/pages/MemberUpgradePage').then((m) => ({ default: m.MemberUpgradePage })))
 const LandingPage = lazy(() => import('@/landing/pages/LandingPage').then((m) => ({ default: m.LandingPage })))
 
@@ -127,6 +128,7 @@ const routes: RouteObject[] = [
           { path: 'plans', element: <LazyLoader><PlansPage /></LazyLoader> },
           { path: 'billing-settings', element: <LazyLoader><BillingSettingsPage /></LazyLoader> },
           { path: 'admin/subscriptions', element: <LazyLoader><AdminSubscriptionsPage /></LazyLoader> },
+          { path: 'kyc-reviews', element: <LazyLoader><KycReviewPage /></LazyLoader> },
         ],
       },
       // Shared routes (accessible to both admin and member)

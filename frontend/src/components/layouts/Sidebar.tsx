@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Users, BarChart3, FileText, Webhook,
   CreditCard, Settings, Zap, ChevronLeft,
   MessageSquare, AlertTriangle, BrainCircuit, UserCog,
-  Receipt, Crown,
+  Receipt, Crown, FileCheck,
 } from 'lucide-react'
 
 interface NavItem {
@@ -33,6 +33,7 @@ const adminNav: NavItem[] = [
   { label: 'Circuit Breakers', path: '/circuit-breakers', icon: <BrainCircuit className="h-[18px] w-[18px]" />, adminOnly: true },
   { label: 'Dead Letters', path: '/dead-letters', icon: <MessageSquare className="h-[18px] w-[18px]" />, adminOnly: true },
   { label: 'Fraud Flags', path: '/fraud-flags', icon: <AlertTriangle className="h-[18px] w-[18px]" />, adminOnly: true },
+  { label: 'KYC Reviews', path: '/kyc-reviews', icon: <FileCheck className="h-[18px] w-[18px]" />, adminOnly: true },
 ]
 
 const memberNav: NavItem[] = [

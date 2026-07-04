@@ -50,6 +50,7 @@ function Toggle({ label, description, enabled, onChange }: ToggleProps) {
 
 export function SettingsPage() {
   const { user, setUser } = useAuthStore()
+  const isAdmin = user?.role === 'admin' || user?.role === 'staff'
 
   // Profile
   const [name, setName] = useState(user?.name ?? '')
@@ -391,7 +392,8 @@ export function SettingsPage() {
             </Card>
           </motion.div>
 
-          {/* ─── KYC ─── */}
+          {/* ─── KYC (members only) ─── */}
+          {!isAdmin && (
           <motion.div variants={itemVariants}>
             <Card>
               <CardHeader className="mb-4">
@@ -416,6 +418,7 @@ export function SettingsPage() {
               </div>
             </Card>
           </motion.div>
+          )}
 
           {/* ─── Security info ─── */}
           <motion.div variants={itemVariants}>
@@ -437,10 +440,12 @@ export function SettingsPage() {
                   <span className="text-gray-400">Two-factor auth</span>
                   <Badge variant={twoFAEnabled ? 'success' : 'warning'} size="sm">{twoFAEnabled ? 'On' : 'Off'}</Badge>
                 </div>
+                {!isAdmin && (
                 <div className="flex items-center justify-between">
                   <span className="text-gray-400">KYC verification</span>
                   <Badge variant={kycStatusLabel[kycStatus]?.variant ?? 'info'} size="sm">{kycStatusLabel[kycStatus]?.text ?? 'Unknown'}</Badge>
                 </div>
+                )}
                 <div className="flex items-center justify-between">
                   <span className="text-gray-400">Last login</span>
                   <span className="text-gray-300">{user ? 'Current session' : '—'}</span>

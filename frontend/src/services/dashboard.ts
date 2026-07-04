@@ -387,6 +387,39 @@ export async function submitKyc(data: { full_name: string; document_type: string
   if (!res.data.success) throw new Error(res.data.error ?? 'Failed to submit KYC')
 }
 
+// ─── Admin KYC Review ───────────────────────────────────────────
+
+export interface KycSubmission {
+  id: string
+  user_id: string
+  user_email: string
+  user_name: string
+  full_name: string
+  document_type: string
+  document_number: string
+  document_url: string
+  status: string
+  reviewed_by: string | null
+  reviewed_at: string | null
+  created_at: string
+}
+
+export async function getKycSubmissions(params: { page?: number; pageSize?: number; status?: string } = {}): Promise<PaginatedResponse<KycSubmission>> {
+  const res = await api.get<ApiResponse<PaginatedResponse<KycSubmission>>>('/admin/kyc', { params })
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load KYC submissions')
+  return res.data.data
+}
+
+export async function approveKyc(id: string, notes?: string): Promise<void> {
+  const res = await api.post(`/admin/kyc/${id}/approve`, { notes: notes || '' })
+  if (!res.data.success) throw new Error(res.data.error ?? 'Failed to approve KYC')
+}
+
+export async function rejectKyc(id: string, notes?: string): Promise<void> {
+  const res = await api.post(`/admin/kyc/${id}/reject`, { notes: notes || '' })
+  if (!res.data.success) throw new Error(res.data.error ?? 'Failed to reject KYC')
+}
+
 // ─── 2FA ──────────────────────────────────────────────────────────
 
 export async function get2FAStatus(): Promise<{ enabled: boolean }> {
