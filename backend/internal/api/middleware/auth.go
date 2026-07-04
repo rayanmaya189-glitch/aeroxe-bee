@@ -63,6 +63,9 @@ func (m *AuthMiddleware) APIKeyAuth(next http.Handler) http.Handler {
 			return
 		}
 
+		// Track API key usage (fire-and-forget)
+		go m.apiKeyService.RecordUsage(r.Context(), keyObj.ID)
+
 		ctx := context.WithValue(r.Context(), ContextAccountID, keyObj.AccountID)
 		ctx = context.WithValue(ctx, ContextAPIKeyID, keyObj.ID)
 		ctx = context.WithValue(ctx, ContextAPIKey, keyObj)

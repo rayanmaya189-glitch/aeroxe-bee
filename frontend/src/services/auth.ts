@@ -92,6 +92,8 @@ export interface ApiKeyInfo {
   expires_at?: string
   revoked_at?: string
   created_at: string
+  request_count: number
+  last_used_at?: string
 }
 
 export interface ApiKeyCreateResult {

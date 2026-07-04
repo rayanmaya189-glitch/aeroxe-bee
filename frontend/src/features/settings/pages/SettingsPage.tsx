@@ -661,6 +661,10 @@ curl https://api.aeroxe.com/api/v1/health \
                             {key.expires_at && <><span>·</span><span>Expires {new Date(key.expires_at).toLocaleDateString()}</span></>}
                             <span>·</span><span>{formatTimeAgo(key.created_at)}</span>
                           </div>
+                          <div className="flex items-center gap-3 mt-1 text-[11px] text-gray-600">
+                            <span>{(key.request_count ?? 0).toLocaleString()} requests</span>
+                            {key.last_used_at && <><span>·</span><span>Last used {formatTimeAgo(key.last_used_at)}</span></>}
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
@@ -885,6 +889,14 @@ curl https://api.aeroxe.com/api/v1/health \
                   <div>
                     <p className="text-gray-500">Expires</p>
                     <p className="text-gray-300">{detailKey.expires_at ? new Date(detailKey.expires_at).toLocaleDateString() : 'Never'}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Requests</p>
+                    <p className="text-gray-300 font-medium">{(detailKey.request_count ?? 0).toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Last used</p>
+                    <p className="text-gray-300">{detailKey.last_used_at ? formatTimeAgo(detailKey.last_used_at) : 'Never'}</p>
                   </div>
                   <div className="col-span-2">
                     <p className="text-gray-500">Key ID</p>

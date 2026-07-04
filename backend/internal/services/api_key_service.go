@@ -47,10 +47,12 @@ func (s *APIKeyService) Validate(ctx context.Context, rawKey string) (*models.AP
 	keyHash := s.hashKey(rawKey)
 	apiKey := &models.APIKey{}
 	err := s.db.QueryRow(ctx,
-		`SELECT id, account_id, key_hash, label, scopes, expires_at, revoked_at, created_at
+		`SELECT id, account_id, key_hash, label, scopes, expires_at, revoked_at, created_at,
+		       COALESCE(request_count, 0), last_used_at
 		 FROM api_keys WHERE key_hash = $1`, keyHash,
 	).Scan(&apiKey.ID, &apiKey.AccountID, &apiKey.KeyHash, &apiKey.Label, &apiKey.Scopes,
-		&apiKey.ExpiresAt, &apiKey.RevokedAt, &apiKey.CreatedAt)
+		&apiKey.ExpiresAt, &apiKey.RevokedAt, &apiKey.CreatedAt,
+		&apiKey.RequestCount, &apiKey.LastUsedAt)
 	if err == pgx.ErrNoRows {
 		return nil, nil
 	} else if err != nil {
@@ -69,7 +71,8 @@ func (s *APIKeyService) Validate(ctx context.Context, rawKey string) (*models.AP
 
 func (s *APIKeyService) List(ctx context.Context, accountID string) ([]models.APIKey, error) {
 	rows, err := s.db.Query(ctx,
-		`SELECT id, account_id, key_hash, label, scopes, expires_at, revoked_at, created_at
+		`SELECT id, account_id, key_hash, label, scopes, expires_at, revoked_at, created_at,
+		       COALESCE(request_count, 0), last_used_at
 		 FROM api_keys WHERE account_id = $1 ORDER BY created_at DESC`, accountID)
 	if err != nil {
 		return nil, err
@@ -80,7 +83,8 @@ func (s *APIKeyService) List(ctx context.Context, accountID string) ([]models.AP
 	for rows.Next() {
 		var k models.APIKey
 		if err := rows.Scan(&k.ID, &k.AccountID, &k.KeyHash, &k.Label, &k.Scopes,
-			&k.ExpiresAt, &k.RevokedAt, &k.CreatedAt); err != nil {
+			&k.ExpiresAt, &k.RevokedAt, &k.CreatedAt,
+			&k.RequestCount, &k.LastUsedAt); err != nil {
 			return nil, err
 		}
 		keys = append(keys, k)
@@ -92,6 +96,11 @@ func (s *APIKeyService) Revoke(ctx context.Context, id string) error {
 	now := time.Now()
 	_, err := s.db.Exec(ctx, `UPDATE api_keys SET revoked_at=$1 WHERE id=$2`, now, id)
 	return err
+}
+
+func (s *APIKeyService) RecordUsage(ctx context.Context, keyID string) {
+	_, _ = s.db.Exec(ctx,
+		`UPDATE api_keys SET request_count = request_count + 1, last_used_at = NOW() WHERE id = $1`, keyID)
 }
 
 func (s *APIKeyService) hashKey(key string) string {

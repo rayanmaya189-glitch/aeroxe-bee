@@ -187,14 +187,16 @@ type Account struct {
 
 // APIKey represents a scoped API key
 type APIKey struct {
-	ID        string    `db:"id" json:"id"`
-	AccountID string    `db:"account_id" json:"account_id"`
-	KeyHash   string    `db:"key_hash" json:"-"`
-	Label     string    `db:"label" json:"label"`
-	Scopes    []string  `db:"scopes" json:"scopes"`
-	ExpiresAt *time.Time `db:"expires_at" json:"expires_at,omitempty"`
-	RevokedAt *time.Time `db:"revoked_at" json:"revoked_at,omitempty"`
-	CreatedAt time.Time `db:"created_at" json:"created_at"`
+	ID           string     `db:"id" json:"id"`
+	AccountID    string     `db:"account_id" json:"account_id"`
+	KeyHash      string     `db:"key_hash" json:"-"`
+	Label        string     `db:"label" json:"label"`
+	Scopes       []string   `db:"scopes" json:"scopes"`
+	ExpiresAt    *time.Time `db:"expires_at" json:"expires_at,omitempty"`
+	RevokedAt    *time.Time `db:"revoked_at" json:"revoked_at,omitempty"`
+	CreatedAt    time.Time  `db:"created_at" json:"created_at"`
+	RequestCount int64      `db:"request_count" json:"request_count"`
+	LastUsedAt   *time.Time `db:"last_used_at" json:"last_used_at,omitempty"`
 }
 
 // PhysicalDevice represents an Android phone
