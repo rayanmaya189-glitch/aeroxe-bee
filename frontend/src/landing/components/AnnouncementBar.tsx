@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { ArrowRight, Sparkles } from 'lucide-react'
+import { ArrowRight, Sparkles, Rocket } from 'lucide-react'
 
 export function AnnouncementBar() {
   return (
@@ -17,7 +17,8 @@ export function AnnouncementBar() {
             <Sparkles className="h-4 w-4 text-amber-300" />
           </motion.span>
           <span className="text-sm font-medium text-white">
-            🚀 Limited Time: Get 3 months free on Enterprise plans
+            <Rocket className="mr-1.5 inline h-4 w-4" />
+            Limited Time: Get 3 months free on Enterprise plans
           </span>
           <a
             href="/register"

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"embed"
 	"net/http"
 	"time"
 
@@ -10,6 +11,9 @@ import (
 	"github.com/textbee/backend/internal/services"
 	"github.com/textbee/backend/internal/telemetry"
 )
+
+//go:embed docs/swagger.json
+var swaggerSpec embed.FS
 
 func NewRouter(
 	authHandler *handlers.AuthHandler,
@@ -43,6 +47,39 @@ func NewRouter(
 	healthHandler := handlers.NewHealthHandler(pg, rdb, metrics)
 
 	mux.HandleFunc("GET /api/v1/health", healthHandler.Check)
+
+	// Swagger / OpenAPI documentation
+	mux.HandleFunc("GET /api/v1/docs", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		data, _ := swaggerSpec.ReadFile("docs/swagger.json")
+		w.Write(data)
+	})
+	mux.HandleFunc("GET /api/v1/docs/ui", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>AeroXe Bee API Docs</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css"/>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script>
+    SwaggerUIBundle({
+      url: '/api/v1/docs',
+      dom_id: '#swagger-ui',
+      deepLinking: true,
+      presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.SwaggerUIStandalonePreset],
+      layout: 'BaseLayout',
+      configUrl: false,
+    });
+  </script>
+</body>
+</html>`))
+	})
 
 	// Public routes (no auth required)
 	publicBillingHandler := handlers.NewPublicBillingHandler(billingService, paymentConfigService)

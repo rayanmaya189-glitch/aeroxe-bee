@@ -7,7 +7,7 @@ export function SmartRouting() {
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.1 })
 
   return (
-    <section id="features" className="relative bg-[#030712] py-24 lg:py-32">
+    <section id="routing" className="relative bg-[#030712] py-24 lg:py-32">
       <div className="absolute left-0 right-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
       <div className="relative mx-auto max-w-[1280px] px-6">
         <div className="grid items-center gap-16 lg:grid-cols-2">
