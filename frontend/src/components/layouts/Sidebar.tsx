@@ -7,7 +7,7 @@ import { useIsMobile } from '@/hooks/useMediaQuery'
 import { cn } from '@/utils/cn'
 import {
   LayoutDashboard, Users, BarChart3, FileText, Webhook,
-  CreditCard, Settings, Shield, Zap, ChevronLeft,
+  CreditCard, Settings, Zap, ChevronLeft,
   MessageSquare, AlertTriangle, BrainCircuit, UserCog,
   Receipt, Crown,
 } from 'lucide-react'
@@ -54,7 +54,7 @@ const navItemVariants = {
   visible: (i: number) => ({
     opacity: 1,
     x: 0,
-    transition: { delay: i * 0.03, duration: 0.3, ease: [0.22, 1, 0.36, 1] },
+    transition: { delay: i * 0.03, duration: 0.3, ease: [0.22, 1, 0.36, 1] as const },
   }),
 }
 

@@ -70,7 +70,7 @@ export function MemberWebhooksPage() {
           <div className="relative flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25">
-                <Webhook className="h-6 w-6 text-white" />
+                <WebhookIcon className="h-6 w-6 text-white" />
               </div>
               <div>
                 <h1 className="text-3xl font-extrabold tracking-tight text-white lg:text-4xl">

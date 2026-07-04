@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { useInView } from 'react-intersection-observer'
 import { staggerContainer, fadeInUp } from '../animations/variants'
-import { Code, Terminal, BookOpen, Webhook } from 'lucide-react'
+import { Terminal, BookOpen } from 'lucide-react'
 
 export function DeveloperSection() {
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.1 })

@@ -81,10 +81,10 @@ export const blurReveal: Variants = {
 }
 
 // ── Progress bar fill ──
-export const progressFill = {
+export const progressFill: Variants = {
   hidden: { width: 0 },
   visible: (bar: number) => ({
     width: `${bar}%`,
-    transition: { duration: 1.2, delay: 0.3, ease: [0.22, 1, 0.36, 1] },
+    transition: { duration: 1.2, delay: 0.3, ease: [0.22, 1, 0.36, 1] as const },
   }),
 }

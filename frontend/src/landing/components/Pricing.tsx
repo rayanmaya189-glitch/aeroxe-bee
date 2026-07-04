@@ -22,7 +22,7 @@ interface PricingPlan {
   monthlyPrice: number
   yearlyPrice: number
   description: string
-  features: string[]
+  features: readonly string[]
   cta: string
   popular: boolean
 }
@@ -85,7 +85,7 @@ function PricingSkeleton() {
 
 export function Pricing() {
   const [annual, setAnnual] = useState(false)
-  const [plans, setPlans] = useState<PricingPlan[]>(PRICING_PLANS)
+  const [plans, setPlans] = useState<PricingPlan[]>([...PRICING_PLANS])
   const [paymentMethods, setPaymentMethods] = useState<{ method: string; label: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.1 })

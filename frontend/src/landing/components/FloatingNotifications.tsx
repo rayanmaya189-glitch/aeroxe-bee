@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { UserPlus, CheckCircle } from 'lucide-react'
+import { CheckCircle } from 'lucide-react'
 
 const NOTIFICATIONS = [
   { name: 'Sarah M.', company: 'TechFlow', action: 'started a free trial' },
@@ -51,10 +51,10 @@ export function FloatingNotifications() {
             </div>
             <div>
               <p className="text-xs text-gray-300">
-                <span className="font-semibold text-white">{notification.name}</span>
+                <span className="font-semibold text-white">{notification?.name}</span>
                 {' '}from{' '}
-                <span className="font-medium text-white">{notification.company}</span>
-                {' '}{notification.action}
+                <span className="font-medium text-white">{notification?.company}</span>
+                {' '}{notification?.action}
               </p>
             </div>
           </div>
