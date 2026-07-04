@@ -83,6 +83,7 @@ export interface Device {
 export interface Webhook {
   id: string
   account_id: string
+  account_name?: string
   url: string
   events: string[]
   active: boolean
@@ -93,6 +94,7 @@ export interface Webhook {
 export interface Template {
   id: string
   account_id: string
+  account_name?: string
   name: string
   body: string
   variables: string[]

@@ -108,6 +108,9 @@ export function WebhooksPage() {
                 <div className="flex items-start justify-between">
                   <div className="min-w-0 flex-1">
                     <h3 className="truncate text-sm font-semibold text-gray-100">{wh.url}</h3>
+                    {wh.account_name && (
+                      <p className="mt-1 text-xs text-gray-500">Account: {wh.account_name}</p>
+                    )}
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {wh.events.map((e) => <Badge key={e} size="sm">{e}</Badge>)}
                     </div>

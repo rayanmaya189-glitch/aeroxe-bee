@@ -143,6 +143,9 @@ export function TemplatesPage() {
               }>
                 <div className="flex items-start justify-between">
                   <h3 className="text-sm font-semibold text-gray-100">{t.name}</h3>
+                  {t.account_name && (
+                    <p className="mt-1 text-xs text-gray-500">Account: {t.account_name}</p>
+                  )}
                   <Badge
                     variant={t.approval_status === 'approved' ? 'success' : t.approval_status === 'rejected' ? 'danger' : 'warning'}
                     dot

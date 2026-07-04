@@ -59,7 +59,7 @@ export async function getAnalytics(params?: { start?: string; end?: string }): P
 
 // Webhooks (admin)
 export async function getWebhooks(): Promise<Webhook[]> {
-  const res = await api.get<ApiResponse<Webhook[]>>('/webhooks')
+  const res = await api.get<ApiResponse<Webhook[]>>('/admin/webhooks')
   if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load webhooks')
   return res.data.data
 }
@@ -83,7 +83,7 @@ export async function rotateWebhookSecret(id: string): Promise<string> {
 
 // Templates (admin)
 export async function getTemplates(): Promise<Template[]> {
-  const res = await api.get<ApiResponse<Template[]>>('/templates')
+  const res = await api.get<ApiResponse<Template[]>>('/admin/templates')
   if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load templates')
   return res.data.data
 }
