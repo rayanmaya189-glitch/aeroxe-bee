@@ -25,8 +25,20 @@ export function LandingPage() {
   useSEO({
     title: 'AeroXe Bee — Distributed SMS Gateway Platform',
     description: 'Enterprise SMS delivery with intelligent multi-strategy routing, real-time analytics, device fleet management, and self-hosting options. Start free, scale as you grow.',
-    ogImage: '/og-image.png',
+    ogImage: '/og-image.svg',
     ogUrl: 'https://aeroxbee.com',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: 'AeroXe Bee',
+      url: 'https://aeroxbee.com',
+      description: 'Enterprise SMS delivery platform with intelligent multi-strategy routing, real-time analytics, and device fleet management.',
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: 'https://aeroxbee.com/?q={search_term_string}',
+        'query-input': 'required name=search_term_string',
+      },
+    },
   })
 
   return (

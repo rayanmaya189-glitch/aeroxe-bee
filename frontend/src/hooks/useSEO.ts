@@ -5,6 +5,7 @@ interface SEOData {
   description: string
   ogImage?: string
   ogUrl?: string
+  schema?: Record<string, unknown>
 }
 
 const DEFAULTS = {
@@ -26,6 +27,23 @@ function setMeta(property: string, content: string, attribute: 'name' | 'propert
   el.setAttribute('content', content)
 }
 
+function setJsonLd(data: Record<string, unknown>) {
+  const id = 'seo-json-ld'
+  let el = document.getElementById(id) as HTMLScriptElement | null
+  if (!el) {
+    el = document.createElement('script')
+    el.id = id
+    el.type = 'application/ld+json'
+    document.head.appendChild(el)
+  }
+  el.textContent = JSON.stringify(data)
+}
+
+function removeJsonLd() {
+  const el = document.getElementById('seo-json-ld')
+  if (el) el.remove()
+}
+
 function setCanonical(href: string) {
   let el = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')
   if (!el) {
@@ -36,7 +54,7 @@ function setCanonical(href: string) {
   el.setAttribute('href', href)
 }
 
-export function useSEO({ title, description, ogImage, ogUrl }: SEOData) {
+export function useSEO({ title, description, ogImage, ogUrl, schema }: SEOData) {
   useEffect(() => {
     const prevTitle = document.title
     const prevCanonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href ?? ''
@@ -54,6 +72,8 @@ export function useSEO({ title, description, ogImage, ogUrl }: SEOData) {
     const url = ogUrl ?? DEFAULTS.ogUrl
     if (url) setCanonical(url)
 
+    if (schema) setJsonLd(schema)
+
     return () => {
       document.title = prevTitle
       setMeta('og:title', DEFAULTS.title)
@@ -65,6 +85,7 @@ export function useSEO({ title, description, ogImage, ogUrl }: SEOData) {
       setMeta('twitter:image', DEFAULTS.ogImage)
       setMeta('description', DEFAULTS.description, 'name')
       if (prevCanonical) setCanonical(prevCanonical)
+      removeJsonLd()
     }
   }, [title, description, ogImage, ogUrl])
 }

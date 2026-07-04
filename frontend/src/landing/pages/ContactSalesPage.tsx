@@ -28,6 +28,26 @@ export function ContactSalesPage() {
     description: 'Get in touch with the AeroXe Bee sales team for custom pricing, enterprise security, self-hosting options, and team onboarding. We respond within 24 hours.',
     ogImage: '/og-contact-sales.svg',
     ogUrl: 'https://aeroxbee.com/contact-sales',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'ContactPage',
+      name: 'Contact Sales | AeroXe Bee',
+      description: 'Get in touch with the AeroXe Bee sales team for custom pricing, enterprise security, self-hosting options, and team onboarding.',
+      url: 'https://aeroxbee.com/contact-sales',
+      mainEntity: {
+        '@type': 'Organization',
+        name: 'AeroXe Bee',
+        url: 'https://aeroxbee.com',
+        email: 'sales@aeroxbee.com',
+        telephone: '+917020668210',
+        address: {
+          '@type': 'PostalAddress',
+          addressLocality: 'Jalgaon',
+          addressRegion: 'Maharashtra',
+          addressCountry: 'IN',
+        },
+      },
+    },
   })
   const [ref] = useInView({ triggerOnce: true, threshold: 0.1 })
   const [submitted, setSubmitted] = useState(false)
