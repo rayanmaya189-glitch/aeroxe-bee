@@ -24,11 +24,11 @@ export function Integrations() {
               <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">right infrastructure</span>
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-lg text-gray-400">
-              REST APIs, MQTT messaging, Redis queues, webhooks, and native Android SDK — the real stack behind every message.
+              REST APIs, real-time messaging, webhooks, and native mobile SDK — everything you need to integrate with your workflow.
             </p>
           </motion.div>
 
-          <motion.div variants={fadeInUp} className="mt-12 grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
+          <motion.div variants={fadeInUp} className="mt-12 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
             {INTEGRATIONS.map((intg) => (
               <div
                 key={intg.name}

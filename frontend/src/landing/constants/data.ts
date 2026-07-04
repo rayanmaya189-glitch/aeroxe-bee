@@ -1,7 +1,7 @@
 import {
   Zap, Shield, Globe, BarChart3,
   Smartphone, Lock, Users,
-  Settings, Workflow, Database,
+  Settings, Workflow,
   Cloud, Code, Terminal, GitBranch, Cpu, Eye,
   Route, MessageSquare, Server, CreditCard,
   ShieldCheck, FileCheck, Key,
@@ -24,43 +24,43 @@ export const TRUSTED_COMPANIES = [
 export const FEATURES = [
   {
     icon: Lock,
-    title: 'Authentication & 2FA',
-    description: 'JWT-based auth with optional TOTP two-factor authentication. Role-based access control for admin, staff, and viewer roles.',
+    title: 'Secure Authentication',
+    description: 'Secure login with optional two-factor authentication. Role-based access control for admins, staff, and viewers.',
     color: 'from-blue-500 to-cyan-400',
     span: 'col-span-1',
   },
   {
     icon: Route,
-    title: 'Smart Routing Strategies',
-    description: '5 selectable routing strategies: fastest delivery, lowest cost, highest reliability, geo-affinity, and profit-optimized.',
+    title: 'Smart Routing',
+    description: '5 intelligent routing strategies optimized for speed, cost, reliability, geography, or profitability — choose what matters most.',
     color: 'from-purple-500 to-pink-400',
     span: 'col-span-1',
   },
   {
     icon: Smartphone,
     title: 'Device Fleet Management',
-    description: 'Monitor Android devices with real SIM cards. Track SIM health, battery, network type, and device risk state (Active / Doze Risk / OEM Kill Risk).',
+    description: 'Turn phones into SMS-sending nodes. Real-time health monitoring, automatic failover, and intelligent load balancing across your fleet.',
     color: 'from-rose-500 to-pink-400',
     span: 'col-span-1',
   },
   {
     icon: BarChart3,
     title: 'Real-Time Analytics',
-    description: 'Delivery confidence scores, per-carrier success rates, queue depth monitoring, and cost/profit tracking across your fleet.',
+    description: 'Delivery confidence scores, success rates, queue monitoring, and cost tracking across your entire device fleet.',
     color: 'from-green-500 to-emerald-400',
     span: 'col-span-1',
   },
   {
     icon: MessageSquare,
-    title: 'Priority Queue System',
-    description: 'Three priority lanes — OTP (highest), transactional (medium), marketing (lowest) — with strict drain order and backpressure controls.',
+    title: 'Priority Messaging',
+    description: 'Three priority lanes for OTP, transactional, and marketing messages — ensuring critical messages always get delivered first.',
     color: 'from-orange-500 to-amber-400',
     span: 'col-span-1',
   },
   {
     icon: ShieldCheck,
-    title: 'Circuit Breakers',
-    description: 'Automatic circuit breakers at device, account, and carrier level. Self-healing with configurable cooldown and half-open trials.',
+    title: 'Automatic Failover',
+    description: 'Smart circuit breakers detect issues and automatically reroute traffic. Self-healing system with configurable recovery.',
     color: 'from-cyan-500 to-blue-400',
     span: 'col-span-1',
   },
@@ -71,30 +71,30 @@ export const ECOSYSTEM = [
   {
     icon: Settings,
     title: 'Admin Dashboard',
-    description: 'Full control panel with account management, template approvals, fraud review, billing oversight, circuit breaker status, and platform-wide analytics.',
+    description: 'Full control panel for account management, template approvals, fraud review, billing oversight, and platform-wide analytics.',
     color: 'from-blue-500 to-indigo-500',
-    tech: 'React + Tailwind CSS',
+    badge: 'Web App',
   },
   {
     icon: Users,
     title: 'Member Portal',
-    description: 'Customer-facing portal for device management, message history, analytics, template CRUD, webhook configuration, and subscription management.',
+    description: 'Self-service portal for device management, message history, analytics, templates, webhooks, and subscription management.',
     color: 'from-purple-500 to-violet-500',
-    tech: 'React + Tailwind CSS',
+    badge: 'Web App',
   },
   {
     icon: Smartphone,
-    title: 'Android Client',
-    description: 'Kotlin + Jetpack Compose app that turns Android phones into SMS-sending nodes. MQTT client, SIM health monitoring, foreground service with watchdog.',
+    title: 'Mobile Client',
+    description: 'Turn any Android phone into an SMS-sending node. Real-time health monitoring, automatic failover, and intelligent load balancing.',
     color: 'from-green-500 to-emerald-500',
-    tech: 'Kotlin + Jetpack Compose',
+    badge: 'Android',
   },
   {
     icon: Server,
-    title: 'Backend Platform',
-    description: 'Go API with Redis Streams queues, PostgreSQL storage, MQTT broker cluster, delivery confidence engine, fraud detection, and webhook dispatch.',
+    title: 'Core Platform',
+    description: 'Intelligent message routing, delivery confidence scoring, fraud detection, and webhook dispatch across your entire device fleet.',
     color: 'from-amber-500 to-orange-500',
-    tech: 'Go + PostgreSQL + Redis + MQTT',
+    badge: 'Cloud Service',
   },
 ] as const
 
@@ -103,67 +103,65 @@ export const ROUTING_STRATEGIES = [
   {
     icon: Zap,
     title: 'Fastest Delivery',
-    description: 'Weights latency and uptime heavily to minimize time-to-delivery for time-sensitive messages.',
+    description: 'Optimized for speed. Ideal for time-sensitive messages that need instant delivery.',
   },
   {
     icon: CreditCard,
     title: 'Lowest Cost',
-    description: 'Weights device cost profiles to minimize per-message cost. Default for marketing and bulk traffic.',
+    description: 'Optimized for cost efficiency. Best for marketing and bulk message campaigns.',
   },
   {
     icon: Shield,
     title: 'Highest Reliability',
-    description: 'Weights reliability scores heavily. Default for OTP traffic to maximize delivery guarantees.',
+    description: 'Optimized for delivery success. Ideal for OTP and critical transactional messages.',
   },
   {
     icon: Globe,
     title: 'Geo-Affinity',
-    description: 'Prefers devices whose SIM country/region matches the recipient for better local delivery rates.',
+    description: 'Matches messages to devices in the same region as the recipient for better local delivery.',
   },
 ] as const
 
-// ── Security: real features from the PRD ──
+// ── Security: user-facing security features ──
 export const SECURITY_FEATURES = [
-  { icon: Lock, title: 'AES-256-GCM Encryption', desc: 'All message content, OTPs, and PII encrypted at rest with envelope encryption.', color: 'text-blue-400' },
-  { icon: Shield, title: 'TLS Everywhere', desc: 'TLS 1.2+ for all API traffic. MQTT exclusively over TLS — plaintext disabled.', color: 'text-purple-400' },
-  { icon: ShieldCheck, title: 'JWT + 2FA Auth', desc: 'Secure JWT authentication with optional TOTP two-factor for admin accounts.', color: 'text-green-400' },
-  { icon: Key, title: 'Scoped API Keys', desc: 'Pre-shared, hashed, revocable API keys with per-key rate limiting and scope restrictions.', color: 'text-cyan-400' },
-  { icon: Eye, title: 'HMAC Webhooks', desc: 'All webhook payloads signed with HMAC-SHA256. Automatic retry with exponential backoff.', color: 'text-amber-400' },
-  { icon: FileCheck, title: 'Fraud Detection', desc: 'Pattern-based fraud and abuse detection with velocity anomaly monitoring and manual review queue.', color: 'text-rose-400' },
+  { icon: Lock, title: 'End-to-End Encryption', desc: 'All message content, OTPs, and personal data encrypted at rest and in transit.', color: 'text-blue-400' },
+  { icon: Shield, title: 'Secure Transport', desc: 'All API and device communication encrypted with industry-standard protocols. No plaintext traffic allowed.', color: 'text-purple-400' },
+  { icon: ShieldCheck, title: 'Two-Factor Authentication', desc: 'Secure login with optional two-factor authentication for all admin accounts.', color: 'text-green-400' },
+  { icon: Key, title: 'Scoped API Keys', desc: 'Revocable API keys with per-key rate limiting and fine-grained scope restrictions.', color: 'text-cyan-400' },
+  { icon: Eye, title: 'Signed Webhooks', desc: 'All webhook payloads cryptographically signed. Automatic retry with exponential backoff.', color: 'text-amber-400' },
+  { icon: FileCheck, title: 'Fraud Detection', desc: 'Pattern-based fraud and abuse detection with velocity anomaly monitoring and manual review.', color: 'text-rose-400' },
 ] as const
 
-// ── Integrations: only real backend-supported integrations ──
+// ── Integrations: user-facing integration points ──
 export const INTEGRATIONS = [
   { icon: Code, name: 'REST API' },
   { icon: Terminal, name: 'CLI Tool' },
-  { icon: Database, name: 'PostgreSQL' },
-  { icon: Cloud, name: 'MQTT Broker' },
+  { icon: Cloud, name: 'Cloud Hosting' },
   { icon: GitBranch, name: 'Webhooks' },
-  { icon: Cpu, name: 'Android SDK' },
-  { icon: Server, name: 'Redis Streams' },
-  { icon: CreditCard, name: 'Stripe' },
+  { icon: Cpu, name: 'Mobile SDK' },
+  { icon: CreditCard, name: 'Payments' },
 ] as const
 
 export const CREDIBILITY_POINTS = [
   {
     icon: Route,
-    title: 'Multi-Strategy Routing',
-    description: '5 routing strategies with weighted scoring across reliability, reputation, cost, and geo-affinity — not a single hardcoded path.',
+    title: "Multi-Strategy Routing",
+    description: "5 intelligent routing strategies that automatically select the best device for each message based on your chosen priority.",
   },
   {
     icon: Shield,
-    title: 'Predictive SIM Health',
-    description: 'Proactive health monitoring with trend slope detection. Devices are load-reduced before hitting hard failure thresholds.',
+    title: "Predictive Health Monitoring",
+    description: "Proactive device health tracking that detects issues early and automatically adjusts load before problems impact delivery.",
   },
   {
     icon: Eye,
-    title: 'Delivery Confidence Model',
-    description: 'Honest delivery reporting with confidence scores based on carrier receipt patterns, device history, and signal sources.',
+    title: "Honest Delivery Reporting",
+    description: "Accurate delivery visibility using multiple signal sources to give you a true picture of message delivery status.",
   },
   {
     icon: Workflow,
-    title: 'Circuit Breaker System',
-    description: 'Three-level circuit breakers (device, account, carrier) with automatic open/half-open/close state machines.',
+    title: "Automatic Failover",
+    description: "Smart circuit breakers at multiple levels that detect issues and automatically reroute traffic to healthy paths.",
   },
 ] as const
 
@@ -249,27 +247,27 @@ export const PRICING_PLANS = [
 export const FAQ_ITEMS = [
   {
     question: 'How does the routing strategy system work?',
-    answer: 'AeroXe Bee offers 5 selectable routing strategies: fastest delivery, lowest cost, highest reliability, geo-affinity, and profit-optimized. Each strategy applies different weights to device reliability scores, reputation scores, and cost profiles to select the optimal device for each message.',
+    answer: 'AeroXe Bee offers 5 selectable routing strategies optimized for different priorities: fastest delivery, lowest cost, highest reliability, geo-affinity, and profit-optimized. Each strategy intelligently selects the best device for each message based on your chosen priority.',
   },
   {
     question: 'How does device fleet management work?',
-    answer: 'Install the Android app on phones with SIM cards, pair them via QR code, and they become SMS-sending nodes. Each device is monitored for SIM health, battery, network quality, and risk state. The platform automatically manages device selection, rate limiting, and circuit breaking.',
+    answer: 'Install the mobile app on phones with SIM cards, pair them via QR code, and they become SMS-sending nodes. Each device is continuously monitored for health, battery, network quality, and risk state. The platform automatically manages device selection and load balancing.',
   },
   {
     question: 'What is delivery confidence scoring?',
-    answer: 'Android SMS delivery reports are not fully reliable. Our confidence model combines delivery report signals, historical success patterns, and carrier reporting reliability to produce an honest confidence score — not a false binary "delivered" claim.',
+    answer: 'Mobile SMS delivery reports are not always reliable. Our confidence model combines multiple signals to produce an honest delivery confidence score, giving you accurate visibility into message delivery status.',
   },
   {
     question: 'How does the OTP system work?',
-    answer: 'Generate 4-6 digit codes via API, routed through the highest-priority OTP queue with a 90-second max queue age. Codes are stored as HMAC-SHA256 hashes with 5-minute TTL and 5-attempt lockout. OTP audit metadata is retained for 1 year.',
+    answer: 'Generate verification codes via API, routed through a high-priority delivery channel with automatic lockout after failed attempts. Codes expire after a short window for maximum security.',
   },
   {
     question: 'What security measures are in place?',
-    answer: 'AES-256-GCM encryption at rest, TLS 1.2+ everywhere, JWT auth with optional 2FA, scoped and revocable API keys, HMAC-signed webhooks, fraud detection, and circuit breakers at device/account/carrier level.',
+    answer: 'End-to-end encryption for all data, secure transport for all communication, two-factor authentication, revocable API keys with fine-grained permissions, cryptographically signed webhooks, and automatic fraud detection.',
   },
   {
     question: 'Can I self-host the platform?',
-    answer: 'Yes. AeroXe Bee ships as both a managed SaaS product and an open-source, self-hostable platform via Docker Compose. The same codebase supports both deployment models.',
+    answer: 'Yes. AeroXe Bee is available as both a managed cloud service and a self-hosted deployment. Contact our sales team for self-hosting options and pricing.',
   },
 ] as const
 
@@ -288,7 +286,7 @@ export const COMPARISON_ROWS = [
   { feature: 'SIM Health Prediction', us: true, competitor1: false, competitor2: false },
   { feature: 'Circuit Breakers', us: true, competitor1: true, competitor2: false },
   { feature: 'Priority Queue (OTP/TX/Mkt)', us: true, competitor1: true, competitor2: false },
-  { feature: 'HMAC Webhook Signatures', us: true, competitor1: true, competitor2: true },
+  { feature: 'Signed Webhooks', us: true, competitor1: true, competitor2: true },
   { feature: 'Self-Hostable (Docker)', us: true, competitor1: false, competitor2: false },
   { feature: 'Fraud Detection', us: true, competitor1: false, competitor2: false },
 ] as const
