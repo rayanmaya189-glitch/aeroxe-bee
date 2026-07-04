@@ -8,6 +8,7 @@ import (
 	"github.com/textbee/backend/internal/api/handlers"
 	"github.com/textbee/backend/internal/api/middleware"
 	"github.com/textbee/backend/internal/database"
+	"github.com/textbee/backend/internal/mqtt"
 	"github.com/textbee/backend/internal/services"
 	"github.com/textbee/backend/internal/telemetry"
 )
@@ -41,12 +42,17 @@ func NewRouter(
 	metrics *telemetry.Metrics,
 	pg *database.PostgresDB,
 	rdb *database.RedisDB,
+	mqttClient *mqtt.Client,
 ) http.Handler {
 	mux := http.NewServeMux()
 
 	healthHandler := handlers.NewHealthHandler(pg, rdb, metrics)
 
 	mux.HandleFunc("GET /api/v1/health", healthHandler.Check)
+
+	// MQTT health endpoint — reports broker connection status
+	mqttHealthHandler := handlers.NewMQTTHealthHandler(mqttClient)
+	mux.HandleFunc("GET /api/v1/health/mqtt", mqttHealthHandler.Check)
 
 	// Swagger / OpenAPI documentation
 	mux.HandleFunc("GET /api/v1/docs", func(w http.ResponseWriter, r *http.Request) {
@@ -148,7 +154,6 @@ func NewRouter(
 	mux.Handle("DELETE /api/v1/templates/{id}", authMiddleware.AdminAuth(http.HandlerFunc(templateHandler.Delete)))
 
 	// Webhook routes (admin only)
-	mux.Handle("GET /api/v1/webhooks", authMiddleware.AdminAuth(http.HandlerFunc(webhookHandler.List)))
 	mux.Handle("GET /api/v1/admin/webhooks", authMiddleware.AdminAuth(http.HandlerFunc(adminHandler.ListAllWebhooks)))
 	mux.Handle("POST /api/v1/webhooks", authMiddleware.AdminAuth(http.HandlerFunc(webhookHandler.Create)))
 	mux.Handle("GET /api/v1/webhooks/{id}", authMiddleware.AdminAuth(http.HandlerFunc(webhookHandler.Get)))

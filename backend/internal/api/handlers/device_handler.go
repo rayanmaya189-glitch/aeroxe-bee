@@ -129,7 +129,7 @@ func (h *DeviceHandler) Register(w http.ResponseWriter, r *http.Request) {
 			"token":           token,
 			"mqtt_broker_url": h.mqttBrokerURL,
 			"mqtt": map[string]interface{}{
-				"username": getEnvOrDefault("MQTT_DEVICE_USERNAME", "devices"),
+				"username": deviceID,
 				"password": getEnvOrDefault("MQTT_DEVICE_PASSWORD", "dev-device-password"),
 			},
 		},
@@ -254,7 +254,7 @@ func (h *DeviceHandler) DeviceLogin(w http.ResponseWriter, r *http.Request) {
 			"token":         token,
 			"mqtt": map[string]interface{}{
 				"broker_url": h.mqttBrokerURL,
-				"username":   getEnvOrDefault("MQTT_DEVICE_USERNAME", "devices"),
+				"username":   deviceID,
 				"password":   getEnvOrDefault("MQTT_DEVICE_PASSWORD", "dev-device-password"),
 			},
 			"device": map[string]interface{}{
@@ -286,6 +286,8 @@ type StatusUpdateRequest struct {
 }
 
 // HandleStatusUpdate handles POST /api/v1/devices/status
+// Uses idempotency check: if the message already has a terminal delivery status,
+// duplicate updates are silently accepted without re-counting.
 func (h *DeviceHandler) HandleStatusUpdate(w http.ResponseWriter, r *http.Request) {
 	_ = middleware.GetAccountID(r.Context())
 
@@ -298,6 +300,20 @@ func (h *DeviceHandler) HandleStatusUpdate(w http.ResponseWriter, r *http.Reques
 	if req.MessageID == "" {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "message_id is required"})
 		return
+	}
+
+	// Idempotency: check if message already has a terminal status
+	existing, _ := h.messageService.GetByID(r.Context(), req.MessageID)
+	if existing != nil {
+		terminal := existing.DeliveryStatus == models.DeliveryStatusSent ||
+			existing.DeliveryStatus == models.DeliveryStatusCarrierAccepted ||
+			existing.DeliveryStatus == models.DeliveryStatusProbableDelivered ||
+			existing.DeliveryStatus == models.DeliveryStatusFailed
+		if terminal {
+			// Already processed — accept silently to prevent double-counting
+			writeJSON(w, http.StatusOK, APIResponse{Success: true})
+			return
+		}
 	}
 
 	if req.Status == "SENT" || req.Status == "DELIVERED" {

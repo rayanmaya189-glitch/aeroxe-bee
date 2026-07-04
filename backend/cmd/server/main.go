@@ -45,6 +45,12 @@ func main() {
 	logger := telemetry.NewLogger(cfg.Telemetry.LogLevel, cfg.Telemetry.LogFormat)
 	logger.Info("starting AeroXe Bee backend", "version", "1.0.0", "env", cfg.App.Environment, "copyright", "Aeroxe Enterprises Pvt. Ltd., Jalgaon, Maharashtra, India")
 
+	// Validate production secrets before starting
+	if err := config.ValidateProduction(cfg); err != nil {
+		logger.Error("startup validation failed", "error", err)
+		os.Exit(1)
+	}
+
 	postgres, err := database.NewPostgres(cfg.Database)
 	if err != nil {
 		logger.Error("postgres connection failed", "error", err)
@@ -230,7 +236,7 @@ func main() {
 	router := api.NewRouter(authHandler, messageHandler, deviceHandler, accountHandler,
 		adminHandler, userHandler, templateHandler, webhookHandler, otpHandler, billingHandler,
 		fraudHandler, memberHandler, twoFAHandler, paymentConfigHandler, paymentRequestHandler,
-		subscriptionRequestHandler, planChangeRequestHandler, sessionHandler, kycAdminHandler, svc.Billing, svc.PaymentConfigs, authMiddleware, metrics, postgres, redisDB)
+		subscriptionRequestHandler, planChangeRequestHandler, sessionHandler, kycAdminHandler, svc.Billing, svc.PaymentConfigs, authMiddleware, metrics, postgres, redisDB, mqttClient)
 
 	promMux := http.NewServeMux()
 	promMux.Handle("/metrics", promhttp.Handler())
