@@ -47,7 +47,7 @@ services:
       - mqttdata:/mosquitto/data
       - mqtt_auth:/mosquitto/auth
     healthcheck:
-      test: ["CMD-SHELL", "mosquitto_sub -t '$$SYS/#' -C 1 -u backend -P $${MQTT_BACKEND_PASSWORD} -W 3 || exit 1"]
+      test: ["CMD-SHELL", "mosquitto_pub -t healthcheck -m ping -u backend -P $${MQTT_BACKEND_PASSWORD} || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3

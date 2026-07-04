@@ -13,4 +13,4 @@ topic readwrite backend/#
 # Devices connect with username = deviceID (e.g., "ABC123-sim1")
 # ACL pattern %u resolves to the connecting client's username.
 # So device "ABC123-sim1" can only access "devices/ABC123-sim1/#"
-pattern topic readwrite devices/%u/#
+pattern readwrite devices/%u/#

@@ -19,10 +19,12 @@ mosquitto_passwd -b -c "$PASSWD_FILE" backend "$BACKEND_PASS"
 chown 1883:1883 "$PASSWD_FILE"
 chmod 0600 "$PASSWD_FILE"
 
-# Ensure data directory is writable by mosquitto user
+# Ensure ACL and data directories have correct ownership for mosquitto user
+chown 1883:1883 /mosquitto/auth/acl 2>/dev/null || true
+chmod 0600 /mosquitto/auth/acl 2>/dev/null || true
 chown -R 1883:1883 /mosquitto/data 2>/dev/null || true
 
-echo "[auth] Password file created successfully"
+echo "[auth] Password file and ACL configured successfully"
 
 # Drop to mosquitto user (UID 1883) before starting the broker
 exec su-exec 1883 "$@"
