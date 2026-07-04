@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { PageSkeleton } from '@/components/ui/Skeleton'
 import { formatNumber } from '@/utils/format'
-import { staggerContainer, fadeInUp, itemVariants, progressFill } from '@/components/animations/variants'
+import { staggerContainer, fadeInUp, progressFill } from '@/components/animations/variants'
 import {
   Users, Smartphone, Send, AlertTriangle,
   TrendingUp, TrendingDown, Activity, Shield,
@@ -26,15 +26,10 @@ interface StatCardProps {
 function StatCard({ title, value, change, trend, icon, gradient, glowColor, index }: StatCardProps) {
   return (
     <motion.div
-      custom={index}
-      variants={{
-        hidden: { opacity: 0, y: 24 },
-        visible: (i: number) => ({
-          opacity: 1,
-          y: 0,
-          transition: { delay: i * 0.08, duration: 0.5, ease: [0.22, 1, 0.36, 1] },
-        }),
-      }}
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.3 }}
+      transition={{ delay: index * 0.08, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
     >
       <div className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5 transition-all duration-300 hover:border-white/[0.12] hover:bg-white/[0.05]">
         {/* Ambient glow */}
@@ -121,7 +116,7 @@ export function DashboardPage() {
         </div>
       </motion.div>
 
-      {/* Stat cards */}
+      {/* Stat cards — scroll-triggered entrance */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total accounts"
@@ -157,7 +152,7 @@ export function DashboardPage() {
         />
       </div>
 
-      <motion.div variants={itemVariants} className="grid gap-4 lg:grid-cols-3">
+      <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }} className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader className="mb-4">
             <CardTitle>Message volume</CardTitle>

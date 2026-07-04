@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { PageSkeleton } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { formatNumber } from '@/utils/format'
-import { staggerContainer, fadeInUp, itemVariants, progressFill } from '@/components/animations/variants'
+import { staggerContainer, fadeInUp, progressFill } from '@/components/animations/variants'
 import { BarChart3, Send, CheckCircle, XCircle, Zap } from 'lucide-react'
 
 export function AnalyticsPage() {
@@ -77,9 +77,9 @@ export function AnalyticsPage() {
         </div>
       </motion.div>
 
-      {/* Primary stat cards with animated progress */}
+      {/* Primary stat cards — scroll-triggered entrance */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <motion.div variants={itemVariants}>
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.3 }} transition={{ delay: 0, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}>
           <Card hover glow="bg-blue-500/20">
             <div className="flex items-start justify-between">
               <div className="space-y-1.5">
@@ -92,7 +92,7 @@ export function AnalyticsPage() {
             </div>
           </Card>
         </motion.div>
-        <motion.div variants={itemVariants}>
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.3 }} transition={{ delay: 0.08, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}>
           <Card hover glow="bg-emerald-500/20">
             <div className="flex items-start justify-between">
               <div className="space-y-1.5">
@@ -117,7 +117,7 @@ export function AnalyticsPage() {
             </div>
           </Card>
         </motion.div>
-        <motion.div variants={itemVariants}>
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.3 }} transition={{ delay: 0.16, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}>
           <Card hover glow="bg-red-500/20">
             <div className="flex items-start justify-between">
               <div className="space-y-1.5">
@@ -142,7 +142,7 @@ export function AnalyticsPage() {
             </div>
           </Card>
         </motion.div>
-        <motion.div variants={itemVariants}>
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.3 }} transition={{ delay: 0.24, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}>
           <Card hover glow="bg-purple-500/20">
             <div className="flex items-start justify-between">
               <div className="space-y-1.5">
@@ -159,9 +159,9 @@ export function AnalyticsPage() {
         </motion.div>
       </div>
 
-      {/* Category breakdown */}
+      {/* Category breakdown — scroll-triggered */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <motion.div variants={itemVariants}>
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.3 }} transition={{ delay: 0, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}>
           <Card hover glow="bg-orange-500/20">
             <div className="flex items-start justify-between">
               <div>
@@ -174,7 +174,7 @@ export function AnalyticsPage() {
             </div>
           </Card>
         </motion.div>
-        <motion.div variants={itemVariants}>
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.3 }} transition={{ delay: 0.08, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}>
           <Card hover glow="bg-blue-500/20">
             <div className="flex items-start justify-between">
               <div>
@@ -187,7 +187,7 @@ export function AnalyticsPage() {
             </div>
           </Card>
         </motion.div>
-        <motion.div variants={itemVariants}>
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.3 }} transition={{ delay: 0.16, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}>
           <Card hover glow="bg-cyan-500/20">
             <div className="flex items-start justify-between">
               <div>
@@ -202,8 +202,8 @@ export function AnalyticsPage() {
         </motion.div>
       </div>
 
-      {/* Daily breakdown table */}
-      <motion.div variants={itemVariants}>
+      {/* Daily breakdown table — scroll-triggered */}
+      <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.1 }} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}>
         <Card>
           <CardHeader className="mb-4"><CardTitle>Daily breakdown</CardTitle></CardHeader>
           {analyticsData.length === 0 ? (
@@ -219,8 +219,15 @@ export function AnalyticsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/[0.04]">
-                  {analyticsData.slice(0, 30).map((day: AnalyticsDaily) => (
-                    <tr key={day.id} className="transition-colors hover:bg-white/[0.03]">
+                  {analyticsData.slice(0, 30).map((day: AnalyticsDaily, idx: number) => (
+                    <motion.tr
+                      key={day.id}
+                      initial={{ opacity: 0, x: -12 }}
+                      whileInView={{ opacity: 1, x: 0 }}
+                      viewport={{ once: true, amount: 0.5 }}
+                      transition={{ delay: Math.min(idx * 0.03, 0.6), duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                      className="transition-colors hover:bg-white/[0.03]"
+                    >
                       <td className="py-3 font-medium text-gray-100">{new Date(day.date).toLocaleDateString()}</td>
                       <td className="py-3 text-gray-400">{formatNumber(day.total_sent)}</td>
                       <td className="py-3 text-gray-400">{formatNumber(day.total_delivered)}</td>
@@ -228,7 +235,7 @@ export function AnalyticsPage() {
                       <td className="py-3 text-gray-400">{formatNumber(day.otp_sent)}</td>
                       <td className="py-3 text-gray-400">{formatNumber(day.transactional_sent)}</td>
                       <td className="py-3 text-gray-400">{formatNumber(day.marketing_sent)}</td>
-                    </tr>
+                    </motion.tr>
                   ))}
                 </tbody>
               </table>
