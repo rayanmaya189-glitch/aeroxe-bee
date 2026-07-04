@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { PageTransition } from '@/components/ui/PageTransition'
 import { useAuthStore } from '@/store/authStore'
 import { get2FAStatus, setup2FA, verify2FA, disable2FA, getPreferences, updatePreferences, getKycStatus, submitKyc } from '@/services/dashboard'
-import { getProfile, updateProfile, getSessions, revokeSession, revokeAllSessions, type UserSession } from '@/services/auth'
+import { getProfile, updateProfile, getSessions, revokeSession, revokeAllSessions, type UserSession, listApiKeys, createApiKey, revokeApiKey, type ApiKeyInfo } from '@/services/auth'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -13,7 +13,7 @@ import { staggerContainer, fadeInUp, itemVariants } from '@/components/animation
 import { QRCodeSVG } from 'qrcode.react'
 import {
   Settings, User, Lock, ShieldCheck, Bell, FileCheck,
-  Eye, EyeOff, CheckCircle, AlertTriangle, Monitor, Smartphone, Globe, Trash2,
+  Eye, EyeOff, CheckCircle, AlertTriangle, Monitor, Smartphone, Globe, Trash2, Key, Plus, Copy, CopyCheck,
 } from 'lucide-react'
 
 type Msg = { type: 'success' | 'error'; text: string } | null
@@ -92,6 +92,18 @@ export function SettingsPage() {
   const [sessionsLoading, setSessionsLoading] = useState(false)
   const [sessionMsg, setSessionMsg] = useState<Msg>(null)
 
+  // API Keys
+  const [apiKeys, setApiKeys] = useState<ApiKeyInfo[]>([])
+  const [apiKeysLoading, setApiKeysLoading] = useState(false)
+  const [apiKeyMsg, setApiKeyMsg] = useState<Msg>(null)
+  const [showCreateKey, setShowCreateKey] = useState(false)
+  const [newKeyName, setNewKeyName] = useState('')
+  const [newKeyScopes, setNewKeyScopes] = useState<string[]>(['send', 'read'])
+  const [newKeyExpiry, setNewKeyExpiry] = useState('')
+  const [createKeyLoading, setCreateKeyLoading] = useState(false)
+  const [createdKeyValue, setCreatedKeyValue] = useState<string | null>(null)
+  const [copiedKey, setCopiedKey] = useState(false)
+
   // KYC
   const [kycStatus, setKycStatus] = useState<string>('not_submitted')
   const [showKYCForm, setShowKYCForm] = useState(false)
@@ -129,6 +141,7 @@ export function SettingsPage() {
     }).catch(() => {})
 
     loadSessions()
+    loadApiKeys()
   }, [])
 
   // Profile update
@@ -296,6 +309,70 @@ export function SettingsPage() {
     if (hours < 24) return `${hours}h ago`
     const days = Math.floor(hours / 24)
     return `${days}d ago`
+  }
+
+  // Load API keys
+  async function loadApiKeys() {
+    setApiKeysLoading(true)
+    try {
+      const data = await listApiKeys()
+      setApiKeys(data.filter((k) => !k.revoked_at))
+    } catch {
+      // Silently fail
+    } finally {
+      setApiKeysLoading(false)
+    }
+  }
+
+  // Create API key
+  async function handleCreateApiKey(e: React.FormEvent) {
+    e.preventDefault()
+    setCreateKeyLoading(true)
+    setApiKeyMsg(null)
+    try {
+      const result = await createApiKey({
+        label: newKeyName,
+        scopes: newKeyScopes,
+        expires_in: newKeyExpiry || undefined,
+      })
+      setCreatedKeyValue(result.api_key)
+      setNewKeyName('')
+      setNewKeyScopes(['send', 'read'])
+      setNewKeyExpiry('')
+      setShowCreateKey(false)
+      await loadApiKeys()
+    } catch (err: unknown) {
+      setApiKeyMsg({ type: 'error', text: err instanceof Error ? err.message : 'Failed to create API key' })
+    } finally {
+      setCreateKeyLoading(false)
+    }
+  }
+
+  // Revoke API key
+  async function handleRevokeApiKey(keyId: string) {
+    setApiKeyMsg(null)
+    try {
+      await revokeApiKey(keyId)
+      setApiKeys((prev) => prev.filter((k) => k.id !== keyId))
+      setApiKeyMsg({ type: 'success', text: 'API key revoked' })
+    } catch (err: unknown) {
+      setApiKeyMsg({ type: 'error', text: err instanceof Error ? err.message : 'Failed to revoke API key' })
+    }
+  }
+
+  // Copy API key to clipboard
+  async function handleCopyKey(key: string) {
+    await navigator.clipboard.writeText(key)
+    setCopiedKey(true)
+    setTimeout(() => setCopiedKey(false), 2000)
+  }
+
+  const availableScopes = ['send', 'read', 'otp', 'webhook']
+
+  function toggleScope(scope: string) {
+    setNewKeyScopes((prev) =>
+      prev.includes(scope) ? prev.filter((s) => s !== scope) : [...prev, scope]
+    )
   }
 
   // KYC submit
@@ -476,6 +553,75 @@ export function SettingsPage() {
               )}
             </Card>
           </motion.div>
+
+          {/* ─── API Keys (members only) ─── */}
+          {!isAdmin && (
+          <motion.div variants={itemVariants}>
+            <Card>
+              <CardHeader className="mb-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500/10 ring-1 ring-orange-500/20">
+                      <Key className="h-4 w-4 text-orange-400" />
+                    </div>
+                    <CardTitle>API Keys</CardTitle>
+                  </div>
+                  <Button size="xs" onClick={() => { setShowCreateKey(true); setNewKeyName(''); setNewKeyScopes(['send', 'read']); setNewKeyExpiry('') }}>
+                    <Plus className="h-3.5 w-3.5 mr-1" /> New key
+                  </Button>
+                </div>
+              </CardHeader>
+              {apiKeyMsg && <MsgBanner msg={apiKeyMsg} />}
+              {createdKeyValue && (
+                <div className="mb-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-emerald-400 mb-1">Your new API key (shown only once):</p>
+                      <code className="block break-all font-mono text-xs text-gray-200 bg-black/20 rounded-lg p-2">{createdKeyValue}</code>
+                    </div>
+                    <button onClick={() => handleCopyKey(createdKeyValue)} className="shrink-0 rounded-lg bg-white/[0.06] p-2 text-gray-400 hover:text-white transition-colors">
+                      {copiedKey ? <CopyCheck className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  <p className="mt-2 text-[11px] text-amber-400">Copy this key now — you won't be able to see it again.</p>
+                  <button onClick={() => setCreatedKeyValue(null)} className="mt-2 text-xs text-gray-500 hover:text-gray-300">Dismiss</button>
+                </div>
+              )}
+              {apiKeysLoading ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 2 }).map((_, i) => (
+                    <div key={i} className="h-16 animate-pulse rounded-xl bg-white/[0.03]" />
+                  ))}
+                </div>
+              ) : apiKeys.length === 0 ? (
+                <p className="text-sm text-gray-500">No API keys yet. Create one to start using the API.</p>
+              ) : (
+                <div className="space-y-2">
+                  {apiKeys.map((key) => (
+                    <div key={key.id} className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/[0.05]">
+                          <Key className="h-4 w-4 text-orange-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-200">{key.label}</p>
+                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <span>{key.scopes?.join(', ')}</span>
+                            {key.expires_at && <><span>·</span><span>Expires {new Date(key.expires_at).toLocaleDateString()}</span></>}
+                            <span>·</span><span>{formatTimeAgo(key.created_at)}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <Button variant="ghost" size="xs" className="text-gray-500 hover:text-red-400" onClick={() => handleRevokeApiKey(key.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          </motion.div>
+          )}
         </div>
 
         {/* Right column: security sidebar */}
@@ -662,6 +808,53 @@ export function SettingsPage() {
           <div className="flex justify-end gap-2">
             <Button variant="ghost" size="sm" type="button" onClick={() => setShowKYCForm(false)}>Cancel</Button>
             <Button size="sm" type="submit" loading={kycLoading}>Submit for review</Button>
+          </div>
+        </form>
+      </Modal>
+      {/* ─── Create API Key Modal ─── */}
+      <Modal open={showCreateKey} onClose={() => setShowCreateKey(false)} title="Create API key">
+        <form onSubmit={handleCreateApiKey} className="space-y-4">
+          <Input label="Key name" value={newKeyName} onChange={(e) => setNewKeyName(e.target.value)} placeholder="e.g. Production server" required />
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-300">Scopes</label>
+            <div className="flex flex-wrap gap-2">
+              {availableScopes.map((scope) => (
+                <button
+                  key={scope}
+                  type="button"
+                  onClick={() => toggleScope(scope)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                    newKeyScopes.includes(scope)
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white/[0.06] text-gray-400 hover:bg-white/[0.1]'
+                  }`}
+                >
+                  {scope}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1 text-[11px] text-gray-500">Select what this key can access</p>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-300">Expiration (optional)</label>
+            <select
+              value={newKeyExpiry}
+              onChange={(e) => setNewKeyExpiry(e.target.value)}
+              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.05] px-3 py-2.5 text-sm text-gray-200 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
+            >
+              <option value="">Never expires</option>
+              <option value="24h">24 hours</option>
+              <option value="720h">30 days</option>
+              <option value="2160h">90 days</option>
+              <option value="8760h">1 year</option>
+            </select>
+          </div>
+          {newKeyScopes.length === 0 && (
+            <p className="text-xs text-amber-400">Select at least one scope</p>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" type="button" onClick={() => setShowCreateKey(false)}>Cancel</Button>
+            <Button size="sm" type="submit" loading={createKeyLoading} disabled={!newKeyName || newKeyScopes.length === 0}>Create key</Button>
           </div>
         </form>
       </Modal>

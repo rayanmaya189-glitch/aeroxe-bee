@@ -82,3 +82,40 @@ export async function revokeAllSessions(): Promise<void> {
   const res = await api.delete<ApiResponse>('/auth/sessions')
   if (!res.data.success) throw new Error(res.data.error ?? 'Failed to revoke sessions')
 }
+
+// ─── API Key Management ──────────────────────────────────────
+
+export interface ApiKeyInfo {
+  id: string
+  label: string
+  scopes: string[]
+  expires_at?: string
+  revoked_at?: string
+  created_at: string
+}
+
+export interface ApiKeyCreateResult {
+  id: string
+  label: string
+  api_key: string
+  scopes: string[]
+  expires_at?: string
+  created_at: string
+}
+
+export async function listApiKeys(): Promise<ApiKeyInfo[]> {
+  const res = await api.get<ApiResponse<ApiKeyInfo[]>>('/account/api-keys')
+  if (!res.data.success || !res.data.data) throw new Error('Failed to fetch API keys')
+  return res.data.data
+}
+
+export async function createApiKey(data: { label: string; scopes: string[]; expires_in?: string }): Promise<ApiKeyCreateResult> {
+  const res = await api.post<ApiResponse<ApiKeyCreateResult>>('/account/api-keys', data)
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to create API key')
+  return res.data.data
+}
+
+export async function revokeApiKey(keyId: string): Promise<void> {
+  const res = await api.delete<ApiResponse>(`/account/api-keys/${keyId}`)
+  if (!res.data.success) throw new Error(res.data.error ?? 'Failed to revoke API key')
+}
