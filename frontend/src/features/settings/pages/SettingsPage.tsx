@@ -10,9 +10,10 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
+import { QRCodeSVG } from 'qrcode.react'
 import {
   Settings, User, Lock, ShieldCheck, Bell, FileCheck,
-  Eye, EyeOff, CheckCircle, AlertTriangle, QrCode,
+  Eye, EyeOff, CheckCircle, AlertTriangle,
 } from 'lucide-react'
 
 type Msg = { type: 'success' | 'error'; text: string } | null
@@ -460,15 +461,27 @@ export function SettingsPage() {
       <Modal open={showSetup2FA} onClose={() => { setShowSetup2FA(false); setTwoFACode('') }} title="Enable two-factor authentication">
         <div className="space-y-4">
           <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-center">
-            <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/20 to-green-500/20 ring-1 ring-emerald-500/20">
-              <QrCode className="h-8 w-8 text-emerald-400" />
-            </div>
-            <p className="text-xs text-gray-500">Scan this URL in your authenticator app:</p>
-            <p className="mt-1 break-all font-mono text-xs text-gray-300">{twoFAUrl}</p>
-            <div className="mt-3 rounded-lg bg-white/[0.04] p-2">
-              <p className="text-[10px] text-gray-500">Manual key</p>
-              <p className="font-mono text-sm font-semibold tracking-wider text-gray-200">{twoFASecret}</p>
-            </div>
+            {twoFAUrl ? (
+              <div className="mx-auto mb-3 inline-block rounded-2xl bg-white p-4">
+                <QRCodeSVG value={twoFAUrl} size={180} level="M" includeMargin={false} />
+              </div>
+            ) : (
+              <div className="mx-auto mb-3 flex h-[208px] w-[208px] items-center justify-center rounded-2xl bg-white/[0.04]">
+                <span className="text-sm text-gray-500">Loading QR code...</span>
+              </div>
+            )}
+            <p className="mt-2 text-xs text-gray-500">Scan this QR code with your authenticator app</p>
+            <details className="mt-3">
+              <summary className="cursor-pointer text-xs text-gray-500 hover:text-gray-400">Or enter manually</summary>
+              <div className="mt-2 rounded-lg bg-white/[0.04] p-2">
+                <p className="text-[10px] text-gray-500">Manual key</p>
+                <p className="font-mono text-sm font-semibold tracking-wider text-gray-200">{twoFASecret}</p>
+              </div>
+              <div className="mt-2 rounded-lg bg-white/[0.04] p-2">
+                <p className="text-[10px] text-gray-500">URI</p>
+                <p className="break-all font-mono text-[10px] text-gray-400">{twoFAUrl}</p>
+              </div>
+            </details>
           </div>
           <div>
             <p className="mb-2 text-xs text-gray-400">Enter the 6-digit code from your app to verify:</p>
