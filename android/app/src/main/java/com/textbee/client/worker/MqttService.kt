@@ -85,6 +85,7 @@ class MqttService : Service() {
                     // MqttManager handles reconnection via scheduleReconnect
                     // Just update the notification and wait
                 } else if (connected) {
+                    isReconnecting = false
                     updateNotification("Connected to broker")
                     android.util.Log.i(TAG, "MQTT reconnected")
                 }

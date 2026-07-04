@@ -87,8 +87,10 @@ class MqttManager @Inject constructor(
                 isCleanSession = false
                 connectionTimeout = CONNECT_TIMEOUT
                 keepAliveInterval = KEEP_ALIVE
-                isAutomaticReconnect = true
-                maxReconnectDelay = MAX_RECONNECT_DELAY.toInt()
+                // Manual reconnect via scheduleReconnect() handles reconnection
+                // with proper resubscribeAll(). Paho auto-reconnect skips
+                // resubscription since it doesn't call connect() again.
+                isAutomaticReconnect = false
                 username?.let { userName = it }
                 password?.let { this.password = it.toCharArray() }
             }
