@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { PageTransition } from '@/components/ui/PageTransition'
-import { getDashboardStats } from '@/services/dashboard'
+import { getDashboardStats, getAnalytics } from '@/services/dashboard'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { PageSkeleton } from '@/components/ui/Skeleton'
 import { formatNumber } from '@/utils/format'
+import { MessageChart } from '@/components/charts/MessageChart'
 import { staggerContainer, fadeInUp, progressFill } from '@/components/animations/variants'
 import {
   Users, Smartphone, Send, AlertTriangle,
@@ -66,6 +67,10 @@ export function DashboardPage() {
   const { data: stats, isLoading, error } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: getDashboardStats,
+  })
+  const { data: analyticsData } = useQuery({
+    queryKey: ['dashboard-analytics'] as const,
+    queryFn: () => getAnalytics(),
   })
 
   if (isLoading) return <PageTransition><PageSkeleton /></PageTransition>
@@ -158,9 +163,7 @@ export function DashboardPage() {
             <CardTitle>Message volume</CardTitle>
             <Badge variant="primary" dot>Last 30 days</Badge>
           </CardHeader>
-          <div className="flex h-64 items-center justify-center rounded-xl border border-dashed border-white/[0.08] bg-white/[0.02]">
-            <p className="text-sm text-gray-500">Chart integration coming soon</p>
-          </div>
+          <MessageChart data={analyticsData ?? []} />
         </Card>
 
         <Card>
