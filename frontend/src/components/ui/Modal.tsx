@@ -63,12 +63,11 @@ export function Modal({
             onClick={onClose}
           />
           <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: 8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 8 }}
-            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            initial={{ opacity: 0, scale: 0.96, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0, transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1] } }}
+            exit={{ opacity: 0, scale: 0.96, y: 8, transition: { duration: 0.18, ease: [0.22, 1, 0.36, 1] } }}
             className={cn(
-              'relative w-full rounded-xl border border-white/[0.08] bg-[#0f1525] shadow-2xl shadow-black/40',
+              'relative w-full rounded-2xl border border-white/[0.08] bg-[#0f1525] shadow-2xl shadow-black/50',
               sizeStyles[size],
               className,
             )}

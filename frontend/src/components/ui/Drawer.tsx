@@ -52,13 +52,12 @@ export function Drawer({
           />
           <motion.div
             initial={{ x: side === 'right' ? '100%' : '-100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: side === 'right' ? '100%' : '-100%' }}
-            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+            animate={{ x: 0, transition: { type: 'spring', damping: 30, stiffness: 300 } }}
+            exit={{ x: side === 'right' ? '100%' : '-100%', transition: { type: 'spring', damping: 30, stiffness: 300 } }}
             className={cn(
-              'fixed inset-y-0 flex flex-col border-white/[0.06] bg-[#0a0f1e] shadow-2xl shadow-black/40',
-              side === 'right' && 'right-0 border-l',
-              side === 'left' && 'left-0 border-r',
+              'fixed inset-y-0 flex flex-col border-white/[0.06] bg-[#0a0f1e] shadow-2xl shadow-black/50',
+              side === 'right' && 'right-0 rounded-l-2xl border-l',
+              side === 'left' && 'left-0 rounded-r-2xl border-r',
               width,
             )}
           >
@@ -67,7 +66,7 @@ export function Drawer({
                 <h2 className="text-base font-semibold text-gray-100">{title}</h2>
                 <button
                   onClick={onClose}
-                  className="rounded-lg p-1 text-gray-400 hover:bg-white/5 hover:text-gray-200 transition-colors"
+                  className="rounded-xl p-1.5 text-gray-400 transition-colors hover:bg-white/5 hover:text-gray-200"
                 >
                   <X className="h-5 w-5" />
                 </button>

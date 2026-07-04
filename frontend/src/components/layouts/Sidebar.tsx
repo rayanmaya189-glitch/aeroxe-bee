@@ -167,20 +167,22 @@ function SidebarContent({
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg shadow-blue-500/25">
             <Zap className="h-4 w-4 text-white" strokeWidth={2.5} />
           </div>
-          {!collapsed && (
-            <motion.span
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-sm font-bold tracking-tight text-white"
-            >
-              AeroXe <span className="text-gray-500">Bee</span>
-            </motion.span>
-          )}
+          <AnimatePresence mode="wait">
+            {!collapsed && (
+              <motion.span
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0, transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] } }}
+                exit={{ opacity: 0, x: -8, transition: { duration: 0.12 } }}
+                className="text-sm font-bold tracking-tight text-white"
+              >
+                AeroXe <span className="text-gray-500">Bee</span>
+              </motion.span>
+            )}
+          </AnimatePresence>
         </Link>
-        {onToggle && (
-          <button
-            onClick={onToggle}
-            className="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-white/5 hover:text-gray-300"
+        {onToggle && (              <button
+                onClick={onToggle}
+                className="rounded-xl p-1.5 text-gray-500 transition-colors hover:bg-white/[0.05] hover:text-gray-300"
           >
             <ChevronLeft className={cn('h-4 w-4 transition-transform duration-300', collapsed && 'rotate-180')} />
           </button>
@@ -222,14 +224,30 @@ function SidebarContent({
                 )}>
                   {item.icon}
                 </span>
-                {!collapsed && (
-                  <span className="relative z-10 truncate">{item.label}</span>
-                )}
-                {collapsed && hoveredItem === item.path && (
-                  <div className="absolute left-full z-50 ml-2 rounded-lg border border-white/10 bg-gray-900 px-2.5 py-1.5 text-xs font-medium text-white shadow-xl backdrop-blur-sm">
-                    {item.label}
-                  </div>
-                )}
+                <AnimatePresence mode="wait">
+                  {!collapsed && (
+                    <motion.span
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0, transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] } }}
+                      exit={{ opacity: 0, x: -8, transition: { duration: 0.12 } }}
+                      className="relative z-10 truncate"
+                    >
+                      {item.label}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+                <AnimatePresence>
+                  {collapsed && hoveredItem === item.path && (
+                    <motion.div
+                      initial={{ opacity: 0, x: -4, scale: 0.96 }}
+                      animate={{ opacity: 1, x: 0, scale: 1, transition: { duration: 0.15, ease: [0.22, 1, 0.36, 1] } }}
+                      exit={{ opacity: 0, x: -4, scale: 0.96, transition: { duration: 0.1 } }}
+                      className="absolute left-full z-50 ml-2 rounded-xl border border-white/[0.08] bg-[#0f1525] px-2.5 py-1.5 text-xs font-medium text-white shadow-xl shadow-black/30 backdrop-blur-xl"
+                    >
+                      {item.label}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.button>
             )
           })}
@@ -258,7 +276,17 @@ function SidebarContent({
                 )}>
                   {item.icon}
                 </span>
-                {!collapsed && <span>{item.label}</span>}
+                <AnimatePresence mode="wait">
+                  {!collapsed && (
+                    <motion.span
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0, transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] } }}
+                      exit={{ opacity: 0, x: -8, transition: { duration: 0.12 } }}
+                    >
+                      {item.label}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
               </button>
             )
           })}
