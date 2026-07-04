@@ -75,6 +75,43 @@
         }
       }
     },
+    "/api/v1/health/mqtt": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "MQTT broker health check",
+        "description": "Returns the connection status of the MQTT broker (Mosquitto). Reports whether the backend can communicate with the message broker.",
+        "operationId": "mqttHealthCheck",
+        "responses": {
+          "200": {
+            "description": "MQTT broker is connected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/APIResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "service": { "type": "string", "example": "mqtt" },
+                            "status": { "type": "string", "enum": ["up", "down"] }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "MQTT broker is not connected"
+          }
+        }
+      }
+    },
     "/api/v1/auth/register": {
       "post": {
         "tags": ["Auth"],
@@ -250,6 +287,15 @@
         "operationId": "sendMessage",
         "description": "Queues an SMS message for delivery. Messages are routed through eligible devices based on the account's routing strategy.",
         "security": [{ "APIKeyAuth": [] }],
+        "parameters": [
+          {
+            "name": "X-API-Version",
+            "in": "header",
+            "required": false,
+            "schema": { "type": "integer", "default": 1 },
+            "description": "API version for backward compatibility. Defaults to 1. Stored in request context for future version-specific behavior."
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
