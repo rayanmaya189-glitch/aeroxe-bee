@@ -41,37 +41,103 @@ function formatQuota(n: number): string {
   return String(n)
 }
 
-function mapApiPlanToPricing(apiPlan: ApiPlan, index: number): PricingPlan {
-  const fallback = PRICING_PLANS.find((p) => p.planId === apiPlan.id)
-  if (fallback) {
-    return {
-      ...fallback,
-      monthlyPrice: apiPlan.monthly_price ?? fallback.monthlyPrice,
-      yearlyPrice: Math.round((apiPlan.monthly_price ?? fallback.monthlyPrice) * 10),
-      monthlyQuota: apiPlan.monthly_quota,
-      dailyQuota: apiPlan.daily_quota,
-      maxDevices: apiPlan.max_devices,
-      pricePerSms: apiPlan.price_per_sms,
-      routingStrategy: apiPlan.default_routing_strategy,
-      dedicatedPool: apiPlan.dedicated_pool,
-    }
+function formatRoutingStrategy(strategy: string): string {
+  const map: Record<string, string> = {
+    fastest_delivery: 'Fastest delivery routing',
+    lowest_cost: 'Lowest-cost routing',
+    highest_reliability: 'Highest-reliability routing',
+    geo_affinity: 'Geo-affinity routing',
+    profit_optimized: 'Profit-optimized routing',
   }
+  return map[strategy] ?? strategy.replace(/_/g, ' ') + ' routing'
+}
+
+/**
+ * Generate feature list dynamically from the backend plan properties.
+ * Position index (0-based) determines tier-dependent labels (analytics, support, CTA).
+ */
+function generateFeatures(plan: ApiPlan, index: number, totalPlans: number): string[] {
+  const features: string[] = []
+
+  // 1. SMS quota
+  features.push(`${formatQuota(plan.monthly_quota)} SMS/month`)
+
+  // 2. Daily quota
+  features.push(`${formatQuota(plan.daily_quota)} daily SMS`)
+
+  // 3. Device connections
+  features.push(`${plan.max_devices} device connection${plan.max_devices !== 1 ? 's' : ''}`)
+
+  // 4. Routing strategy
+  features.push(formatRoutingStrategy(plan.default_routing_strategy))
+
+  // 5. Analytics level (tier-dependent)
+  if (index === 0) {
+    features.push('Basic analytics')
+  } else if (index <= 1) {
+    features.push('Advanced analytics')
+  } else {
+    features.push('Full analytics suite')
+  }
+
+  // 6. Support level (tier-dependent)
+  if (index === 0) {
+    features.push('Community support')
+  } else if (index <= 1) {
+    features.push('Priority support')
+  } else if (index <= 2) {
+    features.push('Dedicated support')
+  } else {
+    features.push('Dedicated support & custom SLA')
+  }
+
+  // 7. Device pool
+  features.push(plan.dedicated_pool ? 'Dedicated device pool' : 'Shared device pool')
+
+  // 8. Webhooks (only for paid plans)
+  if (plan.monthly_price > 0) {
+    features.push('Custom webhooks')
+  }
+
+  // 9. OTP system (only for paid plans)
+  if (plan.monthly_price > 0) {
+    features.push('OTP system')
+  }
+
+  // 10. Cost tracking (only for scale+ plans)
+  if (index >= 2) {
+    features.push('Cost & profit tracking')
+  }
+
+  // 11. Custom integrations (enterprise only)
+  if (index === totalPlans - 1 && plan.monthly_price > 0) {
+    features.push('Custom integrations')
+  }
+
+  // 12. API access (always included)
+  features.push('API access')
+
+  return features
+}
+
+function mapApiPlanToPricing(apiPlan: ApiPlan, index: number, totalPlans: number): PricingPlan {
+  const fallback = PRICING_PLANS.find((p) => p.planId === apiPlan.id)
+  // Always generate features dynamically from backend data
+  const features = generateFeatures(apiPlan, index, totalPlans)
+  const monthlyPrice = apiPlan.monthly_price ?? fallback?.monthlyPrice ?? 0
+  const description = fallback?.description ?? `${formatQuota(apiPlan.monthly_quota)} SMS/month`
+  const cta = fallback?.cta ?? (index === 0 ? 'Get Started Free' : index <= 1 ? 'Start Free Trial' : 'Contact Sales')
+  const popular = fallback?.popular ?? (index === Math.floor(totalPlans / 2))
+
   return {
     name: apiPlan.name,
     planId: apiPlan.id,
-    monthlyPrice: apiPlan.monthly_price,
-    yearlyPrice: Math.round(apiPlan.monthly_price * 10),
-    description: `${formatQuota(apiPlan.monthly_quota)} SMS/month`,
-    features: [
-      `${formatQuota(apiPlan.monthly_quota)} SMS/month`,
-      `${formatQuota(apiPlan.daily_quota)} daily quota`,
-      `$${apiPlan.price_per_sms.toFixed(4)} per SMS`,
-      `${apiPlan.default_routing_strategy} routing`,
-      apiPlan.dedicated_pool ? 'Dedicated device pool' : 'Shared device pool',
-      'API access',
-    ],
-    cta: index === 0 ? 'Get Started' : 'Contact Sales',
-    popular: index === 2,
+    monthlyPrice,
+    yearlyPrice: Math.round(monthlyPrice * 10),
+    description,
+    features,
+    cta,
+    popular,
     monthlyQuota: apiPlan.monthly_quota,
     dailyQuota: apiPlan.daily_quota,
     maxDevices: apiPlan.max_devices,
@@ -125,10 +191,10 @@ export function Pricing() {
         if (plansRes.status === 'fulfilled' && plansRes.value.ok) {
           const json = await plansRes.value.json()
           if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-            const mapped = json.data
+            const filtered = json.data
               .filter((p: ApiPlan) => p.monthly_price !== undefined)
               .sort((a: ApiPlan, b: ApiPlan) => a.monthly_price - b.monthly_price)
-              .map((p: ApiPlan, i: number) => mapApiPlanToPricing(p, i))
+            const mapped = filtered.map((p: ApiPlan, i: number) => mapApiPlanToPricing(p, i, filtered.length))
             if (mapped.length > 0) {
               setPlans(mapped)
             }
