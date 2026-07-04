@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Users, BarChart3, FileText, Webhook,
   CreditCard, Settings, Zap, ChevronLeft, ChevronDown,
   MessageSquare, AlertTriangle, BrainCircuit, UserCog,
-  Receipt, Crown, FileCheck, Shield,
+  Receipt, Crown, FileCheck, Shield, Tags,
 } from 'lucide-react'
 
 interface NavItem {
@@ -49,6 +49,7 @@ const adminNavGroups: NavGroup[] = [
     icon: <CreditCard className="h-[18px] w-[18px]" />,
     items: [
       { label: 'Plans', path: '/plans', icon: <Receipt className="h-[14px] w-[14px]" /> },
+      { label: 'Feature Catalog', path: '/feature-catalog', icon: <Tags className="h-[14px] w-[14px]" /> },
       { label: 'Billing Settings', path: '/billing-settings', icon: <Settings className="h-[14px] w-[14px]" /> },
       { label: 'Subscriptions', path: '/admin/subscriptions', icon: <Crown className="h-[14px] w-[14px]" /> },
     ],

@@ -174,6 +174,16 @@ export interface FraudFlag {
   created_at: string
 }
 
+export interface FeatureCatalogItem {
+  id: string
+  name: string
+  category: string
+  sort_order: number
+  active: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface Message {
   id: string
   device_id?: string

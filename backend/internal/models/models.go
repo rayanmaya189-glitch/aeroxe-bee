@@ -611,6 +611,18 @@ type ContactSubmission struct {
 	UpdatedAt     time.Time `db:"updated_at" json:"updated_at"`
 }
 
+// FeatureCatalogItem represents a predefined feature in the global catalog
+
+type FeatureCatalogItem struct {
+	ID        string    `db:"id" json:"id"`
+	Name      string    `db:"name" json:"name"`
+	Category  string    `db:"category" json:"category"`
+	SortOrder int       `db:"sort_order" json:"sort_order"`
+	Active    bool      `db:"active" json:"active"`
+	CreatedAt time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
+}
+
 // WebhookWithAccount is a webhook enriched with account name (for admin views)
 
 type WebhookWithAccount struct {

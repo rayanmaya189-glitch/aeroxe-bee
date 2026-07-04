@@ -270,5 +270,13 @@ func NewRouter(
 	mux.Handle("GET /api/v1/admin/contact-submissions", authMiddleware.AdminAuth(http.HandlerFunc(contactSalesHandler.ListSubmissions)))
 	mux.Handle("PUT /api/v1/admin/contact-submissions/{id}", authMiddleware.AdminAuth(http.HandlerFunc(contactSalesHandler.UpdateStatus)))
 
+	// Feature catalog routes
+	featureCatalogHandler := handlers.NewFeatureCatalogHandler(pg.Pool)
+	mux.HandleFunc("GET /api/v1/feature-catalog", featureCatalogHandler.List)
+	mux.Handle("POST /api/v1/admin/feature-catalog", authMiddleware.AdminAuth(http.HandlerFunc(featureCatalogHandler.Create)))
+	mux.Handle("PUT /api/v1/admin/feature-catalog/{id}", authMiddleware.AdminAuth(http.HandlerFunc(featureCatalogHandler.UpdateStatus)))
+	mux.Handle("DELETE /api/v1/admin/feature-catalog/{id}", authMiddleware.AdminAuth(http.HandlerFunc(featureCatalogHandler.Delete)))
+	mux.Handle("POST /api/v1/admin/feature-catalog/{id}/reorder", authMiddleware.AdminAuth(http.HandlerFunc(featureCatalogHandler.Reorder)))
+
 	return mux
 }

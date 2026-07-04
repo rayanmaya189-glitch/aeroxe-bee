@@ -1,6 +1,6 @@
 import api from './api'
 import type { ApiResponse, PaginatedResponse } from '@/types/api'
-import type { DashboardStats, DailyChartData, Account, AnalyticsDaily, Webhook, Template, Plan, CircuitBreakerEvent, DeadLetter, FraudFlag } from '@/types/models'
+import type { DashboardStats, DailyChartData, Account, AnalyticsDaily, Webhook, Template, Plan, CircuitBreakerEvent, DeadLetter, FraudFlag, FeatureCatalogItem } from '@/types/models'
 
 // Dashboard stats (admin)
 export async function getDashboardStats(): Promise<DashboardStats> {
@@ -449,4 +449,34 @@ export async function verify2FA(code: string): Promise<void> {
 export async function disable2FA(code: string): Promise<void> {
   const res = await api.post('/auth/2fa/disable', { code })
   if (!res.data.success) throw new Error(res.data.error ?? 'Failed to disable 2FA')
+}
+
+// ─── Feature Catalog (global) ─────────────────────────────────────
+
+export async function getFeatureCatalog(): Promise<FeatureCatalogItem[]> {
+  const res = await api.get<ApiResponse<FeatureCatalogItem[]>>('/feature-catalog')
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load feature catalog')
+  return res.data.data
+}
+
+export async function getActiveFeatureCatalog(): Promise<FeatureCatalogItem[]> {
+  const res = await api.get<ApiResponse<FeatureCatalogItem[]>>('/feature-catalog?active_only=true')
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load feature catalog')
+  return res.data.data
+}
+
+export async function createFeatureCatalogItem(data: { name: string; category: string }): Promise<FeatureCatalogItem> {
+  const res = await api.post<ApiResponse<FeatureCatalogItem>>('/admin/feature-catalog', data)
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to create feature')
+  return res.data.data
+}
+
+export async function toggleFeatureCatalogItem(id: string, active: boolean): Promise<void> {
+  const res = await api.put(`/admin/feature-catalog/${id}`, { active })
+  if (!res.data.success) throw new Error(res.data.error ?? 'Failed to toggle feature')
+}
+
+export async function deleteFeatureCatalogItem(id: string): Promise<void> {
+  const res = await api.delete(`/admin/feature-catalog/${id}`)
+  if (!res.data.success) throw new Error(res.data.error ?? 'Failed to delete feature')
 }

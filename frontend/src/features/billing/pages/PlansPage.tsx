@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { PageTransition } from '@/components/ui/PageTransition'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getPlans, createPlan, updatePlan, deletePlan } from '@/services/dashboard'
+import { getPlans, createPlan, updatePlan, deletePlan, getActiveFeatureCatalog } from '@/services/dashboard'
 import type { Plan } from '@/types/models'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -14,7 +14,7 @@ import { PageSkeleton } from '@/components/ui/Skeleton'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { formatNumber } from '@/utils/format'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
-import { Plus, Receipt, Check, X } from 'lucide-react'
+import { Plus, Receipt, Check, X, Tags } from 'lucide-react'
 
 const containerVariants = staggerContainer
 const itemVariant = itemVariants
@@ -44,6 +44,11 @@ export function PlansPage() {
   const featureInputRef = useRef<HTMLInputElement>(null)
 
   const { data: plans = [], isLoading } = useQuery({ queryKey: ['admin-plans'], queryFn: getPlans })
+  const { data: catalogFeatures = [] } = useQuery({ queryKey: ['feature-catalog'], queryFn: getActiveFeatureCatalog })
+  // Provide fallback suggestions if catalog is empty
+  const suggestions = catalogFeatures.length > 0
+    ? catalogFeatures.map((f) => f.name)
+    : ['5K SMS/month', '10K daily SMS', 'Advanced analytics', 'Priority support', 'Custom webhooks', 'OTP system', 'API access']
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -243,7 +248,7 @@ export function PlansPage() {
               </Button>
             </div>
             <div className="mt-3 flex flex-wrap gap-1.5">
-              {['5K SMS/month', '10K daily SMS', 'Advanced analytics', 'Priority support', 'Custom webhooks', 'OTP system', 'API access'].map((suggestion) => (
+              {suggestions.slice(0, 12).map((suggestion) => (
                 <button
                   key={suggestion}
                   type="button"
@@ -258,6 +263,12 @@ export function PlansPage() {
                   + {suggestion}
                 </button>
               ))}
+              {catalogFeatures.length > 0 && (
+                <a href="/feature-catalog" target="_self" className="inline-flex items-center gap-1 rounded-md border border-dashed border-indigo-500/20 bg-indigo-500/5 px-2.5 py-1 text-[10px] text-indigo-400 transition-all hover:border-indigo-500/30 hover:bg-indigo-500/10">
+                  <Tags className="h-2.5 w-2.5" />
+                  Manage catalog
+                </a>
+              )}
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
