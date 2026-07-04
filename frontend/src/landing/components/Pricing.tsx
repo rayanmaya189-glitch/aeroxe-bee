@@ -451,11 +451,6 @@ export function Pricing() {
             </motion.div>
           )}
 
-          <motion.p variants={fadeInUp} className="mt-8 text-center text-xs text-gray-600">
-            All plan data loaded from{' '}
-            <code className="rounded bg-white/[0.04] px-1.5 py-0.5 text-gray-500">GET /api/v1/public/plans</code>{' '}
-            &middot; Includes device limits, daily/monthly SMS quotas, and per-message pricing
-          </motion.p>
         </motion.div>
       </div>
     </section>
