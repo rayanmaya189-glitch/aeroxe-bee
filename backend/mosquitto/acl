@@ -1,16 +1,16 @@
 # ============================================================================
 # AeroXe Bee Mosquitto ACL
 # Aeroxe Enterprises Pvt. Ltd., Jalgaon, Maharashtra, India
-# Two users: "backend" (Go service) and "devices" (all Android devices)
+# Per-device topic isolation using %u (username) pattern matching
 # ============================================================================
 
 # Backend service: full read/write access to all device topics
 user backend
 topic readwrite devices/#
+topic readwrite backend/#
 
-# All devices share the "devices" username.
-# Each device connects and subscribes to its own topic tree,
-# e.g. devices/ABC-sim1/commands, devices/DEF-sim2/commands, etc.
-# Since they share a username, ACL grants access to the full devices/ tree.
-user devices
-topic readwrite devices/#
+# Per-device pattern: each device can only access its own topic tree.
+# Devices connect with username = deviceID (e.g., "ABC123-sim1")
+# ACL pattern %u resolves to the connecting client's username.
+# So device "ABC123-sim1" can only access "devices/ABC123-sim1/#"
+pattern topic readwrite devices/%u/#

@@ -39,7 +39,6 @@ services:
       - "1883:1883"
       - "9001:9001"
     environment:
-      # Backend admin MQTT credentials (must match MQTT_PASSWORD in backend service)
       MQTT_BACKEND_PASSWORD: dev-backend-password
       MQTT_DEVICE_PASSWORD: dev-device-password
     volumes:
@@ -47,6 +46,12 @@ services:
       - ./backend/mosquitto/acl:/mosquitto/auth/acl
       - mqttdata:/mosquitto/data
       - mqtt_auth:/mosquitto/auth
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -t '$$SYS/#' -C 1 -i healthcheck -W 3 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     depends_on:
       postgres:
         condition: service_healthy
@@ -80,7 +85,7 @@ services:
       redis:
         condition: service_healthy
       mosquitto:
-        condition: service_started
+        condition: service_healthy
 
 volumes:
   pgdata:
