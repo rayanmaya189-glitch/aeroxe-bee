@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { PageTransition } from '@/components/ui/PageTransition'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getTemplates, createTemplate, deleteTemplate, approveTemplate, rejectTemplate } from '@/services/dashboard'
+import { getTemplates, createTemplate, deleteTemplate, approveTemplate, rejectTemplate, bulkDeleteTemplates, bulkApproveTemplates, bulkRejectTemplates } from '@/services/dashboard'
 import type { Template } from '@/types/models'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -13,7 +13,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { PageSkeleton } from '@/components/ui/Skeleton'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
-import { Plus, FileText } from 'lucide-react'
+import { Plus, FileText, Trash2, CheckSquare, Square, CheckCircle, XCircle } from 'lucide-react'
 
 type FilterTab = 'all' | 'pending' | 'approved' | 'rejected'
 
@@ -22,6 +22,10 @@ export function TemplatesPage() {
   const [activeTab, setActiveTab] = useState<FilterTab>('all')
   const [showForm, setShowForm] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Template | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [showBulkDelete, setShowBulkDelete] = useState(false)
+  const [showBulkApprove, setShowBulkApprove] = useState(false)
+  const [showBulkReject, setShowBulkReject] = useState(false)
   const [name, setName] = useState('')
   const [body, setBody] = useState('')
   const [error, setError] = useState('')
@@ -65,6 +69,54 @@ export function TemplatesPage() {
     mutationFn: rejectTemplate,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-templates'] }),
   })
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: () => bulkDeleteTemplates(Array.from(selectedIds)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-templates'] })
+      setSelectedIds(new Set())
+      setShowBulkDelete(false)
+    },
+  })
+
+  const bulkApproveMutation = useMutation({
+    mutationFn: () => bulkApproveTemplates(Array.from(selectedIds)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-templates'] })
+      setSelectedIds(new Set())
+      setShowBulkApprove(false)
+    },
+  })
+
+  const bulkRejectMutation = useMutation({
+    mutationFn: () => bulkRejectTemplates(Array.from(selectedIds)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-templates'] })
+      setSelectedIds(new Set())
+      setShowBulkReject(false)
+    },
+  })
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredTemplates.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(filteredTemplates.map((t) => t.id)))
+    }
+  }
+
+  const isAllSelected = filteredTemplates.length > 0 && selectedIds.size === filteredTemplates.length
+  const selectedTemplates = templates.filter((t) => selectedIds.has(t.id))
+  const selectedPendingCount = selectedTemplates.filter((t) => t.approval_status === 'pending').length
 
   const tabs: { key: FilterTab; label: string; count?: number }[] = [
     { key: 'all', label: 'All', count: templates.length },
@@ -110,7 +162,7 @@ export function TemplatesPage() {
         {tabs.map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => { setActiveTab(tab.key); setSelectedIds(new Set()) }}
             className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 ${
               activeTab === tab.key
                 ? 'bg-gradient-to-r from-white/[0.08] to-white/[0.05] text-gray-100 shadow-sm ring-1 ring-white/[0.06]'
@@ -127,6 +179,38 @@ export function TemplatesPage() {
         ))}
       </motion.div>
 
+      {/* Bulk action bar */}
+      <AnimatePresence>
+        {selectedIds.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: 'auto' }}
+            exit={{ opacity: 0, y: -10, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="flex items-center justify-between rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-3">
+              <span className="text-sm text-blue-400 font-medium">{selectedIds.size} template{selectedIds.size > 1 ? 's' : ''} selected</span>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>Clear</Button>
+                {selectedPendingCount > 0 && (
+                  <>
+                    <Button size="sm" className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20" icon={<CheckCircle className="h-4 w-4" />} onClick={() => setShowBulkApprove(true)}>
+                      Approve ({selectedPendingCount})
+                    </Button>
+                    <Button size="sm" className="bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20" icon={<XCircle className="h-4 w-4" />} onClick={() => setShowBulkReject(true)}>
+                      Reject ({selectedPendingCount})
+                    </Button>
+                  </>
+                )}
+                <Button size="sm" className="bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20" icon={<Trash2 className="h-4 w-4" />} onClick={() => setShowBulkDelete(true)}>
+                  Delete ({selectedIds.size})
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {filteredTemplates.length === 0 ? (
         <EmptyState
           title={`No ${activeTab === 'all' ? '' : activeTab} templates`}
@@ -141,11 +225,22 @@ export function TemplatesPage() {
                 t.approval_status === 'approved' ? 'bg-emerald-500/15' :
                 t.approval_status === 'rejected' ? 'bg-red-500/15' : 'bg-amber-500/15'
               }>
-                <div className="flex items-start justify-between">
-                  <h3 className="text-sm font-semibold text-gray-100">{t.name}</h3>
-                  {t.account_name && (
-                    <p className="mt-1 text-xs text-gray-500">Account: {t.account_name}</p>
-                  )}
+                <div className="flex items-start gap-3">
+                  <button
+                    onClick={() => toggleSelect(t.id)}
+                    className="mt-1 shrink-0 transition-colors hover:opacity-80"
+                  >
+                    {selectedIds.has(t.id)
+                      ? <CheckSquare className="h-4 w-4 text-blue-400" />
+                      : <Square className="h-4 w-4 text-gray-600" />
+                    }
+                  </button>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-semibold text-gray-100">{t.name}</h3>
+                    {t.account_name && (
+                      <p className="mt-1 text-xs text-gray-500">Account: {t.account_name}</p>
+                    )}
+                  </div>
                   <Badge
                     variant={t.approval_status === 'approved' ? 'success' : t.approval_status === 'rejected' ? 'danger' : 'warning'}
                     dot
@@ -154,10 +249,10 @@ export function TemplatesPage() {
                     {t.approval_status}
                   </Badge>
                 </div>
-                <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-gray-400">{t.body}</p>
+                <p className="mt-2 ml-7 line-clamp-3 text-xs leading-relaxed text-gray-400">{t.body}</p>
 
                 {t.approval_status === 'pending' && (
-                  <div className="mt-3 flex gap-2">
+                  <div className="mt-3 ml-7 flex gap-2">
                     <Button variant="ghost" size="xs" className="text-emerald-400" onClick={() => approveMutation.mutate(t.id)} loading={approveMutation.isPending}>
                       Approve
                     </Button>
@@ -167,12 +262,22 @@ export function TemplatesPage() {
                   </div>
                 )}
 
-                <div className="mt-4 flex gap-2 border-t border-white/[0.06] pt-4">
+                <div className="mt-4 ml-7 flex gap-2 border-t border-white/[0.06] pt-4">
                   <Button variant="ghost" size="xs" className="text-red-400" onClick={() => setDeleteTarget(t)}>Delete</Button>
                 </div>
               </Card>
             </motion.div>
           ))}
+        </div>
+      )}
+
+      {/* Select all checkbox */}
+      {filteredTemplates.length > 0 && (
+        <div className="flex justify-center">
+          <button onClick={toggleSelectAll} className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-300 transition-colors">
+            {isAllSelected ? <CheckSquare className="h-3.5 w-3.5 text-blue-400" /> : <Square className="h-3.5 w-3.5" />}
+            {isAllSelected ? 'Deselect all' : 'Select all'}
+          </button>
         </div>
       )}
 
@@ -213,6 +318,33 @@ export function TemplatesPage() {
         title="Delete template"
         description={`Are you sure you want to delete "${deleteTarget?.name}"?`}
         loading={deleteMutation.isPending}
+      />
+
+      <ConfirmDialog
+        open={showBulkDelete}
+        onClose={() => setShowBulkDelete(false)}
+        onConfirm={() => bulkDeleteMutation.mutate()}
+        title="Bulk delete templates"
+        description={`Are you sure you want to delete ${selectedIds.size} template${selectedIds.size > 1 ? 's' : ''}? This cannot be undone.`}
+        loading={bulkDeleteMutation.isPending}
+      />
+
+      <ConfirmDialog
+        open={showBulkApprove}
+        onClose={() => setShowBulkApprove(false)}
+        onConfirm={() => bulkApproveMutation.mutate()}
+        title="Bulk approve templates"
+        description={`Approve ${selectedPendingCount} pending template${selectedPendingCount > 1 ? 's' : ''}? They will be available for use immediately.`}
+        loading={bulkApproveMutation.isPending}
+      />
+
+      <ConfirmDialog
+        open={showBulkReject}
+        onClose={() => setShowBulkReject(false)}
+        onConfirm={() => bulkRejectMutation.mutate()}
+        title="Bulk reject templates"
+        description={`Reject ${selectedPendingCount} pending template${selectedPendingCount > 1 ? 's' : ''}? They will be marked as rejected.`}
+        loading={bulkRejectMutation.isPending}
       />
     </motion.div>
     </PageTransition>

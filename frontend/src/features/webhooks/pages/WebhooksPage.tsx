@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { PageTransition } from '@/components/ui/PageTransition'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getWebhooks, createWebhook, deleteWebhook, rotateWebhookSecret } from '@/services/dashboard'
+import { getWebhooks, createWebhook, deleteWebhook, rotateWebhookSecret, bulkDeleteWebhooks } from '@/services/dashboard'
 import api from '@/services/api'
 import type { Webhook } from '@/types/models'
 import { Card } from '@/components/ui/Card'
@@ -14,12 +14,14 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { PageSkeleton } from '@/components/ui/Skeleton'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
-import { Plus, WebhookIcon } from 'lucide-react'
+import { Plus, WebhookIcon, Trash2, CheckSquare, Square } from 'lucide-react'
 
 export function WebhooksPage() {
   const queryClient = useQueryClient()
   const [showForm, setShowForm] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Webhook | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [showBulkDelete, setShowBulkDelete] = useState(false)
   const [url, setUrl] = useState('')
   const [events, setEvents] = useState('')
   const [error, setError] = useState('')
@@ -49,6 +51,15 @@ export function WebhooksPage() {
     },
   })
 
+  const bulkDeleteMutation = useMutation({
+    mutationFn: () => bulkDeleteWebhooks(Array.from(selectedIds)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-webhooks'] })
+      setSelectedIds(new Set())
+      setShowBulkDelete(false)
+    },
+  })
+
   const rotateMutation = useMutation({
     mutationFn: rotateWebhookSecret,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-webhooks'] }),
@@ -61,6 +72,25 @@ export function WebhooksPage() {
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-webhooks'] }),
   })
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === webhooks.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(webhooks.map((w) => w.id)))
+    }
+  }
+
+  const isAllSelected = webhooks.length > 0 && selectedIds.size === webhooks.length
 
   if (isLoading) return <PageTransition><PageSkeleton /></PageTransition>
 
@@ -94,6 +124,28 @@ export function WebhooksPage() {
         </div>
       </motion.div>
 
+      {/* Bulk action bar */}
+      <AnimatePresence>
+        {selectedIds.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: 'auto' }}
+            exit={{ opacity: 0, y: -10, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="flex items-center justify-between rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-3">
+              <span className="text-sm text-blue-400 font-medium">{selectedIds.size} webhook{selectedIds.size > 1 ? 's' : ''} selected</span>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>Clear</Button>
+                <Button size="sm" className="bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20" icon={<Trash2 className="h-4 w-4" />} onClick={() => setShowBulkDelete(true)}>
+                  Delete ({selectedIds.size})
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {webhooks.length === 0 ? (
         <EmptyState
           title="No webhooks configured"
@@ -105,7 +157,16 @@ export function WebhooksPage() {
           {webhooks.map((wh) => (
             <motion.div key={wh.id} variants={itemVariants}>
               <Card hover glow={wh.active ? 'bg-emerald-500/15' : 'bg-gray-500/10'}>
-                <div className="flex items-start justify-between">
+                <div className="flex items-start gap-3">
+                  <button
+                    onClick={() => toggleSelect(wh.id)}
+                    className="mt-1 shrink-0 transition-colors hover:opacity-80"
+                  >
+                    {selectedIds.has(wh.id)
+                      ? <CheckSquare className="h-4 w-4 text-blue-400" />
+                      : <Square className="h-4 w-4 text-gray-600" />
+                    }
+                  </button>
                   <div className="min-w-0 flex-1">
                     <h3 className="truncate text-sm font-semibold text-gray-100">{wh.url}</h3>
                     {wh.account_name && (
@@ -137,6 +198,16 @@ export function WebhooksPage() {
         </div>
       )}
 
+      {/* Select all checkbox */}
+      {webhooks.length > 0 && (
+        <div className="flex justify-center">
+          <button onClick={toggleSelectAll} className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-300 transition-colors">
+            {isAllSelected ? <CheckSquare className="h-3.5 w-3.5 text-blue-400" /> : <Square className="h-3.5 w-3.5" />}
+            {isAllSelected ? 'Deselect all' : 'Select all'}
+          </button>
+        </div>
+      )}
+
       <Modal
         open={showForm}
         onClose={() => setShowForm(false)}
@@ -162,6 +233,15 @@ export function WebhooksPage() {
         title="Delete webhook"
         description={`Are you sure you want to delete the webhook for ${deleteTarget?.url}?`}
         loading={deleteMutation.isPending}
+      />
+
+      <ConfirmDialog
+        open={showBulkDelete}
+        onClose={() => setShowBulkDelete(false)}
+        onConfirm={() => bulkDeleteMutation.mutate()}
+        title="Bulk delete webhooks"
+        description={`Are you sure you want to delete ${selectedIds.size} webhook${selectedIds.size > 1 ? 's' : ''}? This cannot be undone.`}
+        loading={bulkDeleteMutation.isPending}
       />
     </motion.div>
     </PageTransition>

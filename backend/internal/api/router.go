@@ -270,6 +270,14 @@ func NewRouter(
 	mux.Handle("GET /api/v1/admin/contact-submissions", authMiddleware.AdminAuth(http.HandlerFunc(contactSalesHandler.ListSubmissions)))
 	mux.Handle("PUT /api/v1/admin/contact-submissions/{id}", authMiddleware.AdminAuth(http.HandlerFunc(contactSalesHandler.UpdateStatus)))
 
+	// Admin bulk operations for webhooks & templates
+	webhookBulkHandler := handlers.NewAdminWebhookBulkHandler(pg.Pool)
+	templateBulkHandler := handlers.NewAdminTemplateBulkHandler(pg.Pool)
+	mux.Handle("POST /api/v1/admin/webhooks/bulk-delete", authMiddleware.AdminAuth(http.HandlerFunc(webhookBulkHandler.BulkDelete)))
+	mux.Handle("POST /api/v1/admin/templates/bulk-delete", authMiddleware.AdminAuth(http.HandlerFunc(templateBulkHandler.BulkDelete)))
+	mux.Handle("POST /api/v1/admin/templates/bulk-approve", authMiddleware.AdminAuth(http.HandlerFunc(templateBulkHandler.BulkApprove)))
+	mux.Handle("POST /api/v1/admin/templates/bulk-reject", authMiddleware.AdminAuth(http.HandlerFunc(templateBulkHandler.BulkReject)))
+
 	// BI dashboard routes
 	biHandler := handlers.NewBIHandler(pg.Pool)
 	mux.Handle("GET /api/v1/admin/bi", authMiddleware.AdminAuth(http.HandlerFunc(biHandler.GetBIDashboard)))

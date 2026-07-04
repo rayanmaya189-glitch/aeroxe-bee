@@ -81,6 +81,11 @@ export async function rotateWebhookSecret(id: string): Promise<string> {
   return res.data.data.secret
 }
 
+export async function bulkDeleteWebhooks(ids: string[]): Promise<void> {
+  const res = await api.post('/admin/webhooks/bulk-delete', { ids })
+  if (!res.data.success) throw new Error(res.data.error ?? 'Bulk delete failed')
+}
+
 // Templates (admin)
 export async function getTemplates(): Promise<Template[]> {
   const res = await api.get<ApiResponse<Template[]>>('/admin/templates')
@@ -113,6 +118,21 @@ export async function approveTemplate(id: string): Promise<void> {
 export async function rejectTemplate(id: string): Promise<void> {
   const res = await api.post(`/admin/templates/${id}/reject`)
   if (!res.data.success) throw new Error(res.data.error ?? 'Failed to reject template')
+}
+
+export async function bulkDeleteTemplates(ids: string[]): Promise<void> {
+  const res = await api.post('/admin/templates/bulk-delete', { ids })
+  if (!res.data.success) throw new Error(res.data.error ?? 'Bulk delete failed')
+}
+
+export async function bulkApproveTemplates(ids: string[]): Promise<void> {
+  const res = await api.post('/admin/templates/bulk-approve', { ids })
+  if (!res.data.success) throw new Error(res.data.error ?? 'Bulk approve failed')
+}
+
+export async function bulkRejectTemplates(ids: string[]): Promise<void> {
+  const res = await api.post('/admin/templates/bulk-reject', { ids })
+  if (!res.data.success) throw new Error(res.data.error ?? 'Bulk reject failed')
 }
 
 // Plans (billing)
