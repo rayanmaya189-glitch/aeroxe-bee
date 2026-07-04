@@ -85,7 +85,7 @@ export function Hero() {
               <div className="absolute inset-0 rounded-2xl bg-white/10 opacity-0 transition-opacity group-hover:opacity-100" />
             </a>
             <a
-              href="#demo"
+              href="#pricing"
               className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-8 py-4 text-base font-semibold text-gray-300 backdrop-blur-sm transition-all hover:border-white/20 hover:text-white"
             >
               <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white/10">

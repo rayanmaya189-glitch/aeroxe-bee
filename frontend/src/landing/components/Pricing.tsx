@@ -396,6 +396,15 @@ export function Pricing() {
 
                       {/* CTA */}
                       <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          const ctaText = plan.cta.toLowerCase()
+                          if (ctaText.includes('contact') || ctaText.includes('sales')) {
+                            window.location.href = 'mailto:sales@aeroxbee.com?subject=' + encodeURIComponent(`Enterprise Inquiry - ${plan.name} Plan`)
+                          } else {
+                            window.location.href = '/register'
+                          }
+                        }}
                         className={`mt-6 w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-all ${
                           isPopular
                             ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40'

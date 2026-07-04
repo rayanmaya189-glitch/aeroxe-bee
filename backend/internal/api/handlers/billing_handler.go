@@ -148,6 +148,36 @@ func (h *BillingHandler) CreatePlan(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "visibility must be public, private, or custom"})
 		return
 	}
+	if plan.DailyQuota < 0 || plan.MonthlyQuota < 0 {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "daily_quota and monthly_quota must be non-negative"})
+		return
+	}
+	if plan.MonthlyPrice < 0 || plan.PricePerSMS < 0 {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "monthly_price and price_per_sms must be non-negative"})
+		return
+	}
+	if plan.MaxDevices < 1 {
+		plan.MaxDevices = 1
+	}
+	if plan.MaxQueueDepth < 1 {
+		plan.MaxQueueDepth = 100
+	}
+	if plan.OverageBufferPct < 0 || plan.OverageBufferPct > 100 {
+		plan.OverageBufferPct = 0
+	}
+	if len(plan.CtaText) > 100 {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "cta_text must be 100 characters or less"})
+		return
+	}
+	if plan.DefaultRoutingStrategy != "" &&
+		plan.DefaultRoutingStrategy != models.RoutingStrategyFastest &&
+		plan.DefaultRoutingStrategy != models.RoutingStrategyLowestCost &&
+		plan.DefaultRoutingStrategy != models.RoutingStrategyHighestReliability &&
+		plan.DefaultRoutingStrategy != models.RoutingStrategyGeoAffinity &&
+		plan.DefaultRoutingStrategy != models.RoutingStrategyProfitOptimized {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "default_routing_strategy must be fastest_delivery, lowest_cost, highest_reliability, geo_affinity, or profit_optimized"})
+		return
+	}
 	if err := h.billingService.CreatePlan(r.Context(), &plan); err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to create plan"})
 		return
@@ -165,6 +195,36 @@ func (h *BillingHandler) UpdatePlan(w http.ResponseWriter, r *http.Request) {
 	plan.ID = models.PlanType(id)
 	if plan.Visibility != "" && plan.Visibility != models.PlanVisibilityPublic && plan.Visibility != models.PlanVisibilityPrivate && plan.Visibility != models.PlanVisibilityCustom {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "visibility must be public, private, or custom"})
+		return
+	}
+	if plan.DailyQuota < 0 || plan.MonthlyQuota < 0 {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "daily_quota and monthly_quota must be non-negative"})
+		return
+	}
+	if plan.MonthlyPrice < 0 || plan.PricePerSMS < 0 {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "monthly_price and price_per_sms must be non-negative"})
+		return
+	}
+	if plan.MaxDevices < 1 {
+		plan.MaxDevices = 1
+	}
+	if plan.MaxQueueDepth < 1 {
+		plan.MaxQueueDepth = 100
+	}
+	if plan.OverageBufferPct < 0 || plan.OverageBufferPct > 100 {
+		plan.OverageBufferPct = 0
+	}
+	if len(plan.CtaText) > 100 {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "cta_text must be 100 characters or less"})
+		return
+	}
+	if plan.DefaultRoutingStrategy != "" &&
+		plan.DefaultRoutingStrategy != models.RoutingStrategyFastest &&
+		plan.DefaultRoutingStrategy != models.RoutingStrategyLowestCost &&
+		plan.DefaultRoutingStrategy != models.RoutingStrategyHighestReliability &&
+		plan.DefaultRoutingStrategy != models.RoutingStrategyGeoAffinity &&
+		plan.DefaultRoutingStrategy != models.RoutingStrategyProfitOptimized {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "default_routing_strategy must be fastest_delivery, lowest_cost, highest_reliability, geo_affinity, or profit_optimized"})
 		return
 	}
 	if err := h.billingService.UpdatePlan(r.Context(), &plan); err != nil {

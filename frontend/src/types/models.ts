@@ -109,10 +109,13 @@ export interface Plan {
   monthly_quota: number
   overage_buffer_pct: number
   max_queue_depth: number
+  max_devices: number
   dedicated_pool: boolean
   default_routing_strategy: string
   price_per_sms: number
   monthly_price: number
+  is_popular: boolean
+  cta_text: string
 }
 
 export interface Subscription {
