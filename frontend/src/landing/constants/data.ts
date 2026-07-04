@@ -241,14 +241,3 @@ export const STATS = [
   { value: 5, label: 'Routing Strategies', suffix: '' },
 ] as const
 
-export const COMPARISON_ROWS = [
-  { feature: '5 Routing Strategies', us: true, competitor1: false, competitor2: false },
-  { feature: 'Device Fleet Management', us: true, competitor1: false, competitor2: true },
-  { feature: 'Delivery Confidence Scores', us: true, competitor1: false, competitor2: false },
-  { feature: 'SIM Health Prediction', us: true, competitor1: false, competitor2: false },
-  { feature: 'Circuit Breakers', us: true, competitor1: true, competitor2: false },
-  { feature: 'Priority Queue (OTP/TX/Mkt)', us: true, competitor1: true, competitor2: false },
-  { feature: 'Signed Webhooks', us: true, competitor1: true, competitor2: true },
-  { feature: 'Self-Hostable (Docker)', us: true, competitor1: false, competitor2: false },
-  { feature: 'Fraud Detection', us: true, competitor1: false, competitor2: false },
-] as const

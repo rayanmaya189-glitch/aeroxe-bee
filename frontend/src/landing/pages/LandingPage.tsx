@@ -9,7 +9,7 @@ import { Integrations } from '../components/Integrations'
 import { SecurityCompliance } from '../components/SecurityCompliance'
 import { ArchitectureCredibility } from '../components/ArchitectureCredibility'
 import { DeveloperSection } from '../components/DeveloperSection'
-import { ComparisonTable } from '../components/ComparisonTable'
+import { WhyChooseUs } from '../components/WhyChooseUs'
 import { Pricing } from '../components/Pricing'
 import { FAQ } from '../components/FAQ'
 import { CTABanner } from '../components/CTABanner'
@@ -35,7 +35,7 @@ export function LandingPage() {
         <SecurityCompliance />
         <ArchitectureCredibility />
         <DeveloperSection />
-        <ComparisonTable />
+        <WhyChooseUs />
         <Pricing />
         <FAQ />
         <CTABanner />
