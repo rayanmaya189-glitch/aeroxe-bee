@@ -65,6 +65,7 @@ func main() {
 	svc := services.NewServiceRegistry(postgres.Pool, redisDB.Client, cfg.OTP)
 	userService := services.NewUserService(postgres.Pool)
 	twoFAService := services.NewTwoFAService(postgres.Pool)
+	sessionService := services.NewSessionService(postgres.Pool)
 
 	// Seed admin user on startup
 	seedAdminUser(context.Background(), postgres.Pool, logger)
@@ -199,7 +200,7 @@ func main() {
 
 	authMiddleware := middleware.NewAuthMiddleware(svc.APIKeys, svc.Accounts, cfg.JWT.Secret)
 
-	authHandler := handlers.NewAuthHandler(svc.Accounts, svc.Admin, userService, authMiddleware, twoFAService)
+	authHandler := handlers.NewAuthHandler(svc.Accounts, svc.Admin, userService, authMiddleware, twoFAService, sessionService)
 	twoFAHandler := handlers.NewTwoFAHandler(twoFAService)
 	messageHandler := handlers.NewMessageHandler(svc.Messages, svc.Devices, svc.Accounts,
 		idempotencyStore, queue, encMgr, cfg.App, metrics)
@@ -214,6 +215,7 @@ func main() {
 	fraudHandler := handlers.NewFraudHandler(fraudDetector)
 	memberHandler := handlers.NewMemberHandler(svc.Accounts, svc.Devices, svc.Messages, svc.Billing, svc.Subscriptions, svc.Templates, svc.Webhooks)
 
+	sessionHandler := handlers.NewSessionHandler(sessionService)
 	paymentConfigHandler := handlers.NewPaymentConfigHandler(svc.PaymentConfigs)
 	paymentRequestHandler := handlers.NewPaymentRequestHandler(svc.PaymentRequests, svc.PaymentConfigs)
 	subscriptionRequestHandler := handlers.NewSubscriptionRequestHandler(svc.SubscriptionRequests, svc.Subscriptions, svc.Billing)
@@ -221,7 +223,7 @@ func main() {
 	router := api.NewRouter(authHandler, messageHandler, deviceHandler, accountHandler,
 		adminHandler, userHandler, templateHandler, webhookHandler, otpHandler, billingHandler,
 		fraudHandler, memberHandler, twoFAHandler, paymentConfigHandler, paymentRequestHandler,
-		subscriptionRequestHandler, svc.Billing, svc.PaymentConfigs, authMiddleware, metrics, postgres, redisDB)
+		subscriptionRequestHandler, sessionHandler, svc.Billing, svc.PaymentConfigs, authMiddleware, metrics, postgres, redisDB)
 
 	promMux := http.NewServeMux()
 	promMux.Handle("/metrics", promhttp.Handler())

@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { PageTransition } from '@/components/ui/PageTransition'
 import { useAuthStore } from '@/store/authStore'
 import { get2FAStatus, setup2FA, verify2FA, disable2FA, getPreferences, updatePreferences, getKycStatus, submitKyc } from '@/services/dashboard'
-import { getProfile, updateProfile } from '@/services/auth'
+import { getProfile, updateProfile, getSessions, revokeSession, revokeAllSessions, type UserSession } from '@/services/auth'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -13,7 +13,7 @@ import { staggerContainer, fadeInUp, itemVariants } from '@/components/animation
 import { QRCodeSVG } from 'qrcode.react'
 import {
   Settings, User, Lock, ShieldCheck, Bell, FileCheck,
-  Eye, EyeOff, CheckCircle, AlertTriangle,
+  Eye, EyeOff, CheckCircle, AlertTriangle, Monitor, Smartphone, Globe, Trash2,
 } from 'lucide-react'
 
 type Msg = { type: 'success' | 'error'; text: string } | null
@@ -87,6 +87,11 @@ export function SettingsPage() {
   const [notifMsg, setNotifMsg] = useState<Msg>(null)
   const [notifLoading, setNotifLoading] = useState(false)
 
+  // Sessions
+  const [sessions, setSessions] = useState<UserSession[]>([])
+  const [sessionsLoading, setSessionsLoading] = useState(false)
+  const [sessionMsg, setSessionMsg] = useState<Msg>(null)
+
   // KYC
   const [kycStatus, setKycStatus] = useState<string>('not_submitted')
   const [showKYCForm, setShowKYCForm] = useState(false)
@@ -122,6 +127,8 @@ export function SettingsPage() {
       if (data.full_name) setKycFullName(data.full_name)
       if (data.document_type) setKycDocType(data.document_type)
     }).catch(() => {})
+
+    loadSessions()
   }, [])
 
   // Profile update
@@ -228,6 +235,67 @@ export function SettingsPage() {
     } finally {
       setNotifLoading(false)
     }
+  }
+
+  // Load sessions
+  async function loadSessions() {
+    setSessionsLoading(true)
+    try {
+      const data = await getSessions()
+      setSessions(data)
+    } catch {
+      // Silently fail
+    } finally {
+      setSessionsLoading(false)
+    }
+  }
+
+  // Revoke single session
+  async function handleRevokeSession(sessionId: string) {
+    setSessionMsg(null)
+    try {
+      await revokeSession(sessionId)
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId))
+      setSessionMsg({ type: 'success', text: 'Session revoked' })
+    } catch (err: unknown) {
+      setSessionMsg({ type: 'error', text: err instanceof Error ? err.message : 'Failed to revoke session' })
+    }
+  }
+
+  // Revoke all other sessions
+  async function handleRevokeAllSessions() {
+    setSessionMsg(null)
+    try {
+      await revokeAllSessions()
+      // Reload to keep only current session
+      await loadSessions()
+      setSessionMsg({ type: 'success', text: 'All other sessions revoked' })
+    } catch (err: unknown) {
+      setSessionMsg({ type: 'error', text: err instanceof Error ? err.message : 'Failed to revoke sessions' })
+    }
+  }
+
+  // Parse user agent into friendly name
+  function parseUA(ua: string): { browser: string; os: string; icon: React.ReactNode } {
+    const lower = ua.toLowerCase()
+    if (lower.includes('chrome') && !lower.includes('edg')) return { browser: 'Chrome', os: lower.includes('android') ? 'Android' : 'Desktop', icon: <Globe className="h-4 w-4" /> }
+    if (lower.includes('firefox')) return { browser: 'Firefox', os: 'Desktop', icon: <Globe className="h-4 w-4" /> }
+    if (lower.includes('safari') && !lower.includes('chrome')) return { browser: 'Safari', os: 'macOS', icon: <Monitor className="h-4 w-4" /> }
+    if (lower.includes('edg')) return { browser: 'Edge', os: 'Desktop', icon: <Globe className="h-4 w-4" /> }
+    if (lower.includes('android')) return { browser: 'Browser', os: 'Android', icon: <Smartphone className="h-4 w-4" /> }
+    if (lower.includes('iphone') || lower.includes('ipad')) return { browser: 'Safari', os: 'iOS', icon: <Smartphone className="h-4 w-4" /> }
+    return { browser: 'Unknown', os: 'Unknown', icon: <Globe className="h-4 w-4" /> }
+  }
+
+  function formatTimeAgo(dateStr: string): string {
+    const diff = Date.now() - new Date(dateStr).getTime()
+    const mins = Math.floor(diff / 60000)
+    if (mins < 1) return 'Just now'
+    if (mins < 60) return `${mins}m ago`
+    const hours = Math.floor(mins / 60)
+    if (hours < 24) return `${hours}h ago`
+    const days = Math.floor(hours / 24)
+    return `${days}d ago`
   }
 
   // KYC submit
@@ -351,6 +419,61 @@ export function SettingsPage() {
               <div className="mt-4">
                 <Button onClick={handleSaveNotifications} loading={notifLoading}>Save preferences</Button>
               </div>
+            </Card>
+          </motion.div>
+
+          {/* ─── Active Sessions ─── */}
+          <motion.div variants={itemVariants}>
+            <Card>
+              <CardHeader className="mb-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/10 ring-1 ring-indigo-500/20">
+                      <Monitor className="h-4 w-4 text-indigo-400" />
+                    </div>
+                    <CardTitle>Active Sessions</CardTitle>
+                  </div>
+                  {sessions.length > 1 && (
+                    <Button variant="danger" size="xs" onClick={handleRevokeAllSessions}>Revoke all others</Button>
+                  )}
+                </div>
+              </CardHeader>
+              {sessionMsg && <MsgBanner msg={sessionMsg} />}
+              {sessionsLoading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 2 }).map((_, i) => (
+                    <div key={i} className="h-16 animate-pulse rounded-xl bg-white/[0.03]" />
+                  ))}
+                </div>
+              ) : sessions.length === 0 ? (
+                <p className="text-sm text-gray-500">No active sessions</p>
+              ) : (
+                <div className="space-y-2">
+                  {sessions.map((sess) => {
+                    const { browser, os, icon } = parseUA(sess.user_agent || '')
+                    return (
+                      <div key={sess.id} className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/[0.05]">
+                            {icon}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-200">{browser} · {os}</p>
+                            <div className="flex items-center gap-2 text-xs text-gray-500">
+                              <span>{sess.ip_address || 'Unknown IP'}</span>
+                              <span>·</span>
+                              <span>{formatTimeAgo(sess.last_active || sess.created_at)}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <Button variant="ghost" size="xs" className="text-gray-500 hover:text-red-400" onClick={() => handleRevokeSession(sess.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </Card>
           </motion.div>
         </div>

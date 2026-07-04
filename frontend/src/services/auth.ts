@@ -53,3 +53,32 @@ export async function verify2FALogin(email: string, code: string): Promise<Login
   if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? '2FA verification failed')
   return res.data.data
 }
+
+// ─── Session Management ───────────────────────────────────────
+
+export interface UserSession {
+  id: string
+  user_id: string
+  user_type: string
+  ip_address: string
+  user_agent: string
+  last_active: string
+  created_at: string
+  revoked_at?: string
+}
+
+export async function getSessions(): Promise<UserSession[]> {
+  const res = await api.get<ApiResponse<UserSession[]>>('/auth/sessions')
+  if (!res.data.success || !res.data.data) throw new Error('Failed to fetch sessions')
+  return res.data.data
+}
+
+export async function revokeSession(sessionId: string): Promise<void> {
+  const res = await api.delete<ApiResponse>(`/auth/sessions/${sessionId}`)
+  if (!res.data.success) throw new Error(res.data.error ?? 'Failed to revoke session')
+}
+
+export async function revokeAllSessions(): Promise<void> {
+  const res = await api.delete<ApiResponse>('/auth/sessions')
+  if (!res.data.success) throw new Error(res.data.error ?? 'Failed to revoke sessions')
+}

@@ -558,6 +558,20 @@ type UserPreferences struct {
 	UpdatedAt           time.Time `db:"updated_at" json:"updated_at"`
 }
 
+// UserSession tracks an active login session
+
+type UserSession struct {
+	ID         string     `db:"id" json:"id"`
+	UserID     string     `db:"user_id" json:"user_id"`
+	UserType   string     `db:"user_type" json:"user_type"` // 'account' or 'user'
+	IPAddress  string     `db:"ip_address" json:"ip_address"`
+	UserAgent  string     `db:"user_agent" json:"user_agent"`
+	TokenHash  string     `db:"token_hash" json:"-"`
+	LastActive time.Time  `db:"last_active" json:"last_active"`
+	CreatedAt  time.Time  `db:"created_at" json:"created_at"`
+	RevokedAt  *time.Time `db:"revoked_at" json:"revoked_at,omitempty"`
+}
+
 // WebhookWithAccount is a webhook enriched with account name (for admin views)
 
 type WebhookWithAccount struct {

@@ -27,6 +27,7 @@ func NewRouter(
 	paymentConfigHandler *handlers.PaymentConfigHandler,
 	paymentRequestHandler *handlers.PaymentRequestHandler,
 	subscriptionRequestHandler *handlers.SubscriptionRequestHandler,
+	sessionHandler *handlers.SessionHandler,
 	billingService *services.BillingService,
 	paymentConfigService *services.PaymentConfigService,
 	authMiddleware *middleware.AuthMiddleware,
@@ -198,6 +199,11 @@ func NewRouter(
 	mux.Handle("PUT /api/v1/member/preferences", authMiddleware.JWTAuth(http.HandlerFunc(memberHandler.UpdatePreferences)))
 	mux.Handle("POST /api/v1/member/kyc", authMiddleware.JWTAuth(http.HandlerFunc(memberHandler.SubmitKYC)))
 	mux.Handle("GET /api/v1/member/kyc", authMiddleware.JWTAuth(http.HandlerFunc(memberHandler.GetKYC)))
+
+	// Session management routes
+	mux.Handle("GET /api/v1/auth/sessions", authMiddleware.JWTAuth(http.HandlerFunc(sessionHandler.ListSessions)))
+	mux.Handle("DELETE /api/v1/auth/sessions", authMiddleware.JWTAuth(http.HandlerFunc(sessionHandler.RevokeAllSessions)))
+	mux.Handle("DELETE /api/v1/auth/sessions/{id}", authMiddleware.JWTAuth(http.HandlerFunc(sessionHandler.RevokeSession)))
 
 	return mux
 }

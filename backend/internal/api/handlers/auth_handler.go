@@ -18,15 +18,17 @@ type AuthHandler struct {
 	userService    *services.UserService
 	authMiddleware *middleware.AuthMiddleware
 	twoFAService   *services.TwoFAService
+	sessionService *services.SessionService
 }
 
-func NewAuthHandler(accountService *services.AccountService, adminService *services.AdminService, userService *services.UserService, authMiddleware *middleware.AuthMiddleware, twoFAService *services.TwoFAService) *AuthHandler {
+func NewAuthHandler(accountService *services.AccountService, adminService *services.AdminService, userService *services.UserService, authMiddleware *middleware.AuthMiddleware, twoFAService *services.TwoFAService, sessionService *services.SessionService) *AuthHandler {
 	return &AuthHandler{
 		accountService: accountService,
 		adminService:   adminService,
 		userService:    userService,
 		authMiddleware: authMiddleware,
 		twoFAService:   twoFAService,
+		sessionService: sessionService,
 	}
 }
 
@@ -172,6 +174,11 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 		_ = h.userService.UpdateLastLogin(r.Context(), user.ID)
 
+		// Record session
+		if h.sessionService != nil {
+			_ = h.sessionService.Create(r.Context(), user.ID, "user", r.RemoteAddr, r.UserAgent(), token)
+		}
+
 		writeJSON(w, http.StatusOK, APIResponse{
 			Success: true,
 			Data: map[string]interface{}{
@@ -219,6 +226,11 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "refresh token generation failed"})
 		return
+	}
+
+	// Record session
+	if h.sessionService != nil {
+		_ = h.sessionService.Create(r.Context(), account.ID, "account", r.RemoteAddr, r.UserAgent(), token)
 	}
 
 	writeJSON(w, http.StatusOK, APIResponse{
@@ -570,6 +582,11 @@ func (h *AuthHandler) Login2FA(w http.ResponseWriter, r *http.Request) {
 
 		_ = h.userService.UpdateLastLogin(r.Context(), user.ID)
 
+		// Record session
+		if h.sessionService != nil {
+			_ = h.sessionService.Create(r.Context(), user.ID, "user", r.RemoteAddr, r.UserAgent(), token)
+		}
+
 		writeJSON(w, http.StatusOK, APIResponse{
 			Success: true,
 			Data: map[string]interface{}{
@@ -586,32 +603,37 @@ func (h *AuthHandler) Login2FA(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	account, err := h.accountService.GetByID(r.Context(), userID)
-	if err != nil || account == nil {
-		writeJSON(w, http.StatusUnauthorized, APIResponse{Error: "account not found"})
-		return
-	}
+		account, err := h.accountService.GetByID(r.Context(), userID)
+		if err != nil || account == nil {
+			writeJSON(w, http.StatusUnauthorized, APIResponse{Error: "account not found"})
+			return
+		}
 
-	valid, err := h.twoFAService.VerifyCode(r.Context(), account.ID, req.Code)
-	if err != nil || !valid {
-		writeJSON(w, http.StatusUnauthorized, APIResponse{Error: "invalid 2FA code"})
-		return
-	}
+		valid, err := h.twoFAService.VerifyCode(r.Context(), account.ID, req.Code)
+		if err != nil || !valid {
+			writeJSON(w, http.StatusUnauthorized, APIResponse{Error: "invalid 2FA code"})
+			return
+		}
 
-	token, _ := h.authMiddleware.GenerateToken(account.ID, account.Email, false, 15*time.Minute)
-	refresh, _ := h.authMiddleware.GenerateToken(account.ID, account.Email, false, 7*24*time.Hour)
+		token, _ := h.authMiddleware.GenerateToken(account.ID, account.Email, false, 15*time.Minute)
+		refresh, _ := h.authMiddleware.GenerateToken(account.ID, account.Email, false, 7*24*time.Hour)
 
-	writeJSON(w, http.StatusOK, APIResponse{
-		Success: true,
-		Data: map[string]interface{}{
-			"token":        token,
-			"refreshToken": refresh,
-			"user": map[string]interface{}{
-				"id":    account.ID,
-				"email": account.Email,
-				"name":  account.Name,
-				"role":  "member",
+		// Record session
+		if h.sessionService != nil {
+			_ = h.sessionService.Create(r.Context(), account.ID, "account", r.RemoteAddr, r.UserAgent(), token)
+		}
+
+		writeJSON(w, http.StatusOK, APIResponse{
+			Success: true,
+			Data: map[string]interface{}{
+				"token":        token,
+				"refreshToken": refresh,
+				"user": map[string]interface{}{
+					"id":    account.ID,
+					"email": account.Email,
+					"name":  account.Name,
+					"role":  "member",
+				},
 			},
-		},
-	})
+		})
 }
