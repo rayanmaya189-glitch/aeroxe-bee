@@ -26,7 +26,7 @@ export function ContactSalesPage() {
   useSEO({
     title: 'Contact Sales | AeroXe Bee',
     description: 'Get in touch with the AeroXe Bee sales team for custom pricing, enterprise security, self-hosting options, and team onboarding. We respond within 24 hours.',
-    ogImage: '/og-contact-sales.svg',
+    ogImage: '/og-contact-sales.png',
     ogUrl: 'https://aeroxbee.com/contact-sales',
     schema: {
       '@context': 'https://schema.org',

@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Generated OG images (rebuilt by prebuild script)
+public/og-image.png
+public/og-contact-sales.png
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

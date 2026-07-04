@@ -12,7 +12,7 @@ const DEFAULTS = {
   title: 'AeroXe Bee \u2014 Distributed SMS Gateway Platform',
   description:
     'Enterprise SMS delivery platform with intelligent multi-strategy routing, real-time analytics, and device fleet management. Self-hostable or managed SaaS.',
-  ogImage: '/og-image.svg',
+  ogImage: '/og-image.png',
   ogUrl: 'https://aeroxbee.com',
 }
 
