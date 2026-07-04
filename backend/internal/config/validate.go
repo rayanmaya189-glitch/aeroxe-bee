@@ -1,6 +1,9 @@
 package config
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 // defaultSecrets lists known insecure default values that must not be used in production.
 var defaultSecrets = map[string]string{
@@ -33,7 +36,7 @@ func ValidateProduction(cfg *Config) error {
 		for _, e := range errs {
 			msg += "  - " + e + "\n"
 		}
-		return fmt.Errorf(msg)
+		return errors.New(msg)
 	}
 
 	return nil
