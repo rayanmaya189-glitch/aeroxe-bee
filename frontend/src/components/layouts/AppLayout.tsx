@@ -1,4 +1,5 @@
-import { Outlet } from 'react-router-dom'
+import { useLocation, Outlet } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
 import { useUIStore } from '@/store/uiStore'
@@ -7,6 +8,7 @@ import { useIsMobile } from '@/hooks/useMediaQuery'
 export function AppLayout() {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen)
   const isMobile = useIsMobile()
+  const location = useLocation()
 
   return (
     <div className="min-h-screen bg-[#030712]">
@@ -31,7 +33,15 @@ export function AppLayout() {
         style={{ marginLeft: isMobile ? 0 : sidebarOpen ? 240 : 64 }}
       >
         <div className="p-6">
-          <Outlet />
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              initial={false}
+              exit={{ opacity: 0, y: -4, transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] } }}
+            >
+              <Outlet />
+            </motion.div>
+          </AnimatePresence>
         </div>
       </main>
     </div>

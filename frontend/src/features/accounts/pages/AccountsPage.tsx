@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
+import { motion } from 'framer-motion'
+import { PageTransition } from '@/components/ui/PageTransition'
 import { getAccounts, suspendAccount, activateAccount, deleteAccount } from '@/services/dashboard'
 import type { Account } from '@/types/models'
 import { DataTable, type Column } from '@/components/ui/DataTable'
@@ -6,6 +8,8 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Input } from '@/components/ui/Input'
 import { useDebounce } from '@/hooks/useDebounce'
+import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
+import { Search, Users } from 'lucide-react'
 
 const statusVariant: Record<string, 'success' | 'warning' | 'danger'> = {
   active: 'success',
@@ -65,7 +69,7 @@ export function AccountsPage() {
   }
 
   const columns: Column<Account>[] = [
-    { key: 'name', header: 'Name', sortable: true, className: 'font-medium text-gray-900 dark:text-gray-100' },
+    { key: 'name', header: 'Name', sortable: true, className: 'font-medium text-gray-100' },
     { key: 'email', header: 'Email' },
     {
       key: 'plan_id',
@@ -80,9 +84,9 @@ export function AccountsPage() {
     {
       key: 'verified',
       header: 'Verified',
-      render: (row) => row.verified ? <Badge variant="success" size="sm">Yes</Badge> : <span className="text-gray-400">—</span>,
+      render: (row) => row.verified ? <Badge variant="success" size="sm">Yes</Badge> : <span className="text-gray-500">—</span>,
     },
-    { key: 'risk_score', header: 'Risk', render: (row) => <span className={row.risk_score > 0.7 ? 'text-danger-600 font-medium' : ''}>{row.risk_score.toFixed(2)}</span> },
+    { key: 'risk_score', header: 'Risk', render: (row) => <span className={row.risk_score > 0.7 ? 'text-red-400 font-medium' : ''}>{row.risk_score.toFixed(2)}</span> },
     { key: 'created_at', header: 'Created', render: (row) => new Date(row.created_at).toLocaleDateString() },
     {
       key: 'actions',
@@ -95,65 +99,86 @@ export function AccountsPage() {
           ) : (
             <Button variant="ghost" size="xs" onClick={() => handleActivate(row.id)}>Activate</Button>
           )}
-          <Button variant="ghost" size="xs" className="text-danger-600" onClick={() => handleDelete(row.id)}>Delete</Button>
+          <Button variant="ghost" size="xs" className="text-red-400" onClick={() => handleDelete(row.id)}>Delete</Button>
         </div>
       ),
     },
   ]
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Accounts</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Manage member accounts on your platform
-        </p>
-      </div>
+    <PageTransition>
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={staggerContainer}
+      className="space-y-6"
+    >
+      {/* Hero header */}
+      <motion.div variants={fadeInUp}>
+        <div className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] p-8">
+          <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-blue-600/10 blur-[80px]" />
+          <div className="pointer-events-none absolute -left-8 bottom-0 h-32 w-32 rounded-full bg-purple-600/10 blur-[60px]" />
+          <div className="relative flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg shadow-blue-500/25">
+              <Users className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-extrabold tracking-tight text-white lg:text-4xl">
+                <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Accounts</span>
+              </h1>
+              <p className="mt-1 text-sm text-gray-400">Manage member accounts on your platform</p>
+            </div>
+          </div>
+        </div>
+      </motion.div>
 
       {error && (
-        <div className="rounded-lg border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700 dark:border-danger-800/50 dark:bg-danger-900/20 dark:text-danger-300">
+        <motion.div variants={itemVariants} className="rounded-2xl border border-red-500/20 bg-red-500/5 p-3 text-sm text-red-400">
           {error}
           <button onClick={() => setError('')} className="ml-2 font-medium underline">Dismiss</button>
-        </div>
+        </motion.div>
       )}
 
-      <div className="flex items-center gap-3">
+      <motion.div variants={itemVariants} className="flex items-center gap-3">
         <Input
           placeholder="Search accounts..."
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1) }}
           className="max-w-xs"
-          icon={<svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>}
+          icon={<Search className="h-4 w-4" />}
         />
         <select
           value={statusFilter}
           onChange={(e) => { setStatusFilter(e.target.value); setPage(1) }}
-          className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+          className="rounded-xl border border-white/[0.08] bg-white/[0.05] px-3 py-2.5 text-sm text-gray-300 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
         >
           <option value="">All statuses</option>
           <option value="active">Active</option>
           <option value="suspended">Suspended</option>
           <option value="disabled">Disabled</option>
         </select>
-      </div>
+      </motion.div>
 
-      <DataTable
-        data={accounts}
-        columns={columns}
-        loading={loading}
-        totalItems={total}
-        page={page}
-        pageSize={pageSize}
-        onPageChange={setPage}
-        sortBy={sortBy}
-        sortOrder={sortOrder}
-        onSort={(key) => {
-          if (key === sortBy) setSortOrder((o) => o === 'asc' ? 'desc' : 'asc')
-          else { setSortBy(key); setSortOrder('asc') }
-        }}
-        emptyTitle="No accounts found"
-        emptyDescription="No member accounts match your filters."
-      />
-    </div>
+      <motion.div variants={itemVariants}>
+        <DataTable
+          data={accounts}
+          columns={columns}
+          loading={loading}
+          totalItems={total}
+          page={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSort={(key) => {
+            if (key === sortBy) setSortOrder((o) => o === 'asc' ? 'desc' : 'asc')
+            else { setSortBy(key); setSortOrder('asc') }
+          }}
+          emptyTitle="No accounts found"
+          emptyDescription="No member accounts match your filters."
+        />
+      </motion.div>
+    </motion.div>
+    </PageTransition>
   )
 }

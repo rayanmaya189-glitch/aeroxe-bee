@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { motion } from 'framer-motion'
+import { PageTransition } from '@/components/ui/PageTransition'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getTemplates, createTemplate, deleteTemplate, approveTemplate, rejectTemplate } from '@/services/dashboard'
 import type { Template } from '@/types/models'
@@ -10,6 +12,8 @@ import { Modal } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { PageSkeleton } from '@/components/ui/Skeleton'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
+import { Plus, FileText } from 'lucide-react'
 
 type FilterTab = 'all' | 'pending' | 'approved' | 'rejected'
 
@@ -69,37 +73,59 @@ export function TemplatesPage() {
     { key: 'rejected', label: 'Rejected' },
   ]
 
-  if (isLoading) return <PageSkeleton />
+  if (isLoading) return <PageTransition><PageSkeleton /></PageTransition>
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Templates</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Manage and approve message templates</p>
+    <PageTransition>
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={staggerContainer}
+      className="space-y-6"
+    >
+      {/* Hero header */}
+      <motion.div variants={fadeInUp}>
+        <div className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] p-8">
+          <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-emerald-600/10 blur-[80px]" />
+          <div className="pointer-events-none absolute -left-8 bottom-0 h-32 w-32 rounded-full bg-blue-600/10 blur-[60px]" />
+          <div className="relative flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 shadow-lg shadow-emerald-500/25">
+                <FileText className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-extrabold tracking-tight text-white lg:text-4xl">
+                  <span className="bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent">Templates</span>
+                </h1>
+                <p className="mt-1 text-sm text-gray-400">Manage and approve message templates</p>
+              </div>
+            </div>
+            <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => { setError(''); setShowForm(true) }}>New template</Button>
+          </div>
         </div>
-        <Button size="sm" onClick={() => { setError(''); setShowForm(true) }}>New template</Button>
-      </div>
+      </motion.div>
 
-      {/* Filter tabs */}
-      <div className="flex gap-1 rounded-lg border border-gray-200 bg-white p-1 dark:border-gray-800 dark:bg-gray-900">
+      {/* Tabs */}
+      <motion.div variants={itemVariants} className="flex gap-1 rounded-xl border border-white/[0.06] bg-white/[0.03] p-1 w-fit">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 ${
               activeTab === tab.key
-                ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100'
-                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                ? 'bg-gradient-to-r from-white/[0.08] to-white/[0.05] text-gray-100 shadow-sm ring-1 ring-white/[0.06]'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04]'
             }`}
           >
             {tab.label}
             {tab.count !== undefined && tab.count > 0 && (
-              <span className="rounded-full bg-gray-200 px-1.5 py-0.5 text-xs dark:bg-gray-700">{tab.count}</span>
+              <span className={`rounded-full px-1.5 py-0.5 text-xs ${
+                activeTab === tab.key ? 'bg-white/[0.1] text-gray-200' : 'bg-white/[0.06] text-gray-400'
+              }`}>{tab.count}</span>
             )}
           </button>
         ))}
-      </div>
+      </motion.div>
 
       {filteredTemplates.length === 0 ? (
         <EmptyState
@@ -110,35 +136,39 @@ export function TemplatesPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filteredTemplates.map((t) => (
-            <Card key={t.id} hover>
-              <div className="flex items-start justify-between">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t.name}</h3>
-                <Badge
-                  variant={t.approval_status === 'approved' ? 'success' : t.approval_status === 'rejected' ? 'danger' : 'warning'}
-                  dot
-                  size="sm"
-                >
-                  {t.approval_status}
-                </Badge>
-              </div>
-              <p className="mt-2 line-clamp-3 text-xs text-gray-500 dark:text-gray-400">{t.body}</p>
-
-              {/* Approve/Reject buttons for pending templates */}
-              {t.approval_status === 'pending' && (
-                <div className="mt-3 flex gap-2">
-                  <Button variant="ghost" size="xs" className="text-success-600" onClick={() => approveMutation.mutate(t.id)} loading={approveMutation.isPending}>
-                    Approve
-                  </Button>
-                  <Button variant="ghost" size="xs" className="text-danger-600" onClick={() => rejectMutation.mutate(t.id)} loading={rejectMutation.isPending}>
-                    Reject
-                  </Button>
+            <motion.div key={t.id} variants={itemVariants}>
+              <Card hover glow={
+                t.approval_status === 'approved' ? 'bg-emerald-500/15' :
+                t.approval_status === 'rejected' ? 'bg-red-500/15' : 'bg-amber-500/15'
+              }>
+                <div className="flex items-start justify-between">
+                  <h3 className="text-sm font-semibold text-gray-100">{t.name}</h3>
+                  <Badge
+                    variant={t.approval_status === 'approved' ? 'success' : t.approval_status === 'rejected' ? 'danger' : 'warning'}
+                    dot
+                    size="sm"
+                  >
+                    {t.approval_status}
+                  </Badge>
                 </div>
-              )}
+                <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-gray-400">{t.body}</p>
 
-              <div className="mt-4 flex gap-2 border-t border-gray-100 pt-4 dark:border-gray-800">
-                <Button variant="ghost" size="xs" className="text-danger-600" onClick={() => setDeleteTarget(t)}>Delete</Button>
-              </div>
-            </Card>
+                {t.approval_status === 'pending' && (
+                  <div className="mt-3 flex gap-2">
+                    <Button variant="ghost" size="xs" className="text-emerald-400" onClick={() => approveMutation.mutate(t.id)} loading={approveMutation.isPending}>
+                      Approve
+                    </Button>
+                    <Button variant="ghost" size="xs" className="text-red-400" onClick={() => rejectMutation.mutate(t.id)} loading={rejectMutation.isPending}>
+                      Reject
+                    </Button>
+                  </div>
+                )}
+
+                <div className="mt-4 flex gap-2 border-t border-white/[0.06] pt-4">
+                  <Button variant="ghost" size="xs" className="text-red-400" onClick={() => setDeleteTarget(t)}>Delete</Button>
+                </div>
+              </Card>
+            </motion.div>
           ))}
         </div>
       )}
@@ -155,19 +185,19 @@ export function TemplatesPage() {
         }
       >
         <div className="space-y-4">
-          {error && <div className="rounded-lg border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700">{error}</div>}
+          {error && <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-sm text-red-400">{error}</div>}
           <Input label="Template name" value={name} onChange={(e) => setName(e.target.value)} required />
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Body</label>
+            <label className="mb-1.5 block text-sm font-medium text-gray-300">Body</label>
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
               rows={5}
-              className="block w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-4 focus:ring-primary-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+              className="block w-full rounded-xl border border-white/[0.08] bg-white/[0.05] px-3.5 py-2.5 text-sm text-gray-100 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 placeholder:text-gray-500"
               required
             />
           </div>
-          <div className="rounded-lg border border-warning-200 bg-warning-50 p-3 text-xs text-warning-700 dark:border-warning-800/50 dark:bg-warning-900/20 dark:text-warning-300">
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-400">
             New templates are created with <strong>pending</strong> status and require admin approval before they can be used.
           </div>
         </div>
@@ -181,6 +211,7 @@ export function TemplatesPage() {
         description={`Are you sure you want to delete "${deleteTarget?.name}"?`}
         loading={deleteMutation.isPending}
       />
-    </div>
+    </motion.div>
+    </PageTransition>
   )
 }

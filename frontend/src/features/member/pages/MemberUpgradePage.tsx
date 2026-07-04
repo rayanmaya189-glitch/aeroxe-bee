@@ -1,9 +1,16 @@
 import { useState } from 'react'
+import { motion } from 'framer-motion'
+import { PageTransition } from '@/components/ui/PageTransition'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getPlans, getEnabledPaymentConfigs, createSubscriptionRequest, createPaymentRequest } from '@/services/dashboard'
 import type { Plan } from '@/types/models'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { Check } from 'lucide-react'
+
+const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.06 } } }
+const itemVariants = { hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] } } }
 
 export function MemberUpgradePage() {
   const queryClient = useQueryClient()
@@ -12,184 +19,98 @@ export function MemberUpgradePage() {
   const [paymentMethod, setPaymentMethod] = useState('')
   const [proofUrl, setProofUrl] = useState('')
 
-
-  const { data: plans = [], isLoading: plansLoading } = useQuery({
-    queryKey: ['plans'],
-    queryFn: getPlans,
-  })
-
-  const { data: paymentMethods = [], isLoading: methodsLoading } = useQuery({
-    queryKey: ['enabled-payment-configs'],
-    queryFn: getEnabledPaymentConfigs,
-  })
+  const { data: plans = [], isLoading: plansLoading } = useQuery({ queryKey: ['plans'], queryFn: getPlans })
+  const { data: paymentMethods = [], isLoading: methodsLoading } = useQuery({ queryKey: ['enabled-payment-configs'], queryFn: getEnabledPaymentConfigs })
 
   const upgradeMutation = useMutation({
     mutationFn: () => {
       if (!selectedPlan) throw new Error('No plan selected')
-      return createSubscriptionRequest({
-        requested_plan: selectedPlan.id,
-        requested_billing_cycle: billingCycle,
-        reason: `Upgrade to ${selectedPlan.name} (${billingCycle})`,
-      })
+      return createSubscriptionRequest({ requested_plan: selectedPlan.id, requested_billing_cycle: billingCycle, reason: `Upgrade to ${selectedPlan.name} (${billingCycle})` })
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['my-subscription-requests'] })
-      setSelectedPlan(null)
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['my-subscription-requests'] }); setSelectedPlan(null) },
   })
 
   const payMutation = useMutation({
     mutationFn: () => {
       if (!selectedPlan || !paymentMethod) throw new Error('Missing data')
       const amount = billingCycle === 'yearly' ? selectedPlan.monthly_price * 10 : selectedPlan.monthly_price
-      return createPaymentRequest({
-        plan_id: selectedPlan.id,
-        billing_cycle: billingCycle,
-        payment_method: paymentMethod,
-        amount,
-        proof_url: proofUrl,
-      })
+      return createPaymentRequest({ plan_id: selectedPlan.id, billing_cycle: billingCycle, payment_method: paymentMethod, amount, proof_url: proofUrl })
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['my-payment-requests'] })
-      setSelectedPlan(null)
-      setPaymentMethod('')
-      setProofUrl('')
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['my-payment-requests'] }); setSelectedPlan(null); setPaymentMethod(''); setProofUrl('') },
   })
 
-  const calculatePrice = (plan: Plan) => {
-    return billingCycle === 'yearly' ? plan.monthly_price * 10 : plan.monthly_price
-  }
+  const calculatePrice = (plan: Plan) => billingCycle === 'yearly' ? plan.monthly_price * 10 : plan.monthly_price
 
   if (plansLoading) {
-    return (
-      <div className="space-y-6 p-6">
-        <div className="h-8 w-48 animate-pulse rounded bg-gray-100 dark:bg-gray-800" />
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-64 animate-pulse rounded-2xl bg-gray-100 dark:bg-gray-800" />
-          ))}
-        </div>
-      </div>
-    )
+    return <PageTransition><div className="space-y-6"><div className="h-8 w-48 animate-pulse rounded bg-white/[0.06]" /><div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-64 animate-pulse rounded-2xl bg-white/[0.03]" />)}</div></div></PageTransition>
   }
 
   return (
-    <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Upgrade Plan</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Choose a plan that fits your needs. Changes require admin approval.</p>
-      </div>
+    <PageTransition>
+    <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
+      <motion.div variants={itemVariants}>
+        <h1 className="text-2xl font-bold text-gray-100">Upgrade Plan</h1>
+        <p className="mt-1 text-sm text-gray-400">Choose a plan that fits your needs. Changes require admin approval.</p>
+      </motion.div>
 
-      {/* Billing Cycle Toggle */}
-      <div className="flex gap-2">
-        <button
-          onClick={() => setBillingCycle('monthly')}
-          className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-            billingCycle === 'monthly' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400'
-          }`}
-        >Monthly</button>
-        <button
-          onClick={() => setBillingCycle('yearly')}
-          className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-            billingCycle === 'yearly' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400'
-          }`}
-        >Yearly <span className="ml-1 text-xs text-green-400">Save 2 months</span></button>
-      </div>
+      <motion.div variants={itemVariants} className="flex gap-2">
+        <button onClick={() => setBillingCycle('monthly')} className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${billingCycle === 'monthly' ? 'bg-blue-600 text-white' : 'bg-white/[0.06] text-gray-400 hover:bg-white/[0.1]'}`}>Monthly</button>
+        <button onClick={() => setBillingCycle('yearly')} className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${billingCycle === 'yearly' ? 'bg-blue-600 text-white' : 'bg-white/[0.06] text-gray-400 hover:bg-white/[0.1]'}`}>Yearly <span className="ml-1 text-xs text-emerald-400">Save 2 months</span></button>
+      </motion.div>
 
-      {/* Plan Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {plans.map((plan) => (
-          <button
-            key={plan.id}
-            onClick={() => setSelectedPlan(plan)}
-            className={`cursor-pointer rounded-xl border bg-white p-5 text-left shadow-xs transition-all hover:shadow-lg dark:border-gray-800 dark:bg-gray-900 ${
-              selectedPlan?.id === plan.id ? 'ring-2 ring-primary-600' : 'border-gray-200'
-            }`}
-          >
-            <CardHeader>
-              <CardTitle>{plan.name}</CardTitle>
-              <div className="mt-2">
-                <span className="text-3xl font-bold text-gray-900 dark:text-gray-100">${calculatePrice(plan)}</span>
-                <span className="text-sm text-gray-500">/{billingCycle === 'yearly' ? 'year' : 'month'}</span>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                <li>{plan.daily_quota.toLocaleString()} SMS/day</li>
-                <li>{plan.monthly_quota.toLocaleString()} SMS/month</li>
-                <li>{plan.max_queue_depth.toLocaleString()} queue depth</li>
-                {plan.dedicated_pool && <li className="text-primary-600">Dedicated pool</li>}
-                <li>{plan.default_routing_strategy.replace(/_/g, ' ')}</li>
-                {plan.price_per_sms > 0 && <li>${plan.price_per_sms}/SMS overage</li>}
-              </ul>
-            </CardContent>            </button>
+          <motion.div key={plan.id} variants={itemVariants}>
+            <button onClick={() => setSelectedPlan(plan)}
+              className={`w-full cursor-pointer rounded-xl border bg-white/[0.03] p-5 text-left transition-all hover:bg-white/[0.05] hover:shadow-lg ${selectedPlan?.id === plan.id ? 'border-blue-500/50 ring-2 ring-blue-500/20' : 'border-white/[0.06]'}`}>
+              <CardHeader><CardTitle>{plan.name}</CardTitle>
+                <div className="mt-2"><span className="text-3xl font-bold text-gray-100">${calculatePrice(plan)}</span><span className="text-sm text-gray-500">/{billingCycle === 'yearly' ? 'year' : 'month'}</span></div>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2 text-sm text-gray-400">
+                  {[`${plan.daily_quota.toLocaleString()} SMS/day`, `${plan.monthly_quota.toLocaleString()} SMS/month`, `${plan.max_queue_depth.toLocaleString()} queue depth`,
+                    ...(plan.dedicated_pool ? ['Dedicated pool'] : []), plan.default_routing_strategy.replace(/_/g, ' '),
+                    ...(plan.price_per_sms > 0 ? [`$${plan.price_per_sms}/SMS overage`] : [])
+                  ].map((f) => <li key={f} className="flex items-center gap-1.5"><Check className="h-3 w-3 text-emerald-400" />{f}</li>)}
+                </ul>
+              </CardContent>
+            </button>
+          </motion.div>
         ))}
       </div>
 
-      {/* Payment Method Selection */}
       {selectedPlan && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Payment Method</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {methodsLoading ? (
-              <div className="h-10 animate-pulse rounded bg-gray-100 dark:bg-gray-800" />
-            ) : (
-              <div className="space-y-3">
-                {paymentMethods.map((method) => (
-                  <button
-                    key={method.id}
-                    onClick={() => setPaymentMethod(method.method)}
-                    className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
-                      paymentMethod === method.method
-                        ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/20'
-                        : 'border-gray-200 hover:border-gray-300 dark:border-gray-700'
-                    }`}
-                  >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800">
-                      {method.method === 'bank_transfer' && '🏦'}
-                      {method.method === 'trc20' && '🔗'}
-                      {method.method === 'qr_code' && '📱'}
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-gray-100">{method.label}</p>
-                      <p className="text-xs text-gray-500">{Object.values(method.details).filter(Boolean).join(' • ')}</p>
-                    </div>
-                  </button>
-                ))}
-
-                {paymentMethod && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Proof URL (optional)</label>
-                    <input
-                      value={proofUrl}
-                      onChange={(e) => setProofUrl(e.target.value)}
-                      placeholder="https://..."
-                      className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
-                    />
+        <motion.div variants={itemVariants}>
+          <Card>
+            <CardHeader><CardTitle>Payment Method</CardTitle></CardHeader>
+            <CardContent>
+              {methodsLoading ? (
+                <div className="h-10 animate-pulse rounded bg-white/[0.06]" />
+              ) : (
+                <div className="space-y-3">
+                  {paymentMethods.map((method) => (
+                    <button key={method.id} onClick={() => setPaymentMethod(method.method)}
+                      className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors ${paymentMethod === method.method ? 'border-blue-500/50 bg-blue-500/5' : 'border-white/[0.08] hover:border-white/[0.15]'}`}>
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.06]">
+                        {method.method === 'bank_transfer' && '🏦'}{method.method === 'trc20' && '🔗'}{method.method === 'qr_code' && '📱'}
+                      </div>
+                      <div><p className="font-medium text-gray-100">{method.label}</p><p className="text-xs text-gray-500">{Object.values(method.details).filter(Boolean).join(' • ')}</p></div>
+                    </button>
+                  ))}
+                  {paymentMethod && (
+                    <Input label="Payment Proof URL (optional)" value={proofUrl} onChange={(e) => setProofUrl(e.target.value)} placeholder="https://..." />
+                  )}
+                  <div className="flex justify-end gap-2 pt-4">
+                    <Button variant="secondary" onClick={() => { setSelectedPlan(null); setPaymentMethod('') }}>Cancel</Button>
+                    <Button disabled={!paymentMethod} loading={upgradeMutation.isPending || payMutation.isPending} onClick={() => payMutation.mutate()}>Submit Upgrade Request</Button>
                   </div>
-                )}
-
-                <div className="flex justify-end gap-2 pt-4">
-                  <Button variant="secondary" onClick={() => { setSelectedPlan(null); setPaymentMethod('') }}>Cancel</Button>
-                  <Button
-                    disabled={!paymentMethod}
-                    loading={upgradeMutation.isPending || payMutation.isPending}
-                    onClick={() => {
-                      payMutation.mutate()
-                    }}
-                  >
-                    Submit Upgrade Request
-                  </Button>
                 </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
       )}
-    </div>
+    </motion.div>
+    </PageTransition>
   )
 }

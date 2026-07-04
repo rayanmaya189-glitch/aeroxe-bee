@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
+import { motion } from 'framer-motion'
+import { PageTransition } from '@/components/ui/PageTransition'
 import { getUsers, createUser, updateUser, deleteUser, bulkDeleteUsers } from '@/services/dashboard'
 import type { User } from '@/types/models'
 import { DataTable, type Column } from '@/components/ui/DataTable'
@@ -7,6 +9,8 @@ import { Badge } from '@/components/ui/Badge'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { useDebounce } from '@/hooks/useDebounce'
+import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
+import { Search, Plus, Trash2, UserCog } from 'lucide-react'
 
 const roleVariant: Record<string, 'primary' | 'info' | 'default'> = {
   admin: 'primary',
@@ -66,10 +70,10 @@ export function UsersPage() {
       key: 'name',
       header: 'Name',
       sortable: true,
-      className: 'font-medium text-gray-900 dark:text-gray-100',
+      className: 'font-medium text-gray-100',
       render: (row) => (
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 text-xs font-medium text-gray-300 ring-1 ring-white/[0.06]">
             {row.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
           </div>
           <span>{row.name}</span>
@@ -79,7 +83,7 @@ export function UsersPage() {
     { key: 'email', header: 'Email' },
     { key: 'role', header: 'Role', render: (row) => <Badge variant={roleVariant[row.role] || 'default'} size="sm">{row.role}</Badge> },
     { key: 'status', header: 'Status', render: (row) => <Badge variant={statusVariant[row.status] || 'default'} dot size="sm">{row.status}</Badge> },
-    { key: 'last_login', header: 'Last login', render: (row) => row.last_login ? new Date(row.last_login).toLocaleDateString() : <span className="text-gray-400">Never</span> },
+    { key: 'last_login', header: 'Last login', render: (row) => row.last_login ? new Date(row.last_login).toLocaleDateString() : <span className="text-gray-500">Never</span> },
     {
       key: 'actions',
       header: '',
@@ -87,50 +91,70 @@ export function UsersPage() {
       render: (row) => (
         <div className="flex gap-1">
           <Button variant="ghost" size="xs" onClick={() => { setEditingUser(row); setShowCreate(true) }}>Edit</Button>
-          <Button variant="ghost" size="xs" className="text-danger-600" onClick={() => handleDelete(row.id)}>Delete</Button>
+          <Button variant="ghost" size="xs" className="text-red-400" onClick={() => handleDelete(row.id)}>Delete</Button>
         </div>
       ),
     },
   ]
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Staff users</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Manage team members and permissions</p>
+    <PageTransition>
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={staggerContainer}
+      className="space-y-6"
+    >
+      {/* Hero header */}
+      <motion.div variants={fadeInUp}>
+        <div className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] p-8">
+          <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-purple-600/10 blur-[80px]" />
+          <div className="pointer-events-none absolute -left-8 bottom-0 h-32 w-32 rounded-full bg-blue-600/10 blur-[60px]" />
+          <div className="relative flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 shadow-lg shadow-purple-500/25">
+                <UserCog className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-extrabold tracking-tight text-white lg:text-4xl">
+                  <span className="bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent">Staff users</span>
+                </h1>
+                <p className="mt-1 text-sm text-gray-400">Manage team members and permissions</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              {selectedIds.length > 0 && (
+                <Button variant="danger" size="sm" icon={<Trash2 className="h-4 w-4" />} onClick={handleBulkDelete}>
+                  Delete ({selectedIds.length})
+                </Button>
+              )}
+              <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => { setEditingUser(null); setShowCreate(true) }}>
+                Add user
+              </Button>
+            </div>
+          </div>
         </div>
-        <div className="flex gap-2">
-          {selectedIds.length > 0 && (
-            <Button variant="danger" size="sm" onClick={handleBulkDelete}>
-              Delete ({selectedIds.length})
-            </Button>
-          )}
-          <Button size="sm" onClick={() => { setEditingUser(null); setShowCreate(true) }}>
-            Add user
-          </Button>
-        </div>
-      </div>
+      </motion.div>
 
       {error && (
-        <div className="rounded-lg border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700 dark:border-danger-800/50 dark:bg-danger-900/20 dark:text-danger-300">
+        <motion.div variants={itemVariants} className="rounded-2xl border border-red-500/20 bg-red-500/5 p-3 text-sm text-red-400">
           {error}
           <button onClick={() => setError('')} className="ml-2 font-medium underline">Dismiss</button>
-        </div>
+        </motion.div>
       )}
 
-      <div className="flex items-center gap-3">
+      <motion.div variants={itemVariants} className="flex items-center gap-3">
         <Input
           placeholder="Search users..."
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1) }}
           className="max-w-xs"
-          icon={<svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>}
+          icon={<Search className="h-4 w-4" />}
         />
         <select
           value={roleFilter}
           onChange={(e) => { setRoleFilter(e.target.value); setPage(1) }}
-          className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+          className="rounded-xl border border-white/[0.08] bg-white/[0.05] px-3 py-2.5 text-sm text-gray-300 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
         >
           <option value="">All roles</option>
           <option value="admin">Admin</option>
@@ -140,29 +164,31 @@ export function UsersPage() {
         <select
           value={statusFilter}
           onChange={(e) => { setStatusFilter(e.target.value); setPage(1) }}
-          className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+          className="rounded-xl border border-white/[0.08] bg-white/[0.05] px-3 py-2.5 text-sm text-gray-300 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
         >
           <option value="">All statuses</option>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
           <option value="suspended">Suspended</option>
         </select>
-      </div>
+      </motion.div>
 
-      <DataTable
-        data={users}
-        columns={columns}
-        loading={loading}
-        totalItems={total}
-        page={page}
-        pageSize={pageSize}
-        onPageChange={setPage}
-        emptyTitle="No users found"
-        emptyDescription="No staff users match your filters."
-        selectedIds={selectedIds}
-        onSelectionChange={setSelectedIds}
-        getRowId={(row) => row.id}
-      />
+      <motion.div variants={itemVariants}>
+        <DataTable
+          data={users}
+          columns={columns}
+          loading={loading}
+          totalItems={total}
+          page={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          emptyTitle="No users found"
+          emptyDescription="No staff users match your filters."
+          selectedIds={selectedIds}
+          onSelectionChange={setSelectedIds}
+          getRowId={(row) => row.id}
+        />
+      </motion.div>
 
       {showCreate && (
         <UserModal
@@ -171,7 +197,8 @@ export function UsersPage() {
           onSaved={() => { setShowCreate(false); setEditingUser(null); loadUsers() }}
         />
       )}
-    </div>
+    </motion.div>
+    </PageTransition>
   )
 }
 
@@ -220,16 +247,14 @@ function UserModal({ user, onClose, onSaved }: { user: User | null; onClose: () 
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="rounded-lg border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700 dark:border-danger-800/50 dark:bg-danger-900/20 dark:text-danger-300">
-            {error}
-          </div>
+          <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-sm text-red-400">{error}</div>
         )}
         <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} required />
         {!user && <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />}
         {!user && <Input label="Password" type="password" hint="Minimum 8 characters" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required />}
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Role</label>
-          <select value={role} onChange={(e) => setRole(e.target.value as User['role'])} className="block w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+          <label className="mb-1.5 block text-sm font-medium text-gray-300">Role</label>
+          <select value={role} onChange={(e) => setRole(e.target.value as User['role'])} className="block w-full rounded-xl border border-white/[0.08] bg-white/[0.05] px-3.5 py-2.5 text-sm text-gray-100 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10">
             <option value="admin">Admin</option>
             <option value="staff">Staff</option>
             <option value="viewer">Viewer</option>
@@ -237,8 +262,8 @@ function UserModal({ user, onClose, onSaved }: { user: User | null; onClose: () 
         </div>
         {user && (
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Status</label>
-            <select value={status} onChange={(e) => setStatus(e.target.value as User['status'])} className="block w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+            <label className="mb-1.5 block text-sm font-medium text-gray-300">Status</label>
+            <select value={status} onChange={(e) => setStatus(e.target.value as User['status'])} className="block w-full rounded-xl border border-white/[0.08] bg-white/[0.05] px-3.5 py-2.5 text-sm text-gray-100 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10">
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
               <option value="suspended">Suspended</option>
