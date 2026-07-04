@@ -53,13 +53,17 @@ type RedisConfig struct {
 }
 
 type MQTTConfig struct {
-	Broker   string
-	Port     int
-	Username string
-	Password string
-	CACert   string
-	ClientID string
-	QoS      byte
+	Broker      string
+	Port        int
+	Username    string
+	Password    string
+	CACert      string
+	ClientID    string
+	QoS         byte
+	UseTLS      bool
+	TLSInsecure bool
+	KeepAlive   time.Duration
+	PingTimeout time.Duration
 }
 
 type JWTConfig struct {
@@ -190,13 +194,17 @@ func Load() *Config {
 			DB:       getEnvInt("REDIS_DB", 0),
 		},
 		MQTT: MQTTConfig{
-			Broker:   getEnv("MQTT_BROKER", "localhost"),
-			Port:     getEnvInt("MQTT_PORT", 1883),
-			Username: getEnv("MQTT_USERNAME", ""),
-			Password: getEnv("MQTT_PASSWORD", ""),
-			CACert:   getEnv("MQTT_CA_CERT", ""),
-			ClientID: getEnv("MQTT_CLIENT_ID", "textbee-backend"),
-			QoS:      byte(getEnvInt("MQTT_QOS", 1)),
+			Broker:      getEnv("MQTT_BROKER", "localhost"),
+			Port:        getEnvInt("MQTT_PORT", 1883),
+			Username:    getEnv("MQTT_USERNAME", ""),
+			Password:    getEnv("MQTT_PASSWORD", ""),
+			CACert:      getEnv("MQTT_CA_CERT", ""),
+			ClientID:    getEnv("MQTT_CLIENT_ID", "textbee-backend"),
+			QoS:         byte(getEnvInt("MQTT_QOS", 1)),
+			UseTLS:      getEnvBool("MQTT_USE_TLS", false),
+			TLSInsecure: getEnvBool("MQTT_TLS_INSECURE", false),
+			KeepAlive:   getEnvDuration("MQTT_KEEP_ALIVE", 30*time.Second),
+			PingTimeout: getEnvDuration("MQTT_PING_TIMEOUT", 10*time.Second),
 		},
 		JWT: JWTConfig{
 			Secret:          getEnv("JWT_SECRET", "change-me-in-production"),
@@ -301,7 +309,11 @@ func (c *Config) RedisAddr() string {
 }
 
 func (c MQTTConfig) BrokerURL() string {
-	return fmt.Sprintf("tcp://%s:%d", c.Broker, c.Port)
+	proto := "tcp"
+	if c.UseTLS {
+		proto = "ssl"
+	}
+	return fmt.Sprintf("%s://%s:%d", proto, c.Broker, c.Port)
 }
 
 func getEnv(key, fallback string) string {

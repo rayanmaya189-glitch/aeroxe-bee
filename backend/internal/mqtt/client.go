@@ -2,9 +2,12 @@ package mqtt
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"os"
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -39,8 +42,42 @@ func (c *Client) Connect() error {
 	opts.SetMaxReconnectInterval(30 * time.Second)
 	opts.SetConnectionLostHandler(c.onConnectionLost)
 	opts.SetOnConnectHandler(c.onConnected)
-	opts.SetKeepAlive(30 * time.Second)
-	opts.SetPingTimeout(10 * time.Second)
+
+	// Use configurable keepalive and ping timeout
+	keepAlive := c.cfg.KeepAlive
+	if keepAlive <= 0 {
+		keepAlive = 30 * time.Second
+	}
+	pingTimeout := c.cfg.PingTimeout
+	if pingTimeout <= 0 {
+		pingTimeout = 10 * time.Second
+	}
+	opts.SetKeepAlive(keepAlive)
+	opts.SetPingTimeout(pingTimeout)
+
+	// Configure TLS if enabled
+	if c.cfg.UseTLS {
+		tlsCfg := &tls.Config{
+			InsecureSkipVerify: c.cfg.TLSInsecure,
+		}
+		if c.cfg.CACert != "" {
+			pemData, err := os.ReadFile(c.cfg.CACert)
+			if err != nil {
+				return fmt.Errorf("mqtt read CA cert: %w", err)
+			}
+			rootCAs, err := x509.SystemCertPool()
+			if err != nil {
+				rootCAs = x509.NewCertPool()
+			}
+			if !rootCAs.AppendCertsFromPEM(pemData) {
+				return fmt.Errorf("mqtt parse CA cert: no valid PEM data")
+			}
+			tlsCfg.RootCAs = rootCAs
+		}
+		// If no CA cert specified, don't override RootCAs — let Go use system defaults
+		opts.SetTLSConfig(tlsCfg)
+		c.logger.Info("MQTT TLS enabled", "insecure_skip_verify", c.cfg.TLSInsecure)
+	}
 
 	client := mqtt.NewClient(opts)
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
