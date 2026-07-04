@@ -18,6 +18,7 @@ interface ApiPlan {
   dedicated_pool: boolean
   is_popular: boolean
   cta_text: string
+  features?: string[]
 }
 
 interface PricingPlan {
@@ -122,10 +123,12 @@ function generateFeatures(plan: ApiPlan, index: number, totalPlans: number): str
   return features
 }
 
-function mapApiPlanToPricing(apiPlan: ApiPlan, _index: number, _totalPlans: number): PricingPlan {
+function mapApiPlanToPricing(apiPlan: ApiPlan, index: number, totalPlans: number): PricingPlan {
   const fallback = PRICING_PLANS.find((p) => p.planId === apiPlan.id)
-  // Always generate features dynamically from backend data
-  const features = generateFeatures(apiPlan, _index, _totalPlans)
+  // Use admin-defined features from API when available, fallback to generated
+  const features = (apiPlan.features && apiPlan.features.length > 0)
+    ? apiPlan.features
+    : generateFeatures(apiPlan, index, totalPlans)
   const monthlyPrice = apiPlan.monthly_price ?? fallback?.monthlyPrice ?? 0
   const description = fallback?.description ?? `${formatQuota(apiPlan.monthly_quota)} SMS/month`
   // CTA and popular are now fully dynamic from the backend
@@ -400,7 +403,7 @@ export function Pricing() {
                           e.stopPropagation()
                           const ctaText = plan.cta.toLowerCase()
                           if (ctaText.includes('contact') || ctaText.includes('sales')) {
-                            window.location.href = 'mailto:sales@aeroxbee.com?subject=' + encodeURIComponent(`Enterprise Inquiry - ${plan.name} Plan`)
+                            window.location.href = '/contact-sales?plan=' + encodeURIComponent(plan.name)
                           } else {
                             window.location.href = '/register'
                           }
@@ -450,6 +453,16 @@ export function Pricing() {
               </div>
             </motion.div>
           )}
+
+          {/* Powered by */}
+          <motion.div variants={fadeInUp} className="mt-12 text-center">
+            <p className="text-xs text-gray-600">
+              Powered by{' '}
+              <a href="/" className="text-gray-500 transition-colors hover:text-gray-400">
+                AeroXe Bee
+              </a>
+            </p>
+          </motion.div>
 
         </motion.div>
       </div>

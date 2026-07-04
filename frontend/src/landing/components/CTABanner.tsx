@@ -37,7 +37,7 @@ export function CTABanner() {
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </a>
               <a
-                href="mailto:sales@aeroxbee.com?subject=Enterprise%20Inquiry"
+                href="/contact-sales"
                 className="flex items-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-8 py-4 text-base font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/20"
               >
                 Talk to Sales

@@ -32,6 +32,7 @@ const AdminSubscriptionsPage = lazy(() => import('@/features/billing/pages/Admin
 const KycReviewPage = lazy(() => import('@/features/accounts/pages/KycReviewPage').then((m) => ({ default: m.KycReviewPage })))
 const MemberUpgradePage = lazy(() => import('@/features/member/pages/MemberUpgradePage').then((m) => ({ default: m.MemberUpgradePage })))
 const LandingPage = lazy(() => import('@/landing/pages/LandingPage').then((m) => ({ default: m.LandingPage })))
+const ContactSalesPage = lazy(() => import('@/landing/pages/ContactSalesPage').then((m) => ({ default: m.ContactSalesPage })))
 
 function LazyLoader({ children }: { children: React.ReactNode }) {
   return (
@@ -86,6 +87,14 @@ const routes: RouteObject[] = [
   {
     path: '/home',
     element: <Navigate to="/" replace />,
+  },
+  {
+    path: '/contact-sales',
+    element: (
+      <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-[#030712]"><div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" /></div>}>
+        <ContactSalesPage />
+      </Suspense>
+    ),
   },
   {
     element: <AuthLayout />,

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { PageTransition } from '@/components/ui/PageTransition'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -14,7 +14,7 @@ import { PageSkeleton } from '@/components/ui/Skeleton'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { formatNumber } from '@/utils/format'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
-import { Plus, Receipt, Check } from 'lucide-react'
+import { Plus, Receipt, Check, X } from 'lucide-react'
 
 const containerVariants = staggerContainer
 const itemVariant = itemVariants
@@ -39,14 +39,15 @@ export function PlansPage() {
   const [maxDevices, setMaxDevices] = useState('')
   const [isPopular, setIsPopular] = useState(false)
   const [ctaText, setCtaText] = useState('')
-  const [featuresText, setFeaturesText] = useState('')
+  const [featuresList, setFeaturesList] = useState<string[]>([])
+  const [featureInput, setFeatureInput] = useState('')
+  const featureInputRef = useRef<HTMLInputElement>(null)
 
   const { data: plans = [], isLoading } = useQuery({ queryKey: ['admin-plans'], queryFn: getPlans })
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const features = featuresText.split('\n').map((f) => f.trim()).filter(Boolean)
-      const payload: Plan = { id: planId, name, visibility, daily_quota: Number(dailyQuota) || 0, monthly_quota: Number(monthlyQuota) || 0, monthly_price: Number(monthlyPrice) || 0, price_per_sms: Number(pricePerSms) || 0, overage_buffer_pct: Number(overageBuffer) || 0, max_queue_depth: Number(maxQueueDepth) || 100, max_devices: Number(maxDevices) || 1, dedicated_pool: dedicatedPool, default_routing_strategy: routingStrategy, is_popular: isPopular, cta_text: ctaText || 'Get Started', features }
+        const payload: Plan = { id: planId, name, visibility, daily_quota: Number(dailyQuota) || 0, monthly_quota: Number(monthlyQuota) || 0, monthly_price: Number(monthlyPrice) || 0, price_per_sms: Number(pricePerSms) || 0, overage_buffer_pct: Number(overageBuffer) || 0, max_queue_depth: Number(maxQueueDepth) || 100, max_devices: Number(maxDevices) || 1, dedicated_pool: dedicatedPool, default_routing_strategy: routingStrategy, is_popular: isPopular, cta_text: ctaText || 'Get Started', features: featuresList }
       return editing ? updatePlan(editing.id, payload) : createPlan(payload)
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-plans'] }); closeForm() },
@@ -67,7 +68,8 @@ export function PlansPage() {
     setDedicatedPool(plan?.dedicated_pool || false); setVisibility(plan?.visibility || 'public')
     setMaxDevices(String(plan?.max_devices ?? '')); setIsPopular(plan?.is_popular || false)
     setCtaText(plan?.cta_text || '')
-    setFeaturesText((plan?.features || []).join('\n'))
+    setFeaturesList(plan?.features ? [...plan.features] : [])
+    setFeatureInput('')
     setError(''); setShowForm(true)
   }
   function closeForm() { setShowForm(false); setEditing(null); setError('') }
@@ -119,7 +121,7 @@ export function PlansPage() {
                     {plan.dedicated_pool && <Badge variant="primary" size="sm">Dedicated</Badge>}
                   </div>
                 </div>                  <div className="mt-6 space-y-3 text-sm">
-                  {[['Daily quota', formatNumber(plan.daily_quota)], ['Monthly quota', formatNumber(plan.monthly_quota)], ['Max devices', String(plan.max_devices ?? '—')], ['Overage buffer', `${plan.overage_buffer_pct}%`], ['Price per SMS', `$${plan.price_per_sms}`], ['Max queue', formatNumber(plan.max_queue_depth)], ['CTA text', plan.cta_text || '—'], ['Features', `${(plan.features || []).length} items`]].map(([l, v]) => (
+                  {[['Daily quota', formatNumber(plan.daily_quota)], ['Monthly quota', formatNumber(plan.monthly_quota)], ['Max devices', String(plan.max_devices ?? '—')], ['Overage buffer', `${plan.overage_buffer_pct}%`], ['Price per SMS', `$${plan.price_per_sms}`], ['Max queue', formatNumber(plan.max_queue_depth)], ['CTA text', plan.cta_text || '—']].map(([l, v]) => (
                     <div key={l} className="flex items-center justify-between">
                       <div className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-emerald-400" /><span className="text-gray-400">{l}</span></div>
                       <span className="font-medium text-gray-200">{v}</span>
@@ -129,6 +131,19 @@ export function PlansPage() {
                     <div className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-emerald-400" /><span className="text-gray-400">Routing</span></div>
                     <Badge size="sm">{plan.default_routing_strategy}</Badge>
                   </div>
+                  {(plan.features || []).length > 0 && (
+                    <div className="pt-2">
+                      <p className="text-[10px] font-medium uppercase tracking-wider text-gray-500 mb-2">Features</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {(plan.features || []).slice(0, 6).map((f) => (
+                          <span key={f} className="inline-flex items-center rounded-md border border-white/[0.06] bg-white/[0.04] px-2 py-0.5 text-[10px] text-gray-400">{f}</span>
+                        ))}
+                        {(plan.features || []).length > 6 && (
+                          <span className="inline-flex items-center rounded-md bg-white/[0.04] px-2 py-0.5 text-[10px] text-gray-500">+{(plan.features || []).length - 6} more</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="mt-4 flex gap-2 border-t border-white/[0.06] pt-4">
                   <Button variant="ghost" size="xs" onClick={() => openForm(plan)}>Edit</Button>
@@ -167,15 +182,83 @@ export function PlansPage() {
             </label>
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-300">Features (one per line)</label>
-            <textarea
-              value={featuresText}
-              onChange={(e) => setFeaturesText(e.target.value)}
-              rows={6}
-              placeholder={'5K SMS/month\n2K daily SMS\n5 device connections\nFastest delivery routing\nAdvanced analytics\nPriority support\nShared device pool\nCustom webhooks\nOTP system\nAPI access'}
-              className="block w-full rounded-xl border border-white/[0.08] bg-white/[0.05] px-3.5 py-2.5 text-sm text-gray-100 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
-            />
-            <p className="mt-1 text-xs text-gray-500">Enter each feature on a new line. These are displayed on the landing page pricing cards and comparison table.</p>
+            <label className="mb-1.5 block text-sm font-medium text-gray-300">Plan Features</label>
+            <p className="mb-3 text-xs text-gray-500">These are displayed on the landing page pricing cards and comparison table.</p>
+            {featuresList.length > 0 && (
+              <div className="mb-3 flex flex-wrap gap-2">
+                {featuresList.map((feature, idx) => (
+                  <span
+                    key={idx}
+                    className="group inline-flex items-center gap-1.5 rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-1.5 text-xs font-medium text-blue-300 transition-all hover:border-blue-500/30 hover:bg-blue-500/15"
+                  >
+                    {feature}
+                    <button
+                      type="button"
+                      onClick={() => setFeaturesList(featuresList.filter((_, i) => i !== idx))}
+                      className="ml-0.5 rounded-full p-0.5 text-blue-400/50 transition-colors hover:bg-blue-500/20 hover:text-blue-300"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <input
+                ref={featureInputRef}
+                type="text"
+                value={featureInput}
+                onChange={(e) => setFeatureInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ',') {
+                    e.preventDefault()
+                    const val = featureInput.trim()
+                    if (val && !featuresList.includes(val)) {
+                      setFeaturesList([...featuresList, val])
+                      setFeatureInput('')
+                    }
+                  }
+                  if (e.key === 'Backspace' && !featureInput && featuresList.length > 0) {
+                    setFeaturesList(featuresList.slice(0, -1))
+                  }
+                }}
+                placeholder="Type a feature and press Enter to add..."
+                className="flex-1 rounded-xl border border-white/[0.08] bg-white/[0.05] px-3.5 py-2.5 text-sm text-gray-100 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  const val = featureInput.trim()
+                  if (val && !featuresList.includes(val)) {
+                    setFeaturesList([...featuresList, val])
+                    setFeatureInput('')
+                  }
+                  featureInputRef.current?.focus()
+                }}
+                disabled={!featureInput.trim()}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {['5K SMS/month', '10K daily SMS', 'Advanced analytics', 'Priority support', 'Custom webhooks', 'OTP system', 'API access'].map((suggestion) => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  onClick={() => {
+                    if (!featuresList.includes(suggestion)) {
+                      setFeaturesList([...featuresList, suggestion])
+                    }
+                  }}
+                  disabled={featuresList.includes(suggestion)}
+                  className="rounded-md border border-dashed border-white/[0.06] bg-white/[0.02] px-2.5 py-1 text-[10px] text-gray-500 transition-all hover:border-white/[0.12] hover:text-gray-400 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  + {suggestion}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>

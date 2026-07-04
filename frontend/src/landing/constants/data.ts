@@ -12,6 +12,7 @@ export const NAV_LINKS = [
   { label: 'Ecosystem', href: '#ecosystem' },
   { label: 'Pricing', href: '#pricing' },
   { label: 'Developers', href: '#developers' },
+  { label: 'Contact Sales', href: '/contact-sales' },
 ] as const
 
 export const TRUSTED_COMPANIES = [

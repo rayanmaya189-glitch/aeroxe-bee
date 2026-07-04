@@ -1,10 +1,34 @@
 import { Zap, ArrowRight } from 'lucide-react'
 
 const FOOTER_LINKS = {
-  Product: ['Features', 'Pricing', 'Integrations', 'API Docs', 'Changelog'],
-  Solutions: ['Enterprise', 'SMS Gateway', 'Fleet Management', 'Analytics', 'AI Routing'],
-  Resources: ['Documentation', 'Blog', 'Community', 'Support', 'Status'],
-  Company: ['About', 'Careers', 'Contact', 'Security', 'Privacy'],
+  Product: [
+    { label: 'Features', href: '#features' },
+    { label: 'Pricing', href: '#pricing' },
+    { label: 'Integrations', href: '#integrations' },
+    { label: 'API Docs', href: '#' },
+    { label: 'Changelog', href: '#' },
+  ],
+  Solutions: [
+    { label: 'Enterprise', href: '/contact-sales' },
+    { label: 'SMS Gateway', href: '#ecosystem' },
+    { label: 'Fleet Management', href: '#ecosystem' },
+    { label: 'Analytics', href: '#features' },
+    { label: 'AI Routing', href: '#routing' },
+  ],
+  Resources: [
+    { label: 'Documentation', href: '#' },
+    { label: 'Blog', href: '#' },
+    { label: 'Community', href: '#' },
+    { label: 'Support', href: '#' },
+    { label: 'Status', href: '#' },
+  ],
+  Company: [
+    { label: 'About', href: '#' },
+    { label: 'Careers', href: '#' },
+    { label: 'Contact Sales', href: '/contact-sales' },
+    { label: 'Security', href: '#' },
+    { label: 'Privacy', href: '#' },
+  ],
 }
 
 export function Footer() {
@@ -61,9 +85,9 @@ export function Footer() {
               <h4 className="text-sm font-semibold text-white">{title}</h4>
               <ul className="mt-4 space-y-3">
                 {links.map((link) => (
-                  <li key={link}>
-                    <a href="#" className="text-sm text-gray-400 transition-colors hover:text-white">
-                      {link}
+                  <li key={link.label}>
+                    <a href={link.href} className="text-sm text-gray-400 transition-colors hover:text-white">
+                      {link.label}
                     </a>
                   </li>
                 ))}
