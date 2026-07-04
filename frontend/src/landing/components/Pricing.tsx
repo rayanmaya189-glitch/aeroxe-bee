@@ -4,6 +4,7 @@ import { useInView } from 'react-intersection-observer'
 import { Check, Sparkles, CreditCard, Banknote, QrCode, Smartphone, Zap, MessageSquare, ArrowRight } from 'lucide-react'
 import { PRICING_PLANS } from '../constants/data'
 import { staggerContainer, fadeInUp } from '../animations/variants'
+import { useIsMobile, useIsTablet } from '@/hooks/useMediaQuery'
 
 interface ApiPlan {
   id: string
@@ -80,9 +81,10 @@ function mapApiPlanToPricing(apiPlan: ApiPlan, index: number): PricingPlan {
   }
 }
 
-function PricingSkeleton() {
+function PricingSkeleton({ isMobile, isTablet }: { isMobile: boolean; isTablet: boolean }) {
+  const cols = isMobile ? 'grid-cols-1' : isTablet ? 'grid-cols-2' : 'grid-cols-4'
   return (
-    <div className="grid gap-4 lg:grid-cols-4">
+    <div className={`grid gap-4 ${cols}`}>
       {Array.from({ length: 4 }).map((_, i) => (
         <div key={i} className="animate-pulse rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
           <div className="h-5 w-20 rounded bg-white/[0.06]" />
@@ -107,6 +109,8 @@ export function Pricing() {
   const [paymentMethods, setPaymentMethods] = useState<{ method: string; label: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.1 })
+  const isMobile = useIsMobile()
+  const isTablet = useIsTablet()
 
   useEffect(() => {
     const controller = new AbortController()
@@ -138,7 +142,7 @@ export function Pricing() {
           }
         }
       } catch {
-        // API unavailable — keep hardcoded fallback
+        // API unavailable - keep hardcoded fallback
       } finally {
         setLoading(false)
       }
@@ -154,7 +158,7 @@ export function Pricing() {
       const popular = plans.find((p) => p.popular)
       if (popular) setSelectedPlan(popular.planId)
     }
-  }, [plans])
+  }, [plans, selectedPlan])
 
   return (
     <section id="pricing" className="relative bg-[#030712] py-24 lg:py-32 overflow-hidden">
@@ -171,7 +175,7 @@ export function Pricing() {
         >
           <motion.div variants={fadeInUp} className="mb-14 text-center">
             <span className="mb-4 inline-block rounded-full border border-blue-500/20 bg-blue-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-blue-400">Pricing</span>
-            <h2 className="mt-4 text-4xl font-bold tracking-tight text-white lg:text-5xl">
+            <h2 className="mt-4 text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
               Simple, transparent{' '}
               <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">pricing</span>
             </h2>
@@ -197,38 +201,52 @@ export function Pricing() {
           </motion.div>
 
           {loading ? (
-            <PricingSkeleton />
+            <PricingSkeleton isMobile={isMobile} isTablet={isTablet} />
           ) : (
-            <div className="grid gap-4 lg:grid-cols-4">
+            <div
+              className={`grid gap-4 ${isMobile ? 'grid-cols-1' : isTablet ? 'grid-cols-2' : 'grid-cols-4'}`}
+              style={{ perspective: isMobile ? undefined : 1200 }}
+            >
               {plans.map((plan, idx) => {
                 const isSelected = selectedPlan === plan.planId
                 const isPopular = plan.popular
-                // 3D depth offsets — center cards are pushed forward
-                const offsets = [-3, -1, 1, 3]
-                const offsetX = offsets[idx] || 0
-                const offsetZ = isSelected ? 20 : Math.abs(offsetX) * -3
-                const rotationY = isSelected ? 0 : offsetX * 1.2
+
+                // 3D depth offsets reduced on smaller screens
+                const offsets = isMobile ? [0, 0, 0, 0] : isTablet ? [-1, 1, -1, 1] : [-3, -1, 1, 3]
+                const offsetX = offsets[idx] ?? 0
+                const maxDepth = isMobile ? 0 : isTablet ? 6 : 20
+                const offsetZ = isSelected ? maxDepth : Math.abs(offsetX) * (isMobile ? 0 : isTablet ? -2 : -3)
+                const rotationY = isSelected ? 0 : offsetX * (isMobile ? 0 : isTablet ? 0.6 : 1.2)
 
                 return (
                   <motion.div
                     key={plan.planId}
                     variants={fadeInUp}
                     onClick={() => setSelectedPlan(plan.planId)}
-                    className="relative cursor-pointer"
-                    style={{
-                      transformStyle: 'preserve-3d',
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        setSelectedPlan(plan.planId)
+                      }
                     }}
+                    role="button"
+                    tabIndex={0}
+                    className="relative cursor-pointer"
+                    style={{ transformStyle: 'preserve-3d' }}
                     animate={{
                       rotateY: rotationY,
                       translateZ: offsetZ,
                       scale: 1,
-                      perspective: 1200,
                     }}
-                    whileHover={{
-                      rotateY: 0,
-                      translateZ: 30,
-                      scale: 1.02,
-                    }}
+                    whileHover={
+                      isMobile
+                        ? undefined
+                        : {
+                            rotateY: 0,
+                            translateZ: 30,
+                            scale: 1.02,
+                          }
+                    }
                     transition={{
                       type: 'spring',
                       stiffness: 200,
@@ -237,20 +255,24 @@ export function Pricing() {
                   >
                     {/* Glow effect for selected/popular */}
                     {(isSelected || isPopular) && (
-                      <div className={`absolute -inset-[1px] rounded-2xl ${
-                        isPopular
-                          ? 'bg-gradient-to-b from-blue-500/30 via-purple-500/20 to-transparent'
-                          : 'bg-gradient-to-b from-white/10 via-white/5 to-transparent'
-                      } blur-sm`} />
+                      <div
+                        className={`absolute -inset-px rounded-2xl blur-sm ${
+                          isPopular
+                            ? 'bg-gradient-to-b from-blue-500/30 via-purple-500/20 to-transparent'
+                            : 'bg-gradient-to-b from-white/10 via-white/5 to-transparent'
+                        }`}
+                      />
                     )}
 
-                    <div className={`relative h-full rounded-2xl border p-6 transition-all duration-300 ${
-                      isPopular
-                        ? 'border-blue-500/30 bg-gradient-to-b from-blue-500/[0.08] via-[#0a0f1a] to-[#060a12] shadow-2xl shadow-blue-500/10'
-                        : isSelected
-                          ? 'border-white/[0.15] bg-white/[0.04] shadow-xl shadow-white/5'
-                          : 'border-white/[0.06] bg-white/[0.02] hover:border-white/[0.1]'
-                    }`}>
+                    <div
+                      className={`relative h-full rounded-2xl border p-6 transition-all duration-300 ${
+                        isPopular
+                          ? 'border-blue-500/30 bg-gradient-to-b from-blue-500/[0.08] via-[#0a0f1a] to-[#060a12] shadow-2xl shadow-blue-500/10'
+                          : isSelected
+                            ? 'border-white/[0.15] bg-white/[0.04] shadow-xl shadow-white/5'
+                            : 'border-white/[0.06] bg-white/[0.02] hover:border-white/[0.1]'
+                      }`}
+                    >
                       {isPopular && (
                         <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
                           <span className="flex items-center gap-1 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-1 text-xs font-semibold text-white shadow-lg shadow-blue-500/25">
@@ -284,36 +306,10 @@ export function Pricing() {
 
                       {/* Key stats from backend */}
                       <div className="mt-5 grid grid-cols-2 gap-3">
-                        <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-3">
-                          <div className="flex items-center gap-1.5 mb-1">
-                            <MessageSquare className="h-3 w-3 text-blue-400" />
-                            <span className="text-[10px] font-medium uppercase tracking-wider text-gray-500">SMS/mo</span>
-                          </div>
-                          <p className="text-lg font-bold text-white">{plan.monthlyQuota != null ? formatQuota(plan.monthlyQuota) : '—'}</p>
-                        </div>
-                        <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-3">
-                          <div className="flex items-center gap-1.5 mb-1">
-                            <Zap className="h-3 w-3 text-amber-400" />
-                            <span className="text-[10px] font-medium uppercase tracking-wider text-gray-500">Daily</span>
-                          </div>
-                          <p className="text-lg font-bold text-white">{plan.dailyQuota != null ? formatQuota(plan.dailyQuota) : '—'}</p>
-                        </div>
-                        <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-3">
-                          <div className="flex items-center gap-1.5 mb-1">
-                            <Smartphone className="h-3 w-3 text-emerald-400" />
-                            <span className="text-[10px] font-medium uppercase tracking-wider text-gray-500">Devices</span>
-                          </div>
-                          <p className="text-lg font-bold text-white">{plan.maxDevices ?? '—'}</p>
-                        </div>
-                        <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-3">
-                          <div className="flex items-center gap-1.5 mb-1">
-                            <CreditCard className="h-3 w-3 text-purple-400" />
-                            <span className="text-[10px] font-medium uppercase tracking-wider text-gray-500">Per SMS</span>
-                          </div>
-                          <p className="text-lg font-bold text-white">
-                            {(plan.pricePerSms ?? 0) === 0 ? 'Free' : `$${(plan.pricePerSms ?? 0).toFixed(4)}`}
-                          </p>
-                        </div>
+                        <StatCard icon={<MessageSquare className="h-3 w-3 text-blue-400" />} label="SMS/mo" value={plan.monthlyQuota != null ? formatQuota(plan.monthlyQuota) : '\u2014'} />
+                        <StatCard icon={<Zap className="h-3 w-3 text-amber-400" />} label="Daily" value={plan.dailyQuota != null ? formatQuota(plan.dailyQuota) : '\u2014'} />
+                        <StatCard icon={<Smartphone className="h-3 w-3 text-emerald-400" />} label="Devices" value={plan.maxDevices != null ? String(plan.maxDevices) : '\u2014'} />
+                        <StatCard icon={<CreditCard className="h-3 w-3 text-purple-400" />} label="Per SMS" value={(plan.pricePerSms ?? 0) === 0 ? 'Free' : `$${(plan.pricePerSms ?? 0).toFixed(4)}`} />
                       </div>
 
                       {/* Features */}
@@ -367,12 +363,25 @@ export function Pricing() {
             </motion.div>
           )}
 
-          {/* API integration note */}
           <motion.p variants={fadeInUp} className="mt-8 text-center text-xs text-gray-600">
-            All plan data loaded from <code className="rounded bg-white/[0.04] px-1.5 py-0.5 text-gray-500">GET /api/v1/public/plans</code> • Includes device limits, daily/monthly SMS quotas, and per-message pricing
+            All plan data loaded from{' '}
+            <code className="rounded bg-white/[0.04] px-1.5 py-0.5 text-gray-500">GET /api/v1/public/plans</code>{' '}
+            &middot; Includes device limits, daily/monthly SMS quotas, and per-message pricing
           </motion.p>
         </motion.div>
       </div>
     </section>
+  )
+}
+
+function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-3">
+      <div className="flex items-center gap-1.5 mb-1">
+        {icon}
+        <span className="text-[10px] font-medium uppercase tracking-wider text-gray-500">{label}</span>
+      </div>
+      <p className="text-lg font-bold text-white">{value}</p>
+    </div>
   )
 }
