@@ -84,9 +84,11 @@ const routes: RouteObject[] = [
   {
     path: '/',
     element: (
-      <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-[#030712]"><div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" /></div>}>
-        <LandingPage />
-      </Suspense>
+      <ErrorBoundary>
+        <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-[#030712]"><div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" /></div>}>
+          <LandingPage />
+        </Suspense>
+      </ErrorBoundary>
     ),
   },
   {
@@ -96,9 +98,11 @@ const routes: RouteObject[] = [
   {
     path: '/contact-sales',
     element: (
-      <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-[#030712]"><div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" /></div>}>
-        <ContactSalesPage />
-      </Suspense>
+      <ErrorBoundary>
+        <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-[#030712]"><div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" /></div>}>
+          <ContactSalesPage />
+        </Suspense>
+      </ErrorBoundary>
     ),
   },
   {
@@ -107,17 +111,21 @@ const routes: RouteObject[] = [
       {
         path: '/login',
         element: (
-          <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><Skeleton className="h-96 w-96 rounded-2xl" variant="rectangular" /></div>}>
-            <LoginPage />
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><Skeleton className="h-96 w-96 rounded-2xl" variant="rectangular" /></div>}>
+              <LoginPage />
+            </Suspense>
+          </ErrorBoundary>
         ),
       },
       {
         path: '/register',
         element: (
-          <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><Skeleton className="h-96 w-96 rounded-2xl" variant="rectangular" /></div>}>
-            <RegisterPage />
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><Skeleton className="h-96 w-96 rounded-2xl" variant="rectangular" /></div>}>
+              <RegisterPage />
+            </Suspense>
+          </ErrorBoundary>
         ),
       },
     ],
@@ -168,9 +176,11 @@ const routes: RouteObject[] = [
   {
     path: '*',
     element: (
-      <Suspense fallback={null}>
-        <NotFoundPage />
-      </Suspense>
+      <ErrorBoundary>
+        <Suspense fallback={null}>
+          <NotFoundPage />
+        </Suspense>
+      </ErrorBoundary>
     ),
   },
 ]
