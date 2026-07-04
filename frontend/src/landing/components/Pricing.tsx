@@ -454,13 +454,13 @@ export function Pricing() {
             </motion.div>
           )}
 
-          {/* Powered by */}
+          {/* Owned by */}
           <motion.div variants={fadeInUp} className="mt-12 text-center">
             <p className="text-xs text-gray-600">
-              Powered by{' '}
-              <a href="/" className="text-gray-500 transition-colors hover:text-gray-400">
-                AeroXe Bee
-              </a>
+              Owned by{' '}
+              <span className="text-gray-500">
+                AeroXe Enterprise Pvt. Ltd.
+              </span>
             </p>
           </motion.div>
 
