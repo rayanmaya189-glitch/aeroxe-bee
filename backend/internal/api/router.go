@@ -83,8 +83,10 @@ func NewRouter(
 
 	// Public routes (no auth required)
 	publicBillingHandler := handlers.NewPublicBillingHandler(billingService, paymentConfigService)
+	contactSalesHandler := handlers.NewContactSalesHandler(pg.Pool)
 	mux.HandleFunc("GET /api/v1/public/plans", publicBillingHandler.ListPublicPlans)
 	mux.HandleFunc("GET /api/v1/public/payment-methods", publicBillingHandler.ListPublicPaymentMethods)
+	mux.HandleFunc("POST /api/v1/public/contact-sales", contactSalesHandler.Submit)
 
 	// Brute force protection for auth endpoints (OWASP A07)
 	bfProtector := middleware.NewBruteForceProtector(
@@ -263,6 +265,10 @@ func NewRouter(
 	mux.Handle("GET /api/v1/admin/kyc", authMiddleware.AdminAuth(http.HandlerFunc(kycAdminHandler.List)))
 	mux.Handle("POST /api/v1/admin/kyc/{id}/approve", authMiddleware.AdminAuth(http.HandlerFunc(kycAdminHandler.Approve)))
 	mux.Handle("POST /api/v1/admin/kyc/{id}/reject", authMiddleware.AdminAuth(http.HandlerFunc(kycAdminHandler.Reject)))
+
+	// Contact sales submission routes
+	mux.Handle("GET /api/v1/admin/contact-submissions", authMiddleware.AdminAuth(http.HandlerFunc(contactSalesHandler.ListSubmissions)))
+	mux.Handle("PUT /api/v1/admin/contact-submissions/{id}", authMiddleware.AdminAuth(http.HandlerFunc(contactSalesHandler.UpdateStatus)))
 
 	return mux
 }

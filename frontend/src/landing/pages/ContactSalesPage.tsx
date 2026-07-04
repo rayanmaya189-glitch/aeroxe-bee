@@ -25,6 +25,7 @@ export function ContactSalesPage() {
   const [ref] = useInView({ triggerOnce: true, threshold: 0.1 })
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [formError, setFormError] = useState('')
   const [form, setForm] = useState({
     name: '', email: '', company: '', phone: '', plan: '', message: '',
   })
@@ -37,9 +38,29 @@ export function ContactSalesPage() {
     e.preventDefault()
     if (submitting) return
     setSubmitting(true)
-    await new Promise((r) => setTimeout(r, 1500))
-    setSubmitting(false)
-    setSubmitted(true)
+    try {
+      const res = await fetch('/api/v1/public/contact-sales', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          company: form.company,
+          phone: form.phone,
+          plan: form.plan,
+          message: form.message,
+        }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Submission failed')
+      }
+      setSubmitted(true)
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   useEffect(() => {
@@ -56,7 +77,7 @@ export function ContactSalesPage() {
           + 'Interested Plan: ' + form.plan + '\n\n'
           + 'Message:\n' + form.message
         )}`
-      }, 3000)
+      }, 5000)
       return () => clearTimeout(timer)
     }
   }, [submitted]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -182,21 +203,23 @@ export function ContactSalesPage() {
                       </div>
                       <h3 className="mt-4 text-lg font-semibold text-white">Message sent!</h3>
                       <p className="mt-2 max-w-sm text-sm text-gray-400">
-                        Redirecting you to email to complete your inquiry. You can also{' '}
-                        <a href="mailto:sales@aeroxbee.com" className="text-blue-400 underline hover:text-blue-300">
-                          email us directly
-                        </a>.
+                        Your inquiry has been recorded and our sales team will reach out within 24 hours. We're also opening your email client for a direct follow-up.
                       </p>
-                      <p className="mt-3 text-xs text-gray-500">Auto-redirecting in a few seconds...</p>
+                      <p className="mt-3 text-xs text-gray-500">Opening email client in a few seconds...</p>
                     </motion.div>
-                  ) : (
-                    <motion.form
+                  ) : (                      <motion.form
                       key="form"
                       initial={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                       onSubmit={handleSubmit}
                       className="mt-8 space-y-5"
                     >
+                      {formError && (
+                        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-sm text-red-400">
+                          {formError}
+                          <button type="button" onClick={() => setFormError('')} className="ml-2 font-medium underline">Dismiss</button>
+                        </div>
+                      )}
                       <div className="grid gap-5 sm:grid-cols-2">
                         <div>
                           <label htmlFor="cs-name" className={labelClasses}>

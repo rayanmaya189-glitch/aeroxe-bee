@@ -594,6 +594,23 @@ type UserSession struct {
 	RevokedAt  *time.Time `db:"revoked_at" json:"revoked_at,omitempty"`
 }
 
+// ContactSubmission stores a submission from the Contact Sales form
+
+type ContactSubmission struct {
+	ID            string    `db:"id" json:"id"`
+	Name          string    `db:"name" json:"name"`
+	Email         string    `db:"email" json:"email"`
+	Company       string    `db:"company" json:"company"`
+	Phone         string    `db:"phone" json:"phone"`
+	PlanInterest  string    `db:"plan_interest" json:"plan_interest"`
+	Message       string    `db:"message" json:"message"`
+	Status        string    `db:"status" json:"status"`
+	Notes         string    `db:"notes" json:"notes"`
+	IPAddress     string    `db:"ip_address" json:"ip_address"`
+	CreatedAt     time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt     time.Time `db:"updated_at" json:"updated_at"`
+}
+
 // WebhookWithAccount is a webhook enriched with account name (for admin views)
 
 type WebhookWithAccount struct {
