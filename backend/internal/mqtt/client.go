@@ -39,9 +39,17 @@ func (c *Client) Connect() error {
 	opts.SetPassword(c.cfg.Password)
 	opts.SetCleanSession(false)
 	opts.SetAutoReconnect(true)
-	opts.SetMaxReconnectInterval(30 * time.Second)
+	opts.SetMaxReconnectInterval(60 * time.Second)
 	opts.SetConnectionLostHandler(c.onConnectionLost)
 	opts.SetOnConnectHandler(c.onConnected)
+
+	// Last Will and Testament: publish offline status if backend disconnects unexpectedly
+	willPayload, _ := json.Marshal(map[string]interface{}{
+		"status":  "backend_offline",
+		"message": "backend service disconnected",
+		"ts":      time.Now().Unix(),
+	})
+	opts.SetWill("backend/status", string(willPayload), byte(c.cfg.QoS), true)
 
 	// Use configurable keepalive and ping timeout
 	keepAlive := c.cfg.KeepAlive
@@ -155,7 +163,14 @@ func (c *Client) onConnectionLost(client mqtt.Client, err error) {
 }
 
 func (c *Client) onConnected(client mqtt.Client) {
-	c.logger.Info("MQTT connected")
+	c.logger.Info("MQTT connected/reconnected")
+	// Publish online status on connect/reconnect
+	statusPayload, _ := json.Marshal(map[string]interface{}{
+		"status":  "backend_online",
+		"message": "backend service connected",
+		"ts":      time.Now().Unix(),
+	})
+	client.Publish("backend/status", byte(c.cfg.QoS), true, statusPayload)
 }
 
 func (c *Client) IsConnected() bool {
