@@ -135,6 +135,11 @@ func (h *BillingHandler) GetUsage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BillingHandler) CreatePlan(w http.ResponseWriter, r *http.Request) {
+	// Only admin can directly create plans; staff must use maker-checker flow
+	if !middleware.GetIsAdmin(r.Context()) {
+		writeJSON(w, http.StatusForbidden, APIResponse{Error: "only admins can directly modify plans. Use POST /api/v1/plan-requests to submit a change request."})
+		return
+	}
 	var plan models.Plan
 	if err := decodeJSON(r, &plan); err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid request body"})
@@ -186,6 +191,11 @@ func (h *BillingHandler) CreatePlan(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BillingHandler) UpdatePlan(w http.ResponseWriter, r *http.Request) {
+	// Only admin can directly update plans; staff must use maker-checker flow
+	if !middleware.GetIsAdmin(r.Context()) {
+		writeJSON(w, http.StatusForbidden, APIResponse{Error: "only admins can directly modify plans. Use POST /api/v1/plan-requests to submit a change request."})
+		return
+	}
 	id := r.PathValue("id")
 	var plan models.Plan
 	if err := decodeJSON(r, &plan); err != nil {
@@ -235,6 +245,11 @@ func (h *BillingHandler) UpdatePlan(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BillingHandler) DeletePlan(w http.ResponseWriter, r *http.Request) {
+	// Only admin can directly delete plans; staff must use maker-checker flow
+	if !middleware.GetIsAdmin(r.Context()) {
+		writeJSON(w, http.StatusForbidden, APIResponse{Error: "only admins can directly modify plans. Use POST /api/v1/plan-requests to submit a change request."})
+		return
+	}
 	id := r.PathValue("id")
 	if err := h.billingService.DeletePlan(r.Context(), id); err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to delete plan"})

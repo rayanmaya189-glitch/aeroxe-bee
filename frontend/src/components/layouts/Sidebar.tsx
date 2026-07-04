@@ -355,6 +355,27 @@ function SidebarContent({
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+        {/* Dashboard (always first) */}
+        {(() => {
+          const dashPath = navGroups && navGroups.length > 0 ? '/dashboard' : '/member'
+          const dashActive = isActive(dashPath)
+          return (
+            <button
+              onClick={() => onNavClick(dashPath)}
+              className={cn(
+                'group relative mb-1 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200',
+                dashActive
+                  ? 'bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-white'
+                  : 'text-gray-400 hover:bg-white/5 hover:text-gray-200',
+              )}
+            >
+              <span className={cn('shrink-0 transition-colors', dashActive ? 'text-blue-400' : 'text-gray-500 group-hover:text-gray-300')}>
+                <LayoutDashboard className="h-[18px] w-[18px]" />
+              </span>
+              {!collapsed && <span>Dashboard</span>}
+            </button>
+          )
+        })()}
         {/* Grouped nav (admin) */}
         {navGroups && navGroups.length > 0 && (
           <SidebarGroupedNav
