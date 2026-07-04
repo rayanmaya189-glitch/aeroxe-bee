@@ -26,7 +26,7 @@ interface PricingPlan {
   monthlyPrice: number
   yearlyPrice: number
   description: string
-  features: readonly string[]
+  features?: readonly string[]
   cta: string
   popular: boolean
   monthlyQuota?: number
@@ -383,7 +383,7 @@ export function Pricing() {
 
                       {/* Features */}
                       <ul className="mt-5 space-y-2.5">
-                        {plan.features.map((feature) => (
+                        {(plan.features ?? []).map((feature) => (
                           <li key={feature} className="flex items-start gap-2.5 text-xs text-gray-300">
                             <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green-400" />
                             <span>{feature}</span>

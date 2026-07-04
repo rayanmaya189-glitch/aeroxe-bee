@@ -165,7 +165,8 @@ export const CREDIBILITY_POINTS = [
   },
 ] as const
 
-// ── Pricing: mapped to real plan types from the backend ──
+// ── Pricing: fallback metadata for when API is unavailable ──
+// Features are generated dynamically by generateFeatures() in Pricing.tsx
 export const PRICING_PLANS = [
   {
     name: 'Free',
@@ -173,15 +174,6 @@ export const PRICING_PLANS = [
     monthlyPrice: 0,
     yearlyPrice: 0,
     description: 'For getting started and testing',
-    features: [
-      '1,000 SMS/month',
-      '100 daily SMS',
-      '2 device connections',
-      'Basic analytics',
-      'Community support',
-      'Standard routing',
-      'API access',
-    ],
     cta: 'Get Started Free',
     popular: false,
   },
@@ -191,16 +183,6 @@ export const PRICING_PLANS = [
     monthlyPrice: 29.99,
     yearlyPrice: 299.9,
     description: 'For growing businesses',
-    features: [
-      '30,000 SMS/month',
-      '1,000 daily SMS',
-      '10 device connections',
-      'Advanced analytics & charts',
-      'Priority support',
-      'Routing strategy selection',
-      'Custom webhooks',
-      'OTP system',
-    ],
     cta: 'Start Free Trial',
     popular: false,
   },
@@ -210,16 +192,6 @@ export const PRICING_PLANS = [
     monthlyPrice: 99.99,
     yearlyPrice: 999.9,
     description: 'For high-volume operations',
-    features: [
-      '300,000 SMS/month',
-      '10,000 daily SMS',
-      '50 device connections',
-      'Full analytics suite',
-      'Dedicated support',
-      'All routing strategies',
-      'Dedicated device pools',
-      'Cost/profit tracking',
-    ],
     cta: 'Contact Sales',
     popular: true,
   },
@@ -229,16 +201,6 @@ export const PRICING_PLANS = [
     monthlyPrice: 299.99,
     yearlyPrice: 2999.9,
     description: 'For large-scale operations',
-    features: [
-      '3,000,000 SMS/month',
-      '100,000 daily SMS',
-      '500 device connections',
-      'Full analytics suite',
-      'Dedicated support',
-      'All routing strategies',
-      'Dedicated device pools',
-      'Custom integrations',
-    ],
     cta: 'Contact Sales',
     popular: false,
   },
