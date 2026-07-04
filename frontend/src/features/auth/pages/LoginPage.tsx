@@ -14,7 +14,7 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [step, setStep] = useState<'credentials' | '2fa'>('credentials')
   const navigate = useNavigate()
-  const { login: storeLogin, start2FA, complete2FA, cancel2FA, isAuthenticated, pending2FA, pending2FAEmail } = useAuthStore()
+  const { login: storeLogin, start2FA, complete2FA, cancel2FA, isAuthenticated, pending2FA, pending2FAEmail, pending2FAToken } = useAuthStore()
 
   useEffect(() => {
     if (isAuthenticated) navigate('/dashboard', { replace: true })
@@ -35,7 +35,7 @@ export function LoginPage() {
       const { login } = await import('@/services/auth')
       const data = await login({ email, password })
       if (data.requires_2fa || data.two_fa_pending) {
-        start2FA(email)
+        start2FA(email, data.two_fa_token ?? data.token)
         setStep('2fa')
         setLoading(false)
         return
@@ -60,7 +60,7 @@ export function LoginPage() {
     setLoading(true)
     try {
       const { verify2FALogin } = await import('@/services/auth')
-      const data = await verify2FALogin(email, twoFACode)
+      const data = await verify2FALogin(pending2FAToken, twoFACode)
       complete2FA(data.token, data.refreshToken, {
         id: data.user.id,
         email: data.user.email,
@@ -73,7 +73,7 @@ export function LoginPage() {
     } finally {
       setLoading(false)
     }
-  }, [email, twoFACode, complete2FA, navigate])
+  }, [pending2FAToken, twoFACode, complete2FA, navigate])
 
   const handleBack = () => {
     cancel2FA()

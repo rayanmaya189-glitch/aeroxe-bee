@@ -48,8 +48,8 @@ export async function changePassword(data: { currentPassword: string; newPasswor
   return res.data
 }
 
-export async function verify2FALogin(email: string, code: string): Promise<LoginResponse> {
-  const res = await api.post<ApiResponse<LoginResponse>>('/auth/2fa/verify-login', { email, code })
+export async function verify2FALogin(token: string, code: string): Promise<LoginResponse> {
+  const res = await api.post<ApiResponse<LoginResponse>>('/auth/login/2fa', { token, code })
   if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? '2FA verification failed')
   return res.data.data
 }

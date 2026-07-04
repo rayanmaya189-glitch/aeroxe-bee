@@ -26,8 +26,8 @@ func NewRouter(
 	twoFAHandler *handlers.TwoFAHandler,
 	paymentConfigHandler *handlers.PaymentConfigHandler,
 	paymentRequestHandler *handlers.PaymentRequestHandler,
-	subscriptionRequestHandler *handlers.SubscriptionRequestHandler,
-	sessionHandler *handlers.SessionHandler,
+	subscriptionRequestHandler *handlers.SubscriptionRequestHandler,    sessionHandler *handlers.SessionHandler,
+	kycAdminHandler *handlers.KycAdminHandler,
 	billingService *services.BillingService,
 	paymentConfigService *services.PaymentConfigService,
 	authMiddleware *middleware.AuthMiddleware,
@@ -204,6 +204,11 @@ func NewRouter(
 	mux.Handle("GET /api/v1/auth/sessions", authMiddleware.JWTAuth(http.HandlerFunc(sessionHandler.ListSessions)))
 	mux.Handle("DELETE /api/v1/auth/sessions", authMiddleware.JWTAuth(http.HandlerFunc(sessionHandler.RevokeAllSessions)))
 	mux.Handle("DELETE /api/v1/auth/sessions/{id}", authMiddleware.JWTAuth(http.HandlerFunc(sessionHandler.RevokeSession)))
+
+	// Admin KYC review routes
+	mux.Handle("GET /api/v1/admin/kyc", authMiddleware.AdminAuth(http.HandlerFunc(kycAdminHandler.List)))
+	mux.Handle("POST /api/v1/admin/kyc/{id}/approve", authMiddleware.AdminAuth(http.HandlerFunc(kycAdminHandler.Approve)))
+	mux.Handle("POST /api/v1/admin/kyc/{id}/reject", authMiddleware.AdminAuth(http.HandlerFunc(kycAdminHandler.Reject)))
 
 	return mux
 }

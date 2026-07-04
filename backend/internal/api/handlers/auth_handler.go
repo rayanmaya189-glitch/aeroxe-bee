@@ -172,6 +172,31 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Check if 2FA is enabled for this user
+		twoFAEnabled := h.twoFAService.IsEnabled(r.Context(), user.ID, "")
+		if twoFAEnabled {
+			tempToken, err := h.authMiddleware.GenerateTokenWithPurpose(user.ID, user.Email, true, 5*time.Minute, "2fa_pending")
+			if err != nil {
+				writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "token generation failed"})
+				return
+			}
+			writeJSON(w, http.StatusOK, APIResponse{
+				Success: true,
+				Data: map[string]interface{}{
+					"requires_2fa":   true,
+					"two_fa_pending": true,
+					"two_fa_token":   tempToken,
+					"user": map[string]interface{}{
+						"id":    user.ID,
+						"email": user.Email,
+						"name":  user.Name,
+						"role":  user.Role,
+					},
+				},
+			})
+			return
+		}
+
 		_ = h.userService.UpdateLastLogin(r.Context(), user.ID)
 
 		// Record session
@@ -225,6 +250,30 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	refresh, err := h.authMiddleware.GenerateToken(account.ID, account.Email, false, 7*24*time.Hour)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "refresh token generation failed"})
+		return
+	}
+
+	// Check if 2FA is enabled for this account
+	if h.twoFAService.IsEnabled(r.Context(), "", account.ID) {
+		tempToken, err := h.authMiddleware.GenerateTokenWithPurpose(account.ID, account.Email, false, 5*time.Minute, "2fa_pending")
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "token generation failed"})
+			return
+		}
+		writeJSON(w, http.StatusOK, APIResponse{
+			Success: true,
+			Data: map[string]interface{}{
+				"requires_2fa":   true,
+				"two_fa_pending": true,
+				"two_fa_token":   tempToken,
+				"user": map[string]interface{}{
+					"id":    account.ID,
+					"email": account.Email,
+					"name":  account.Name,
+					"role":  "member",
+				},
+			},
+		})
 		return
 	}
 

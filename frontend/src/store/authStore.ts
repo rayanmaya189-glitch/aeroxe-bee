@@ -14,10 +14,11 @@ interface AuthState {
   isLoading: boolean
   pending2FA: boolean
   pending2FAEmail: string
+  pending2FAToken: string
   setUser: (user: AuthUser) => void
   setLoading: (loading: boolean) => void
   login: (token: string, refreshToken: string | undefined, user: AuthUser) => void
-  start2FA: (email: string) => void
+  start2FA: (email: string, token: string) => void
   complete2FA: (token: string, refreshToken: string | undefined, user: AuthUser) => void
   cancel2FA: () => void
   logout: () => void
@@ -30,6 +31,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: true,
   pending2FA: false,
   pending2FAEmail: '',
+  pending2FAToken: '',
 
   setUser: (user) => set({ user, isAuthenticated: true }),
 
@@ -44,8 +46,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user, isAuthenticated: true, isLoading: false })
   },
 
-  start2FA: (email) => {
-    set({ pending2FA: true, pending2FAEmail: email })
+  start2FA: (email, token) => {
+    set({ pending2FA: true, pending2FAEmail: email, pending2FAToken: token })
   },
 
   complete2FA: (token, refreshToken, user) => {
@@ -54,18 +56,18 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (refreshToken) {
       sessionStorage.setItem('refresh_token', refreshToken)
     }
-    set({ user, isAuthenticated: true, isLoading: false, pending2FA: false, pending2FAEmail: '' })
+    set({ user, isAuthenticated: true, isLoading: false, pending2FA: false, pending2FAEmail: '', pending2FAToken: '' })
   },
 
   cancel2FA: () => {
-    set({ pending2FA: false, pending2FAEmail: '' })
+    set({ pending2FA: false, pending2FAEmail: '', pending2FAToken: '' })
   },
 
   logout: () => {
     sessionStorage.removeItem('auth_token')
     sessionStorage.removeItem('auth_user')
     sessionStorage.removeItem('refresh_token')
-    set({ user: null, isAuthenticated: false, isLoading: false, pending2FA: false, pending2FAEmail: '' })
+    set({ user: null, isAuthenticated: false, isLoading: false, pending2FA: false, pending2FAEmail: '', pending2FAToken: '' })
   },
 
   hydrate: () => {

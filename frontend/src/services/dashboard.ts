@@ -176,6 +176,13 @@ export async function reviewFraudFlag(id: string): Promise<void> {
   if (!res.data.success) throw new Error(res.data.error ?? 'Failed to review fraud flag')
 }
 
+// Abuse flags (admin)
+export async function getAbuseFlags(): Promise<FraudFlag[]> {
+  const res = await api.get<ApiResponse<FraudFlag[]>>('/admin/abuse-flags')
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load abuse flags')
+  return res.data.data
+}
+
 // Users management (admin)
 export async function getUsers(params: {
   page?: number

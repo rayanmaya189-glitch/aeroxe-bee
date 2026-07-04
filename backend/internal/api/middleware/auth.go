@@ -167,6 +167,10 @@ func (m *AuthMiddleware) JWTAuth(next http.Handler) http.Handler {
 }
 
 func (m *AuthMiddleware) GenerateToken(accountID, email string, admin bool, ttl time.Duration) (string, error) {
+	return m.GenerateTokenWithPurpose(accountID, email, admin, ttl, "")
+}
+
+func (m *AuthMiddleware) GenerateTokenWithPurpose(accountID, email string, admin bool, ttl time.Duration, purpose string) (string, error) {
 	claims := jwt.MapClaims{
 		"sub":   accountID,
 		"email": email,
@@ -174,6 +178,9 @@ func (m *AuthMiddleware) GenerateToken(accountID, email string, admin bool, ttl 
 		"iat":   time.Now().Unix(),
 		"exp":   time.Now().Add(ttl).Unix(),
 		"iss":   "textbee",
+	}
+	if purpose != "" {
+		claims["purpose"] = purpose
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(m.jwtSecret))

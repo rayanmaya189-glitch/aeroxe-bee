@@ -216,6 +216,7 @@ func main() {
 	memberHandler := handlers.NewMemberHandler(svc.Accounts, svc.Devices, svc.Messages, svc.Billing, svc.Subscriptions, svc.Templates, svc.Webhooks)
 
 	sessionHandler := handlers.NewSessionHandler(sessionService)
+	kycAdminHandler := handlers.NewKycAdminHandler(postgres.Pool)
 	paymentConfigHandler := handlers.NewPaymentConfigHandler(svc.PaymentConfigs)
 	paymentRequestHandler := handlers.NewPaymentRequestHandler(svc.PaymentRequests, svc.PaymentConfigs)
 	subscriptionRequestHandler := handlers.NewSubscriptionRequestHandler(svc.SubscriptionRequests, svc.Subscriptions, svc.Billing)
@@ -223,7 +224,7 @@ func main() {
 	router := api.NewRouter(authHandler, messageHandler, deviceHandler, accountHandler,
 		adminHandler, userHandler, templateHandler, webhookHandler, otpHandler, billingHandler,
 		fraudHandler, memberHandler, twoFAHandler, paymentConfigHandler, paymentRequestHandler,
-		subscriptionRequestHandler, sessionHandler, svc.Billing, svc.PaymentConfigs, authMiddleware, metrics, postgres, redisDB)
+		subscriptionRequestHandler, sessionHandler, kycAdminHandler, svc.Billing, svc.PaymentConfigs, authMiddleware, metrics, postgres, redisDB)
 
 	promMux := http.NewServeMux()
 	promMux.Handle("/metrics", promhttp.Handler())
