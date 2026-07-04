@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#030712"/>
+      <stop offset="50%" stop-color="#0a0f1e"/>
+      <stop offset="100%" stop-color="#030712"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.08"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  
+  <!-- Decorative glows -->
+  <circle cx="200" cy="150" r="300" fill="url(#glow)" opacity="0.6"/>
+  <circle cx="1000" cy="500" r="250" fill="#8b5cf6" opacity="0.05"/>
+  <circle cx="600" cy="315" r="400" fill="#3b82f6" opacity="0.03"/>
+  
+  <!-- Grid pattern -->
+  <g opacity="0.03" stroke="#fff" stroke-width="1">
+    <line x1="0" y1="0" x2="1200" y2="630"/>
+    <line x1="200" y1="0" x2="1200" y2="430"/>
+    <line x1="400" y1="0" x2="1200" y2="230"/>
+    <line x1="0" y1="200" x2="1000" y2="630"/>
+    <line x1="0" y1="400" x2="800" y2="630"/>
+    <line x1="1200" y1="0" x2="0" y2="630"/>
+    <line x1="1000" y1="0" x2="200" y2="630"/>
+    <line x1="800" y1="0" x2="0" y2="430"/>
+  </g>
+  
+  <!-- Contact icon -->
+  <g transform="translate(540, 160)">
+    <rect x="0" y="0" width="120" height="120" rx="24" fill="url(#accent)"/>
+    <path d="M60 30 L60 90 M30 60 L90 60" stroke="white" stroke-width="8" stroke-linecap="round" opacity="0.95"/>
+  </g>
+  
+  <!-- Main title -->
+  <text x="600" y="340" text-anchor="middle" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="52" font-weight="800" fill="white" letter-spacing="-1">
+    Contact Sales
+  </text>
+  
+  <!-- Subtitle -->
+  <text x="600" y="390" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="20" font-weight="400" fill="#9ca3af" letter-spacing="0.5">
+    Custom Pricing &bull; Enterprise Security &bull; Self-Hosting
+  </text>
+  
+  <!-- Accent line -->
+  <rect x="500" y="420" width="200" height="3" rx="1.5" fill="url(#accent)"/>
+  
+  <!-- Contact details -->
+  <g transform="translate(350, 460)">
+    <rect x="0" y="0" width="500" height="50" rx="12" fill="white" fill-opacity="0.04" stroke="white" stroke-opacity="0.08" stroke-width="1"/>
+    <text x="250" y="30" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="14" font-weight="400" fill="#9ca3af">
+      sales@aeroxbee.com &bull; +91 70206 68210 &bull; Jalgaon, Maharashtra, India
+    </text>
+  </g>
+  
+  <!-- URL -->
+  <text x="600" y="580" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="14" font-weight="400" fill="#6b7280" letter-spacing="1">
+    aeroxbee.com/contact-sales
+  </text>
+</svg>
