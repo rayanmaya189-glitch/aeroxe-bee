@@ -236,7 +236,7 @@ func main() {
 	router := api.NewRouter(authHandler, messageHandler, deviceHandler, accountHandler,
 		adminHandler, userHandler, templateHandler, webhookHandler, otpHandler, billingHandler,
 		fraudHandler, memberHandler, twoFAHandler, paymentConfigHandler, paymentRequestHandler,
-		subscriptionRequestHandler, planChangeRequestHandler, sessionHandler, kycAdminHandler, svc.Billing, svc.PaymentConfigs, authMiddleware, metrics, postgres, redisDB, mqttClient, cfg.RateLimit.APIKeyMaxPerMinute)
+		subscriptionRequestHandler, planChangeRequestHandler, sessionHandler, kycAdminHandler, svc.Billing, svc.PaymentConfigs, authMiddleware, metrics, postgres, redisDB, mqttClient, cfg)
 
 	promMux := http.NewServeMux()
 	promMux.Handle("/metrics", promhttp.Handler())

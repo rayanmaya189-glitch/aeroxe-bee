@@ -7,6 +7,7 @@ import (
 
 	"github.com/textbee/backend/internal/api/handlers"
 	"github.com/textbee/backend/internal/api/middleware"
+	"github.com/textbee/backend/internal/config"
 	"github.com/textbee/backend/internal/database"
 	"github.com/textbee/backend/internal/mqtt"
 	"github.com/textbee/backend/internal/services"
@@ -43,7 +44,7 @@ func NewRouter(
 	pg *database.PostgresDB,
 	rdb *database.RedisDB,
 	mqttClient *mqtt.Client,
-	apiKeyMaxPerMin int,
+	cfg *config.Config,
 ) http.Handler {
 	mux := http.NewServeMux()
 
@@ -98,13 +99,16 @@ func NewRouter(
 	// Brute force protection for auth endpoints (OWASP A07)
 	bfProtector := middleware.NewBruteForceProtector(
 		rdb.Client,
-		5,                // max 5 attempts
-		15*time.Minute,   // per 15-minute window
-		30*time.Minute,   // 30-minute lockout
+		5,              // max 5 attempts
+		15*time.Minute, // per 15-minute window
+		30*time.Minute, // 30-minute lockout
 	)
 
-	// Per-API-key rate limiting for message send endpoint
-	apiKeyRateLimiter := middleware.NewAPIKeyRateLimiter(rdb.Client, apiKeyMaxPerMin)
+	// Per-API-key rate limiting for message send endpoint (configurable via env)
+	apiKeyRateLimiter := middleware.NewAPIKeyRateLimiter(rdb.Client, cfg.RateLimit.APIKeyMaxPerMinute)
+
+	// API version header middleware (stores X-API-Version in context for future use)
+	versionMiddleware := middleware.APIVersionHeader
 
 	// Auth routes — protected against brute force
 	mux.Handle("POST /api/v1/auth/register", bfProtector.Protect("register")(http.HandlerFunc(authHandler.Register)))
@@ -121,8 +125,8 @@ func NewRouter(
 	mux.Handle("GET /api/v1/auth/2fa/status", authMiddleware.JWTAuth(http.HandlerFunc(twoFAHandler.Status)))
 	mux.Handle("POST /api/v1/auth/2fa/disable", authMiddleware.JWTAuth(http.HandlerFunc(twoFAHandler.Disable)))
 
-	// Message routes
-	mux.Handle("POST /api/v1/send", apiKeyRateLimiter.Limit(authMiddleware.APIKeyAuth(http.HandlerFunc(messageHandler.Send))))
+	// Message routes (rate-limited + versioned)
+	mux.Handle("POST /api/v1/send", versionMiddleware(apiKeyRateLimiter.Limit(authMiddleware.APIKeyAuth(http.HandlerFunc(messageHandler.Send)))))
 	mux.Handle("GET /api/v1/messages", authMiddleware.APIKeyAuth(http.HandlerFunc(messageHandler.ListMessages)))
 	mux.Handle("GET /api/v1/messages/{id}", authMiddleware.APIKeyAuth(http.HandlerFunc(messageHandler.GetMessage)))
 	mux.Handle("GET /api/v1/messages/{id}/confidence", authMiddleware.APIKeyAuth(http.HandlerFunc(messageHandler.GetConfidence)))

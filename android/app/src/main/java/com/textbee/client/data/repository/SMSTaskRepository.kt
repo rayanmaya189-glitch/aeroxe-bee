@@ -41,6 +41,8 @@ class SMSTaskRepository @Inject constructor(
 
     suspend fun getNextPending(): SMSTask? = smsTaskDao.getNextQueued()?.toDomain()
 
+    suspend fun getRetryableTasks(): List<SMSTask> = smsTaskDao.getRetryableTasks().map { it.toDomain() }
+
     suspend fun saveTask(task: SMSTask) = smsTaskDao.upsert(task.toEntity())
 
     suspend fun saveTasks(tasks: List<SMSTask>) = smsTaskDao.upsertAll(tasks.map { it.toEntity() })

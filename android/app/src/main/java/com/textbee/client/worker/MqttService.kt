@@ -12,6 +12,7 @@ import com.textbee.client.R
 import com.textbee.client.data.remote.mqtt.MqttManager
 import com.textbee.client.data.remote.model.SMSCommand
 import com.textbee.client.data.remote.model.StatusUpdateRequest
+import com.textbee.client.data.repository.SMSTaskRepository
 import com.textbee.client.domain.model.SMSTask
 import com.textbee.client.sms.SMSEngine
 import com.textbee.client.util.TokenManager
@@ -26,12 +27,14 @@ class MqttService : Service() {
     @Inject lateinit var mqttManager: MqttManager
     @Inject lateinit var tokenManager: TokenManager
     @Inject lateinit var smsEngine: SMSEngine
+    @Inject lateinit var smsRepository: SMSTaskRepository
 
     private val gson = Gson()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var deviceId: String = ""
     private var heartbeatJob: Job? = null
     private var connectionMonitorJob: Job? = null
+    private var retryJob: Job? = null
     private var isReconnecting = false
 
     override fun onCreate() {
@@ -56,6 +59,7 @@ class MqttService : Service() {
 
         startConnectionMonitor()
         startHeartbeat()
+        startRetryProcessor()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -111,6 +115,7 @@ class MqttService : Service() {
     override fun onDestroy() {
         connectionMonitorJob?.cancel()
         heartbeatJob?.cancel()
+        retryJob?.cancel()
         scope.cancel()
         mqttManager.destroy()
         super.onDestroy()
@@ -153,6 +158,10 @@ class MqttService : Service() {
                         )
                         val result = smsEngine.send(task)
                         val isSuccess = result == SMSTask.Status.SENT || result == SMSTask.Status.DELIVERED
+                        if (!isSuccess) {
+                            // Task stays in Room DB as PENDING/FAILED for retry
+                            android.util.Log.w(TAG, "SMS send failed for ${cmd.id}, will retry from queue")
+                        }
                         mqttManager.publish(
                             "devices/$deviceId/status",
                             gson.toJson(
@@ -185,6 +194,49 @@ class MqttService : Service() {
         }
     }
 
+    /**
+     * Periodically retry failed/pending SMS tasks from the Room DB queue.
+     * This handles the case where SMS was queued but the device had no cellular
+     * signal at the time. Tasks are retried up to maxRetries (3) then marked DEAD_LETTER.
+     */
+    private fun startRetryProcessor() {
+        retryJob = scope.launch {
+            while (isActive) {
+                delay(RETRY_INTERVAL_MS)
+                try {
+                    // Pick up FAILED tasks (not DEAD_LETTER) that haven't exceeded max retries
+                    val failedTasks = smsRepository.getRetryableTasks()
+                    for (task in failedTasks) {
+                        android.util.Log.i(TAG, "Retrying failed SMS: ${task.id} (attempt ${task.retryCount + 1}/${task.maxRetries})")
+                        val result = smsEngine.send(task)
+                        val isSuccess = result == SMSTask.Status.SENT || result == SMSTask.Status.DELIVERED
+                        if (isSuccess) {
+                            // Report success via MQTT if connected
+                            if (mqttManager.isConnected() && deviceId.isNotBlank()) {
+                                mqttManager.publish(
+                                    "devices/$deviceId/status",
+                                    gson.toJson(
+                                        StatusUpdateRequest(
+                                            messageId = task.id,
+                                            deviceId = deviceId,
+                                            status = "SENT",
+                                            deliveryStatus = "SENT",
+                                            confidenceScore = 1.0,
+                                            simSlot = task.simSlot,
+                                            timestamp = System.currentTimeMillis(),
+                                        )
+                                    )
+                                )
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e(TAG, "Retry processor error", e)
+                }
+            }
+        }
+    }
+
     private fun createNotification(text: String = "Connected to message broker"): Notification {
         val pendingIntent = PendingIntent.getActivity(
             this, 0, Intent(this, MainActivity::class.java),
@@ -204,6 +256,7 @@ class MqttService : Service() {
         private const val NOTIFICATION_ID = 1002
         const val CHANNEL_MQTT = "textbee_mqtt_service"
         private const val HEARTBEAT_INTERVAL_MS = 30_000L
+        private const val RETRY_INTERVAL_MS = 60_000L
 
         fun start(context: Context) {
             val intent = Intent(context, MqttService::class.java)

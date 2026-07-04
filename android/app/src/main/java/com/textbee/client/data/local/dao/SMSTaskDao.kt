@@ -50,4 +50,7 @@ interface SMSTaskDao {
 
     @Query("SELECT * FROM sms_tasks WHERE status = 'PENDING' ORDER BY CASE priority WHEN 'HIGH' THEN 0 WHEN 'NORMAL' THEN 1 ELSE 2 END, createdAt ASC")
     suspend fun getNextQueued(): SMSTaskEntity?
+
+    @Query("SELECT * FROM sms_tasks WHERE status = 'FAILED' AND retryCount < maxRetries ORDER BY createdAt ASC LIMIT 5")
+    suspend fun getRetryableTasks(): List<SMSTaskEntity>
 }
