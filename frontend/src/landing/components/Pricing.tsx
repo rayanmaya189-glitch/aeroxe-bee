@@ -381,9 +381,9 @@ export function Pricing() {
 
                       {/* Key stats from backend */}
                       <div className="mt-5 grid grid-cols-2 gap-3">
-                        <StatCard icon={<MessageSquare className="h-3 w-3 text-blue-400" />} label="SMS/mo" value={plan.monthlyQuota != null ? formatQuota(plan.monthlyQuota) : '\u2014'} />
-                        <StatCard icon={<Zap className="h-3 w-3 text-amber-400" />} label="Daily" value={plan.dailyQuota != null ? formatQuota(plan.dailyQuota) : '\u2014'} />
-                        <StatCard icon={<Smartphone className="h-3 w-3 text-emerald-400" />} label="Devices" value={plan.maxDevices != null ? String(plan.maxDevices) : '\u2014'} />
+                        <StatCard icon={<MessageSquare className="h-3 w-3 text-blue-400" />} label="SMS/mo" value={plan.monthlyQuota != null ? formatQuota(plan.monthlyQuota) : '—'} />
+                        <StatCard icon={<Zap className="h-3 w-3 text-amber-400" />} label="Daily" value={plan.dailyQuota != null ? formatQuota(plan.dailyQuota) : '—'} />
+                        <StatCard icon={<Smartphone className="h-3 w-3 text-emerald-400" />} label="Devices" value={plan.maxDevices != null ? String(plan.maxDevices) : '—'} />
                         <StatCard icon={<CreditCard className="h-3 w-3 text-purple-400" />} label="Per SMS" value={(plan.pricePerSms ?? 0) === 0 ? 'Free' : `$${(plan.pricePerSms ?? 0).toFixed(4)}`} />
                       </div>
 
@@ -496,7 +496,7 @@ function FeatureComparisonTable({ plans, hoveredPlan, onHoveredPlanChange }: { p
     label: cat.label,
     values: plans.map((plan) => {
       const feature = (plan.features ?? []).find((f) => cat.pattern.test(f))
-      return cat.render === 'boolean' ? feature !== undefined : (feature ?? '\u2014')
+      return cat.render === 'boolean' ? feature !== undefined : (feature ?? '—')
     }),
   }))
 
@@ -549,7 +549,7 @@ function FeatureComparisonTable({ plans, hoveredPlan, onHoveredPlanChange }: { p
                           <Check className="h-3 w-3 text-green-400" />
                         </span>
                       ) : (
-                        <span className="text-gray-600">\u2014</span>
+                        <span className="text-gray-600">—</span>
                       )
                     ) : (
                       <span className="text-xs text-gray-300">{val}</span>
@@ -582,7 +582,7 @@ function FeatureComparisonTable({ plans, hoveredPlan, onHoveredPlanChange }: { p
                       val ? (
                         <Check className="h-3.5 w-3.5 text-green-400" />
                       ) : (
-                        <span className="text-gray-600">\u2014</span>
+                        <span className="text-gray-600">—</span>
                       )
                     ) : (
                       <span className="text-gray-300">{String(val)}</span>

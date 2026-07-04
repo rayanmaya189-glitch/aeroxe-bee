@@ -680,6 +680,9 @@ func securityPipeline(cfg *config.Config, metrics *telemetry.Metrics, router htt
 	// Panic recovery (OWASP A05) — outermost so it catches everything
 	handler = middleware.RecoverPanic(handler)
 
+	// Response compression (gzip) for compressible content types
+	handler = middleware.ResponseCompression(handler)
+
 	return handler
 }
 
