@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { useMemo } from 'react'
 
 interface FloatingShape {
@@ -12,6 +12,7 @@ interface FloatingShape {
 }
 
 export function OnboardingBackground() {
+  const shouldReduceMotion = useReducedMotion()
   const shapes = useMemo<FloatingShape[]>(() => [
     { id: 1, x: '10%', y: '20%', size: 120, delay: 0, duration: 20, color: 'from-blue-500/20 to-cyan-500/10' },
     { id: 2, x: '80%', y: '15%', size: 80, delay: 2, duration: 25, color: 'from-purple-500/15 to-pink-500/10' },
@@ -46,7 +47,7 @@ export function OnboardingBackground() {
             left: shape.x,
             top: shape.y,
           }}
-          animate={{
+          animate={shouldReduceMotion ? {} : {
             y: [0, -30, 0, 20, 0],
             x: [0, 15, -10, 5, 0],
             scale: [1, 1.1, 0.95, 1.05, 1],
@@ -54,7 +55,7 @@ export function OnboardingBackground() {
           transition={{
             duration: shape.duration,
             delay: shape.delay,
-            repeat: Infinity,
+            repeat: shouldReduceMotion ? 0 : Infinity,
             ease: 'easeInOut',
           }}
         />

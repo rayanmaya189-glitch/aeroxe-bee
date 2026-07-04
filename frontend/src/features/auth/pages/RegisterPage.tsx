@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { OnboardingBackground } from '@/components/ui/OnboardingBackground'
 import { Zap, Mail, Lock, User, MessageSquare, Smartphone, Shield, ArrowRight, Check } from 'lucide-react'
+import { containerVariants, itemVariants } from '@/landing/animations/onboardingVariants'
 
 const features = [
   { icon: MessageSquare, label: 'Smart routing strategies', color: 'text-blue-400' },
@@ -18,19 +19,6 @@ const stats = [
   { value: '150ms', label: 'API latency' },
   { value: '99.9%', label: 'Uptime' },
 ]
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08, delayChildren: 0.2 },
-  },
-}
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' as const } },
-}
 
 export function RegisterPage() {
   const [name, setName] = useState('')

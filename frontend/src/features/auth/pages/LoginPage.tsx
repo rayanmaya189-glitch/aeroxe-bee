@@ -6,25 +6,13 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { OnboardingBackground } from '@/components/ui/OnboardingBackground'
 import { Zap, Mail, Lock, ShieldCheck, ArrowLeft, ArrowRight, MessageSquare, BarChart3, Globe } from 'lucide-react'
+import { containerVariants, itemVariants } from '@/landing/animations/onboardingVariants'
 
 const quickStats = [
   { icon: MessageSquare, value: '1M+', label: 'Messages delivered' },
   { icon: BarChart3, value: '95%', label: 'Delivery rate' },
   { icon: Globe, value: '50+', label: 'Countries' },
 ]
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08, delayChildren: 0.15 },
-  },
-}
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' as const } },
-}
 
 export function LoginPage() {
   const [email, setEmail] = useState('')
@@ -152,14 +140,7 @@ export function LoginPage() {
               ))}
             </div>
 
-            {/* Trust signal */}
-            <motion.p
-              variants={itemVariants}
-              className="mt-8 flex items-center justify-center gap-2 text-sm text-gray-500 lg:justify-start"
-            >
-              <span className="inline-flex h-2 w-2 rounded-full bg-green-400" />
-              All systems operational
-            </motion.p>
+
           </motion.div>
         )}
 
