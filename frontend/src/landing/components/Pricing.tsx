@@ -216,15 +216,23 @@ export function Pricing() {
                     onClick={() => setSelectedPlan(plan.planId)}
                     className="relative cursor-pointer"
                     style={{
-                      transform: `perspective(1200px) rotateY(${rotationY}deg) translateZ(${offsetZ}px)`,
                       transformStyle: 'preserve-3d',
-                      transition: 'all 0.4s cubic-bezier(0.22, 1, 0.36, 1)',
+                    }}
+                    animate={{
+                      rotateY: rotationY,
+                      translateZ: offsetZ,
+                      scale: 1,
+                      perspective: 1200,
                     }}
                     whileHover={{
                       rotateY: 0,
                       translateZ: 30,
                       scale: 1.02,
-                      transition: { duration: 0.3 },
+                    }}
+                    transition={{
+                      type: 'spring',
+                      stiffness: 200,
+                      damping: 25,
                     }}
                   >
                     {/* Glow effect for selected/popular */}
