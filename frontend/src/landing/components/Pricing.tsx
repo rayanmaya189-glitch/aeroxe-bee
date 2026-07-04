@@ -411,6 +411,13 @@ export function Pricing() {
             </div>
           )}
 
+          {/* Feature comparison table */}
+          {!loading && plans.length > 0 && (
+            <motion.div variants={fadeInUp} className="mt-16">
+              <FeatureComparisonTable plans={plans} />
+            </motion.div>
+          )}
+
           {/* Payment methods footer */}
           {paymentMethods.length > 0 && (
             <motion.div variants={fadeInUp} className="mt-14 flex flex-col items-center gap-3">
@@ -440,6 +447,156 @@ export function Pricing() {
         </motion.div>
       </div>
     </section>
+  )
+}
+
+function FeatureComparisonTable({ plans }: { plans: PricingPlan[] }) {
+  const categories = [
+    {
+      label: 'Monthly SMS',
+      values: plans.map((p) => formatQuota(p.monthlyQuota ?? 0)),
+    },
+    {
+      label: 'Daily SMS',
+      values: plans.map((p) => formatQuota(p.dailyQuota ?? 0)),
+    },
+    {
+      label: 'Device Connections',
+      values: plans.map((p) => String(p.maxDevices ?? 0)),
+    },
+    {
+      label: 'Routing Strategy',
+      values: plans.map((p) => {
+        const map: Record<string, string> = {
+          fastest_delivery: 'Fastest',
+          lowest_cost: 'Lowest Cost',
+          highest_reliability: 'Reliability',
+          geo_affinity: 'Geo-Affinity',
+          profit_optimized: 'Profit-Optimized',
+        }
+        return map[p.routingStrategy ?? ''] ?? 'Standard'
+      }),
+    },
+    {
+      label: 'Analytics',
+      values: plans.map((_, i) => (i === 0 ? 'Basic' : i <= 1 ? 'Advanced' : 'Full Suite')),
+    },
+    {
+      label: 'Support',
+      values: plans.map((_, i) => (i === 0 ? 'Community' : i <= 1 ? 'Priority' : i <= 2 ? 'Dedicated' : 'Dedicated + SLA')),
+    },
+    {
+      label: 'Device Pool',
+      values: plans.map((p) => (p.dedicatedPool ? 'Dedicated' : 'Shared')),
+    },
+    {
+      label: 'Webhooks',
+      values: plans.map((p) => (p.monthlyPrice > 0)),
+    },
+    {
+      label: 'OTP System',
+      values: plans.map((p) => (p.monthlyPrice > 0)),
+    },
+    {
+      label: 'Cost Tracking',
+      values: plans.map((_, i) => i >= 2),
+    },
+    {
+      label: 'Custom Integrations',
+      values: plans.map((p, i) => (i === plans.length - 1 && p.monthlyPrice > 0)),
+    },
+    {
+      label: 'API Access',
+      values: plans.map(() => true),
+    },
+  ]
+
+  return (
+    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+      <div className="px-6 py-4 border-b border-white/[0.06]">
+        <h3 className="text-sm font-semibold text-white">Compare all features</h3>
+        <p className="text-xs text-gray-500 mt-0.5">See what each plan includes at a glance</p>
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-white/[0.06]">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5">Feature</th>
+              {plans.map((plan) => (
+                <th
+                  key={plan.planId}
+                  className={`px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider ${
+                    plan.popular ? 'text-blue-400' : 'text-gray-400'
+                  }`}
+                >
+                  {plan.name}
+                  {plan.popular && (
+                    <span className="ml-1.5 inline-block rounded-full bg-blue-500/20 px-1.5 py-0.5 text-[9px] text-blue-400">Popular</span>
+                  )}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/[0.04]">
+            {categories.map((cat, catIdx) => (
+              <tr key={cat.label} className={catIdx % 2 === 0 ? 'bg-white/[0.01]' : ''}>
+                <td className="px-6 py-3 text-xs font-medium text-gray-300">{cat.label}</td>
+                {cat.values.map((val, planIdx) => (
+                  <td key={plans[planIdx]?.planId ?? planIdx} className="px-4 py-3 text-center">
+                    {typeof val === 'boolean' ? (
+                      val ? (
+                        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-green-500/10">
+                          <Check className="h-3 w-3 text-green-400" />
+                        </span>
+                      ) : (
+                        <span className="text-gray-600">\u2014</span>
+                      )
+                    ) : (
+                      <span className="text-xs text-gray-300">{val}</span>
+                    )}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile stacked view */}
+      <div className="md:hidden">
+        {plans.map((plan, planIdx) => (
+          <div key={plan.planId} className={`border-b border-white/[0.06] last:border-b-0 ${plan.popular ? 'bg-blue-500/[0.03]' : ''}`}>
+            <div className="px-4 py-3 flex items-center justify-between">
+              <span className={`text-sm font-semibold ${plan.popular ? 'text-blue-400' : 'text-white'}`}>{plan.name}</span>
+              {plan.popular && (
+                <span className="rounded-full bg-blue-500/20 px-2 py-0.5 text-[9px] font-semibold text-blue-400">Popular</span>
+              )}
+            </div>
+            <div className="px-4 pb-3 space-y-2">
+              {categories.map((cat) => {
+                const val = cat.values[planIdx]
+                return (
+                  <div key={cat.label} className="flex items-center justify-between text-xs">
+                    <span className="text-gray-500">{cat.label}</span>
+                    {typeof val === 'boolean' ? (
+                      val ? (
+                        <Check className="h-3.5 w-3.5 text-green-400" />
+                      ) : (
+                        <span className="text-gray-600">\u2014</span>
+                      )
+                    ) : (
+                      <span className="text-gray-300">{String(val)}</span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
 
