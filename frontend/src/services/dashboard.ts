@@ -1,6 +1,6 @@
 import api from './api'
 import type { ApiResponse, PaginatedResponse } from '@/types/api'
-import type { DashboardStats, DailyChartData, Account, AnalyticsDaily, Webhook, Template, Plan, CircuitBreakerEvent, DeadLetter, FraudFlag, FeatureCatalogItem } from '@/types/models'
+import type { DashboardStats, DailyChartData, Account, AnalyticsDaily, Webhook, Template, Plan, CircuitBreakerEvent, DeadLetter, FraudFlag, FeatureCatalogItem, BIDashboard } from '@/types/models'
 
 // Dashboard stats (admin)
 export async function getDashboardStats(): Promise<DashboardStats> {
@@ -479,4 +479,12 @@ export async function toggleFeatureCatalogItem(id: string, active: boolean): Pro
 export async function deleteFeatureCatalogItem(id: string): Promise<void> {
   const res = await api.delete(`/admin/feature-catalog/${id}`)
   if (!res.data.success) throw new Error(res.data.error ?? 'Failed to delete feature')
+}
+
+// ─── BI Dashboard (admin) ────────────────────────────────────────
+
+export async function getBIDashboard(): Promise<BIDashboard> {
+  const res = await api.get<ApiResponse<BIDashboard>>('/admin/bi')
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load BI data')
+  return res.data.data
 }

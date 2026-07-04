@@ -270,6 +270,10 @@ func NewRouter(
 	mux.Handle("GET /api/v1/admin/contact-submissions", authMiddleware.AdminAuth(http.HandlerFunc(contactSalesHandler.ListSubmissions)))
 	mux.Handle("PUT /api/v1/admin/contact-submissions/{id}", authMiddleware.AdminAuth(http.HandlerFunc(contactSalesHandler.UpdateStatus)))
 
+	// BI dashboard routes
+	biHandler := handlers.NewBIHandler(pg.Pool)
+	mux.Handle("GET /api/v1/admin/bi", authMiddleware.AdminAuth(http.HandlerFunc(biHandler.GetBIDashboard)))
+
 	// Feature catalog routes
 	featureCatalogHandler := handlers.NewFeatureCatalogHandler(pg.Pool)
 	mux.HandleFunc("GET /api/v1/feature-catalog", featureCatalogHandler.List)

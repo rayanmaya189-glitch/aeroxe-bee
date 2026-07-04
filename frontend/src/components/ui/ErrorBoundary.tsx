@@ -1,5 +1,5 @@
 import { Component, type ReactNode } from 'react'
-import { Button } from './Button'
+import { AlertTriangle, RefreshCw, ArrowLeft } from 'lucide-react'
 
 interface Props {
   children: ReactNode
@@ -18,28 +18,38 @@ export class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error }
   }
 
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('[ErrorBoundary]', error, info.componentStack)
+  }
+
   render() {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback
       return (
         <div className="flex min-h-[400px] flex-col items-center justify-center p-8 text-center">
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-danger-100 dark:bg-danger-900/30">
-            <svg className="h-6 w-6 text-danger-600 dark:text-danger-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-            </svg>
+          <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10 ring-1 ring-red-500/20">
+            <AlertTriangle className="h-7 w-7 text-red-400" />
           </div>
-          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Something went wrong</h2>
-          <p className="mt-1 max-w-sm text-sm text-gray-500 dark:text-gray-400">
+          <h2 className="text-lg font-bold text-gray-100">Something went wrong</h2>
+          <p className="mt-2 max-w-md text-sm text-gray-400">
             {this.state.error?.message || 'An unexpected error occurred.'}
           </p>
-          <Button
-            variant="secondary"
-            size="sm"
-            className="mt-4"
-            onClick={() => this.setState({ hasError: false, error: null })}
-          >
-            Try again
-          </Button>
+          <div className="mt-6 flex gap-3">
+            <button
+              onClick={() => window.location.reload()}
+              className="inline-flex items-center gap-2 rounded-xl bg-white/[0.06] border border-white/[0.08] px-4 py-2.5 text-sm font-medium text-gray-300 transition-all hover:bg-white/[0.1] hover:text-white"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Reload page
+            </button>
+            <button
+              onClick={() => window.history.back()}
+              className="inline-flex items-center gap-2 rounded-xl bg-white/[0.06] border border-white/[0.08] px-4 py-2.5 text-sm font-medium text-gray-300 transition-all hover:bg-white/[0.1] hover:text-white"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Go back
+            </button>
+          </div>
         </div>
       )
     }

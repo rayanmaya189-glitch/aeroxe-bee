@@ -255,3 +255,23 @@ export interface FilterState {
   sortBy: string
   sortOrder: 'asc' | 'desc'
 }
+
+// BI Dashboard types
+export interface BIDashboard {
+  total_accounts: number
+  active_accounts: number
+  total_devices: number
+  online_devices: number
+  total_messages: number
+  total_delivered: number
+  total_failed: number
+  total_revenue: number
+  account_growth: { date: string; count: number }[]
+  top_accounts: { account_id: string; account_name: string; total_sent: number; delivered: number; failed: number }[]
+  device_fleet: { status: string; count: number }[]
+  routing_breakdown: { strategy: string; count: number }[]
+  type_breakdown: { type: string; count: number }[]
+  hourly_distribution: { hour: number; count: number }[]
+  delivery_trend: { date: string; count: number }[]
+  revenue_by_plan: { plan_id: string; plan_name: string; count: number; revenue: number }[]
+}

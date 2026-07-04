@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate, Outlet, type RouteObject } from 'react-r
 import { AppLayout } from '@/components/layouts/AppLayout'
 import { AuthLayout } from '@/components/layouts/AuthLayout'
 import { Skeleton } from '@/components/ui/Skeleton'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { useAuthStore } from '@/store/authStore'
 import { AdminRoute, MemberRoute } from './guards'
 
@@ -11,6 +12,7 @@ const RegisterPage = lazy(() => import('@/features/auth/pages/RegisterPage').the
 const DashboardPage = lazy(() => import('@/features/dashboard/pages/DashboardPage').then((m) => ({ default: m.DashboardPage })))
 const UsersPage = lazy(() => import('@/features/users/pages/UsersPage').then((m) => ({ default: m.UsersPage })))
 const AnalyticsPage = lazy(() => import('@/features/analytics/pages/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })))
+const BIDashboardPage = lazy(() => import('@/features/analytics/pages/BIDashboardPage').then((m) => ({ default: m.BIDashboardPage })))
 const SettingsPage = lazy(() => import('@/features/settings/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })))
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })))
 const MemberDashboardPage = lazy(() => import('@/features/member/pages/MemberDashboardPage').then((m) => ({ default: m.MemberDashboardPage })))
@@ -37,21 +39,23 @@ const ContactSalesPage = lazy(() => import('@/landing/pages/ContactSalesPage').t
 
 function LazyLoader({ children }: { children: React.ReactNode }) {
   return (
-    <Suspense
-      fallback={
-        <div className="space-y-4 p-6">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-4 w-64" />
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-32 rounded-2xl" variant="rectangular" />
-            ))}
+    <ErrorBoundary>
+      <Suspense
+        fallback={
+          <div className="space-y-4 p-6">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-64" />
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-32 rounded-2xl" variant="rectangular" />
+              ))}
+            </div>
           </div>
-        </div>
-      }
-    >
-      {children}
-    </Suspense>
+        }
+      >
+        {children}
+      </Suspense>
+    </ErrorBoundary>
   )
 }
 
@@ -130,6 +134,7 @@ const routes: RouteObject[] = [
           { path: 'accounts', element: <LazyLoader><AccountsPage /></LazyLoader> },
           { path: 'users', element: <LazyLoader><UsersPage /></LazyLoader> },
           { path: 'analytics', element: <LazyLoader><AnalyticsPage /></LazyLoader> },
+          { path: 'bi', element: <LazyLoader><BIDashboardPage /></LazyLoader> },
           { path: 'webhooks', element: <LazyLoader><WebhooksPage /></LazyLoader> },
           { path: 'templates', element: <LazyLoader><TemplatesPage /></LazyLoader> },
           { path: 'circuit-breakers', element: <LazyLoader><CircuitBreakersPage /></LazyLoader> },

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
+    "dev:clean": "rm -rf node_modules/.vite && vite --host 0.0.0.0",
     "prebuild": "node scripts/build-og-images.mjs",
     "build": "tsc -b && vite build",
     "lint": "oxlint",

@@ -6,7 +6,7 @@ import { useAuthStore } from '@/store/authStore'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { cn } from '@/utils/cn'
 import {
-  LayoutDashboard, Users, BarChart3, FileText, Webhook,
+  LayoutDashboard, TrendingUp, Users, BarChart3, FileText, Webhook,
   CreditCard, Settings, Zap, ChevronLeft, ChevronDown,
   MessageSquare, AlertTriangle, BrainCircuit, UserCog,
   Receipt, Crown, FileCheck, Shield, Tags,
@@ -34,6 +34,7 @@ const adminNavGroups: NavGroup[] = [
       { label: 'Accounts', path: '/accounts', icon: <Users className="h-[14px] w-[14px]" /> },
       { label: 'Users', path: '/users', icon: <UserCog className="h-[14px] w-[14px]" /> },
       { label: 'Analytics', path: '/analytics', icon: <BarChart3 className="h-[14px] w-[14px]" /> },
+      { label: 'BI Dashboard', path: '/bi', icon: <TrendingUp className="h-[14px] w-[14px]" /> },
     ],
   },
   {
