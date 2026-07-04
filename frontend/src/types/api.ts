@@ -13,6 +13,8 @@ export interface LoginRequest {
 export interface LoginResponse {
   token: string
   refreshToken?: string
+  requires_2fa?: boolean
+  two_fa_pending?: boolean
   user: {
     id: string
     email: string

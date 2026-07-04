@@ -5,15 +5,21 @@ export interface AuthUser {
   email: string
   name: string
   role: string
+  two_fa_enabled?: boolean
 }
 
 interface AuthState {
   user: AuthUser | null
   isAuthenticated: boolean
   isLoading: boolean
+  pending2FA: boolean
+  pending2FAEmail: string
   setUser: (user: AuthUser) => void
   setLoading: (loading: boolean) => void
   login: (token: string, refreshToken: string | undefined, user: AuthUser) => void
+  start2FA: (email: string) => void
+  complete2FA: (token: string, refreshToken: string | undefined, user: AuthUser) => void
+  cancel2FA: () => void
   logout: () => void
   hydrate: () => void
 }
@@ -22,6 +28,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isAuthenticated: false,
   isLoading: true,
+  pending2FA: false,
+  pending2FAEmail: '',
 
   setUser: (user) => set({ user, isAuthenticated: true }),
 
@@ -36,11 +44,28 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user, isAuthenticated: true, isLoading: false })
   },
 
+  start2FA: (email) => {
+    set({ pending2FA: true, pending2FAEmail: email })
+  },
+
+  complete2FA: (token, refreshToken, user) => {
+    sessionStorage.setItem('auth_token', token)
+    sessionStorage.setItem('auth_user', JSON.stringify(user))
+    if (refreshToken) {
+      sessionStorage.setItem('refresh_token', refreshToken)
+    }
+    set({ user, isAuthenticated: true, isLoading: false, pending2FA: false, pending2FAEmail: '' })
+  },
+
+  cancel2FA: () => {
+    set({ pending2FA: false, pending2FAEmail: '' })
+  },
+
   logout: () => {
     sessionStorage.removeItem('auth_token')
     sessionStorage.removeItem('auth_user')
     sessionStorage.removeItem('refresh_token')
-    set({ user: null, isAuthenticated: false, isLoading: false })
+    set({ user: null, isAuthenticated: false, isLoading: false, pending2FA: false, pending2FAEmail: '' })
   },
 
   hydrate: () => {
