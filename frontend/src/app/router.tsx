@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { createBrowserRouter, Navigate, Outlet, type RouteObject } from 'react-router-dom'
 import { AppLayout } from '@/components/layouts/AppLayout'
+import { AuthLayout } from '@/components/layouts/AuthLayout'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { useAuthStore } from '@/store/authStore'
 import { AdminRoute, MemberRoute } from './guards'
@@ -91,20 +92,25 @@ const routes: RouteObject[] = [
     ),
   },
   {
-    path: '/login',
-    element: (
-      <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><Skeleton className="h-96 w-96 rounded-2xl" variant="rectangular" /></div>}>
-        <LoginPage />
-      </Suspense>
-    ),
-  },
-  {
-    path: '/register',
-    element: (
-      <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><Skeleton className="h-96 w-96 rounded-2xl" variant="rectangular" /></div>}>
-        <RegisterPage />
-      </Suspense>
-    ),
+    element: <AuthLayout />,
+    children: [
+      {
+        path: '/login',
+        element: (
+          <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><Skeleton className="h-96 w-96 rounded-2xl" variant="rectangular" /></div>}>
+            <LoginPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: '/register',
+        element: (
+          <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><Skeleton className="h-96 w-96 rounded-2xl" variant="rectangular" /></div>}>
+            <RegisterPage />
+          </Suspense>
+        ),
+      },
+    ],
   },
   {
     path: '/',
