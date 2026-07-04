@@ -453,66 +453,35 @@ export function Pricing() {
   )
 }
 
+/**
+ * Single source of truth for comparison table rows.
+ * Each entry defines a label, a regex pattern to match against the plan's features array,
+ * and a render mode: 'value' shows the matched feature string, 'boolean' shows check/dash.
+ */
+const FEATURE_CATEGORIES: { label: string; pattern: RegExp; render: 'value' | 'boolean' }[] = [
+  { label: 'Monthly SMS', pattern: /SMS\/month/, render: 'value' },
+  { label: 'Daily SMS', pattern: /daily SMS/, render: 'value' },
+  { label: 'Devices', pattern: /device connection/, render: 'value' },
+  { label: 'Routing', pattern: /routing/, render: 'value' },
+  { label: 'Analytics', pattern: /analytics/, render: 'value' },
+  { label: 'Support', pattern: /support/, render: 'value' },
+  { label: 'Device Pool', pattern: /device pool/, render: 'value' },
+  { label: 'Webhooks', pattern: /webhook/, render: 'boolean' },
+  { label: 'OTP System', pattern: /OTP/, render: 'boolean' },
+  { label: 'Cost Tracking', pattern: /cost.*track/, render: 'boolean' },
+  { label: 'Integrations', pattern: /integration/, render: 'boolean' },
+  { label: 'API Access', pattern: /API access/, render: 'boolean' },
+]
+
 function FeatureComparisonTable({ plans, hoveredPlan, onHoveredPlanChange }: { plans: PricingPlan[]; hoveredPlan: string | null; onHoveredPlanChange: (planId: string | null) => void }) {
-  const categories = [
-    {
-      label: 'Monthly SMS',
-      values: plans.map((p) => formatQuota(p.monthlyQuota ?? 0)),
-    },
-    {
-      label: 'Daily SMS',
-      values: plans.map((p) => formatQuota(p.dailyQuota ?? 0)),
-    },
-    {
-      label: 'Device Connections',
-      values: plans.map((p) => String(p.maxDevices ?? 0)),
-    },
-    {
-      label: 'Routing Strategy',
-      values: plans.map((p) => {
-        const map: Record<string, string> = {
-          fastest_delivery: 'Fastest',
-          lowest_cost: 'Lowest Cost',
-          highest_reliability: 'Reliability',
-          geo_affinity: 'Geo-Affinity',
-          profit_optimized: 'Profit-Optimized',
-        }
-        return map[p.routingStrategy ?? ''] ?? 'Standard'
-      }),
-    },
-    {
-      label: 'Analytics',
-      values: plans.map((_, i) => (i === 0 ? 'Basic' : i <= 1 ? 'Advanced' : 'Full Suite')),
-    },
-    {
-      label: 'Support',
-      values: plans.map((_, i) => (i === 0 ? 'Community' : i <= 1 ? 'Priority' : i <= 2 ? 'Dedicated' : 'Dedicated + SLA')),
-    },
-    {
-      label: 'Device Pool',
-      values: plans.map((p) => (p.dedicatedPool ? 'Dedicated' : 'Shared')),
-    },
-    {
-      label: 'Webhooks',
-      values: plans.map((p) => (p.monthlyPrice > 0)),
-    },
-    {
-      label: 'OTP System',
-      values: plans.map((p) => (p.monthlyPrice > 0)),
-    },
-    {
-      label: 'Cost Tracking',
-      values: plans.map((_, i) => i >= 2),
-    },
-    {
-      label: 'Custom Integrations',
-      values: plans.map((p, i) => (i === plans.length - 1 && p.monthlyPrice > 0)),
-    },
-    {
-      label: 'API Access',
-      values: plans.map(() => true),
-    },
-  ]
+  // Derive comparison rows from plans' features arrays using FEATURE_CATEGORIES patterns
+  const categories = FEATURE_CATEGORIES.map((cat) => ({
+    label: cat.label,
+    values: plans.map((plan) => {
+      const feature = (plan.features ?? []).find((f) => cat.pattern.test(f))
+      return cat.render === 'boolean' ? feature !== undefined : (feature ?? '\u2014')
+    }),
+  }))
 
   return (
     <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
