@@ -31,10 +31,12 @@ class MqttService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var deviceId: String = ""
     private var heartbeatJob: Job? = null
+    private var connectionMonitorJob: Job? = null
+    private var isReconnecting = false
 
     override fun onCreate() {
         super.onCreate()
-        startForeground(NOTIFICATION_ID, createNotification())
+        startForeground(NOTIFICATION_ID, createNotification("Connecting..."))
 
         deviceId = tokenManager.getDeviceId() ?: ""
         val brokerUrl = tokenManager.getMqttBrokerUrl()
@@ -44,13 +46,7 @@ class MqttService : Service() {
             return
         }
 
-        val username = tokenManager.getMqttUsername()
-        val password = tokenManager.getMqttPassword()
-        val clientId = "textbee_android_$deviceId"
-        mqttManager.connect(brokerUrl, clientId, username, password)
-
-        mqttManager.subscribe("devices/$deviceId/commands")
-        mqttManager.subscribe("devices/$deviceId/pong")
+        connectAndSubscribe()
 
         scope.launch {
             mqttManager.messages.collect { payload ->
@@ -58,12 +54,61 @@ class MqttService : Service() {
             }
         }
 
+        startConnectionMonitor()
         startHeartbeat()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    private fun connectAndSubscribe() {
+        val brokerUrl = tokenManager.getMqttBrokerUrl() ?: return
+        val username = tokenManager.getMqttUsername()
+        val password = tokenManager.getMqttPassword()
+        val clientId = "textbee_android_$deviceId"
+
+        mqttManager.connect(brokerUrl, clientId, username, password)
+        // Subscriptions are tracked by MqttManager and auto-resubscribed on reconnect
+        mqttManager.subscribe("devices/$deviceId/commands")
+        mqttManager.subscribe("devices/$deviceId/pong")
+
+        isReconnecting = false
+        updateNotification("Connected to broker")
+    }
+
+    private fun startConnectionMonitor() {
+        connectionMonitorJob = scope.launch {
+            mqttManager.connectionState.collect { connected ->
+                if (!connected && !isReconnecting) {
+                    isReconnecting = true
+                    updateNotification("Reconnecting...")
+                    android.util.Log.w(TAG, "MQTT disconnected, waiting for auto-reconnect...")
+                    // MqttManager handles reconnection via scheduleReconnect
+                    // Just update the notification and wait
+                } else if (connected) {
+                    updateNotification("Connected to broker")
+                    android.util.Log.i(TAG, "MQTT reconnected")
+                }
+            }
+        }
+    }
+
+    private fun updateNotification(text: String) {
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val notification = NotificationCompat.Builder(this, CHANNEL_MQTT)
+            .setContentTitle("AeroXe Bee MQTT")
+            .setContentText(text)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentIntent(pendingIntent)
+            .setOngoing(true)
+            .build()
+        startForeground(NOTIFICATION_ID, notification)
+    }
+
     override fun onDestroy() {
+        connectionMonitorJob?.cancel()
         heartbeatJob?.cancel()
         scope.cancel()
         mqttManager.destroy()
@@ -139,14 +184,14 @@ class MqttService : Service() {
         }
     }
 
-    private fun createNotification(): Notification {
+    private fun createNotification(text: String = "Connected to message broker"): Notification {
         val pendingIntent = PendingIntent.getActivity(
             this, 0, Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         return NotificationCompat.Builder(this, CHANNEL_MQTT)
-            .setContentTitle("TextBee MQTT")
-            .setContentText("Connected to message broker")
+            .setContentTitle("AeroXe Bee MQTT")
+            .setContentText(text)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
@@ -154,6 +199,7 @@ class MqttService : Service() {
     }
 
     companion object {
+        private const val TAG = "MqttService"
         private const val NOTIFICATION_ID = 1002
         const val CHANNEL_MQTT = "textbee_mqtt_service"
         private const val HEARTBEAT_INTERVAL_MS = 30_000L
