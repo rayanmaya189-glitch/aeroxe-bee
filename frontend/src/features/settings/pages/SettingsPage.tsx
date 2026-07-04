@@ -13,7 +13,7 @@ import { staggerContainer, fadeInUp, itemVariants } from '@/components/animation
 import { QRCodeSVG } from 'qrcode.react'
 import {
   Settings, User, Lock, ShieldCheck, Bell, FileCheck,
-  Eye, EyeOff, CheckCircle, AlertTriangle, Monitor, Smartphone, Globe, Trash2, Key, Plus, Copy, CopyCheck,
+  Eye, EyeOff, CheckCircle, AlertTriangle, Monitor, Smartphone, Globe, Trash2, Key, Plus, Copy, CopyCheck, ChevronRight, Terminal, Info,
 } from 'lucide-react'
 
 type Msg = { type: 'success' | 'error'; text: string } | null
@@ -103,6 +103,8 @@ export function SettingsPage() {
   const [createKeyLoading, setCreateKeyLoading] = useState(false)
   const [createdKeyValue, setCreatedKeyValue] = useState<string | null>(null)
   const [copiedKey, setCopiedKey] = useState(false)
+  const [detailKey, setDetailKey] = useState<ApiKeyInfo | null>(null)
+  const [copiedExample, setCopiedExample] = useState(false)
 
   // KYC
   const [kycStatus, setKycStatus] = useState<string>('not_submitted')
@@ -375,6 +377,55 @@ export function SettingsPage() {
     )
   }
 
+  // Scope descriptions for detail view
+  const scopeDescriptions: Record<string, { label: string; description: string }> = {
+    send:   { label: 'Send messages', description: 'Allows sending SMS messages via POST /api/v1/send' },
+    read:   { label: 'Read messages', description: 'Allows listing and reading message history via GET /api/v1/messages' },
+    otp:    { label: 'Send & verify OTP', description: 'Allows sending and verifying one-time passwords via /api/v1/otp/*' },
+    webhook: { label: 'Webhook access', description: 'Allows managing webhook endpoints for delivery notifications' },
+  }
+
+  function generateUsageExample(key: ApiKeyInfo): string {
+    const scopes = key.scopes || []
+    if (scopes.includes('send')) {
+      return `curl -X POST https://api.aeroxe.com/api/v1/send \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "recipient": "+1234567890",
+    "message": "Hello from AeroXe!",
+    "message_type": "transactional",
+    "idempotency_key": "unique-req-001"
+  }'`
+    }
+    if (scopes.includes('otp')) {
+      return `# Send OTP
+curl -X POST https://api.aeroxe.com/api/v1/otp/send \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"phone": "+1234567890", "length": 6}'
+
+# Verify OTP
+curl -X POST https://api.aeroxe.com/api/v1/otp/verify \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"phone": "+1234567890", "code": "123456"}'`
+    }
+    if (scopes.includes('read')) {
+      return `curl https://api.aeroxe.com/api/v1/messages \
+  -H "Authorization: Bearer YOUR_API_KEY"`
+    }
+    return `# Use this key with the AeroXe API
+curl https://api.aeroxe.com/api/v1/health \
+  -H "Authorization: Bearer YOUR_API_KEY"`
+  }
+
+  async function handleCopyExample(text: string) {
+    await navigator.clipboard.writeText(text)
+    setCopiedExample(true)
+    setTimeout(() => setCopiedExample(false), 2000)
+  }
+
   // KYC submit
   async function handleKYCSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -598,7 +649,7 @@ export function SettingsPage() {
               ) : (
                 <div className="space-y-2">
                   {apiKeys.map((key) => (
-                    <div key={key.id} className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+                    <button key={key.id} onClick={() => setDetailKey(key)} className="flex w-full items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 text-left transition-colors hover:bg-white/[0.04] hover:border-white/[0.1] cursor-pointer">
                       <div className="flex items-center gap-3">
                         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/[0.05]">
                           <Key className="h-4 w-4 text-orange-400" />
@@ -612,10 +663,13 @@ export function SettingsPage() {
                           </div>
                         </div>
                       </div>
-                      <Button variant="ghost" size="xs" className="text-gray-500 hover:text-red-400" onClick={() => handleRevokeApiKey(key.id)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="xs" className="text-gray-500 hover:text-red-400" onClick={(e) => { e.stopPropagation(); handleRevokeApiKey(key.id) }}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                        <ChevronRight className="h-4 w-4 text-gray-600" />
+                      </div>
+                    </button>
                   ))}
                 </div>
               )}
@@ -811,6 +865,82 @@ export function SettingsPage() {
           </div>
         </form>
       </Modal>
+      {/* ─── API Key Detail Modal ─── */}
+      <Modal open={!!detailKey} onClose={() => { setDetailKey(null); setCopiedExample(false) }} title="API key details">
+        {detailKey && (() => {
+          const example = generateUsageExample(detailKey)
+          return (
+            <div className="space-y-5">
+              {/* Key info */}
+              <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-semibold text-gray-200">{detailKey.label}</h4>
+                  <Badge variant="success" size="sm">Active</Badge>
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <p className="text-gray-500">Created</p>
+                    <p className="text-gray-300">{new Date(detailKey.created_at).toLocaleDateString()} at {new Date(detailKey.created_at).toLocaleTimeString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Expires</p>
+                    <p className="text-gray-300">{detailKey.expires_at ? new Date(detailKey.expires_at).toLocaleDateString() : 'Never'}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-gray-500">Key ID</p>
+                    <p className="font-mono text-gray-400 text-[11px] break-all">{detailKey.id}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Scope details */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Info className="h-4 w-4 text-blue-400" />
+                  <h4 className="text-sm font-semibold text-gray-200">Permissions</h4>
+                </div>
+                <div className="space-y-2">
+                  {(detailKey.scopes || []).map((scope) => {
+                    const meta = scopeDescriptions[scope]
+                    return (
+                      <div key={scope} className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                          <p className="text-xs font-medium text-gray-200">{meta?.label ?? scope}</p>
+                        </div>
+                        <p className="text-[11px] text-gray-500 ml-3.5">{meta?.description ?? `Scope: ${scope}`}</p>
+                      </div>
+                    )
+                  })}
+                  {(!detailKey.scopes || detailKey.scopes.length === 0) && (
+                    <p className="text-xs text-gray-500">No scopes configured</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Usage example */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Terminal className="h-4 w-4 text-purple-400" />
+                    <h4 className="text-sm font-semibold text-gray-200">Usage example</h4>
+                  </div>
+                  <button onClick={() => handleCopyExample(example)} className="flex items-center gap-1.5 rounded-lg bg-white/[0.06] px-2.5 py-1 text-[11px] text-gray-400 hover:text-white transition-colors">
+                    {copiedExample ? <CopyCheck className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                    {copiedExample ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+                <pre className="overflow-x-auto rounded-xl border border-white/[0.06] bg-black/30 p-3 text-[11px] leading-relaxed text-gray-300 font-mono">
+                  {example}
+                </pre>
+              </div>
+
+              <Button variant="ghost" size="sm" className="w-full" onClick={() => { setDetailKey(null); setCopiedExample(false) }}>Close</Button>
+            </div>
+          )
+        })()}
+      </Modal>
+
       {/* ─── Create API Key Modal ─── */}
       <Modal open={showCreateKey} onClose={() => setShowCreateKey(false)} title="Create API key">
         <form onSubmit={handleCreateApiKey} className="space-y-4">
