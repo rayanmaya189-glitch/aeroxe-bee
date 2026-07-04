@@ -33,6 +33,13 @@ class MqttManager @Inject constructor(
     private var isConnected = false
     private val scope = CoroutineScope(Dispatchers.IO + Job())
     private var reconnectDelay = RECONNECT_DELAY_MS
+    private val subscribedTopics = mutableSetOf<String>()
+
+    // Store connection params for resubscribe after reconnect
+    private var lastBrokerUrl: String? = null
+    private var lastClientId: String? = null
+    private var lastUsername: String? = null
+    private var lastPassword: String? = null
 
     private val _messages = MutableSharedFlow<String>(replay = 0, extraBufferCapacity = 64)
     val messages: SharedFlow<String> = _messages
@@ -45,6 +52,7 @@ class MqttManager @Inject constructor(
             Log.w(TAG, "Connection lost: ${cause?.message}")
             isConnected = false
             _connectionState.tryEmit(false)
+            scheduleReconnect()
         }
 
         override fun messageArrived(topic: String, message: MqttMessage) {
@@ -59,6 +67,12 @@ class MqttManager @Inject constructor(
     }
 
     fun connect(brokerUrl: String, clientId: String, username: String? = null, password: String? = null) {
+        // Store connection params for resubscribe after reconnect
+        lastBrokerUrl = brokerUrl
+        lastClientId = clientId
+        lastUsername = username
+        lastPassword = password
+
         try {
             if (client?.isConnected == true) disconnect()
 
@@ -74,6 +88,7 @@ class MqttManager @Inject constructor(
                 connectionTimeout = CONNECT_TIMEOUT
                 keepAliveInterval = KEEP_ALIVE
                 isAutomaticReconnect = true
+                maxReconnectDelay = MAX_RECONNECT_DELAY.toInt()
                 username?.let { userName = it }
                 password?.let { this.password = it.toCharArray() }
             }
@@ -83,6 +98,9 @@ class MqttManager @Inject constructor(
             reconnectDelay = RECONNECT_DELAY_MS
             _connectionState.tryEmit(true)
             Log.i(TAG, "MQTT connected to $brokerUrl")
+
+            // Resubscribe to all previously subscribed topics
+            resubscribeAll()
         } catch (e: Exception) {
             Log.e(TAG, "MQTT connect failed: ${e.message}")
             scheduleReconnect()
@@ -91,6 +109,7 @@ class MqttManager @Inject constructor(
 
     fun subscribe(topic: String) {
         try {
+            subscribedTopics.add(topic)
             client?.subscribe(topic, QOS)
             Log.d(TAG, "Subscribed to $topic")
         } catch (e: Exception) {
@@ -98,12 +117,25 @@ class MqttManager @Inject constructor(
         }
     }
 
-    fun publish(topic: String, payload: String) {
+    fun publish(topic: String, payload: String, timeoutMs: Long = 5000L): Boolean {
         try {
             val message = MqttMessage(payload.toByteArray()).apply { qos = QOS }
-            client?.publish(topic, message)
+            val token = client?.publish(topic, message)
+            if (token != null) {
+                token.waitFor(timeoutMs)
+                if (!token.isComplete) {
+                    Log.w(TAG, "Publish timeout on $topic after ${timeoutMs}ms")
+                    return false
+                }
+                if (token.exception != null) {
+                    Log.e(TAG, "Publish failed on $topic: ${token.exception?.message}")
+                    return false
+                }
+            }
+            return true
         } catch (e: Exception) {
             Log.e(TAG, "Publish failed: ${e.message}")
+            return false
         }
     }
 
@@ -113,10 +145,27 @@ class MqttManager @Inject constructor(
             client?.close()
         } catch (_: Exception) {}
         isConnected = false
+        subscribedTopics.clear()
         _connectionState.tryEmit(false)
     }
 
     fun isConnected(): Boolean = isConnected
+
+    private fun resubscribeAll() {
+        if (subscribedTopics.isEmpty()) return
+        scope.launch {
+            // Small delay to ensure subscription registers after reconnect
+            delay(500)
+            for (topic in subscribedTopics) {
+                try {
+                    client?.subscribe(topic, QOS)
+                    Log.i(TAG, "Resubscribed to $topic after reconnect")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Resubscribe failed for $topic: ${e.message}")
+                }
+            }
+        }
+    }
 
     private fun scheduleReconnect() {
         if (isConnected) return
@@ -124,9 +173,13 @@ class MqttManager @Inject constructor(
             delay(reconnectDelay)
             reconnectDelay = (reconnectDelay * 2).coerceAtMost(MAX_RECONNECT_DELAY)
             Log.i(TAG, "Reconnecting in ${reconnectDelay}ms...")
+            val url = lastBrokerUrl ?: client?.serverURI ?: return@launch
+            val id = lastClientId ?: client?.clientId ?: return@launch
             connect(
-                brokerUrl = client?.serverURI ?: return@launch,
-                clientId = client?.clientId ?: return@launch,
+                brokerUrl = url,
+                clientId = id,
+                username = lastUsername,
+                password = lastPassword,
             )
         }
     }
