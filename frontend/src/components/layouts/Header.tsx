@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useAuthStore } from '@/store/authStore'
 import { useUIStore } from '@/store/uiStore'
 import { logout } from '@/services/auth'
-import { LogOut, Settings, ChevronDown } from 'lucide-react'
+import { LogOut, Settings, ChevronDown, Menu } from 'lucide-react'
 
 export function Header() {
   const navigate = useNavigate()
@@ -41,66 +41,87 @@ export function Header() {
   return (
     <header className="glass-header fixed top-0 right-0 z-30 h-16 border-b border-white/[0.06]">
       <div className="flex h-full items-center justify-between px-6">
+        {/* Mobile menu toggle */}
         <button
           onClick={() => setSidebarOpen(true)}
-          className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-white/5 hover:text-gray-300 lg:hidden"
+          className="rounded-xl p-2 text-gray-400 transition-colors hover:bg-white/5 hover:text-gray-300 lg:hidden"
         >
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-          </svg>
+          <Menu className="h-5 w-5" />
         </button>
 
         <div className="flex-1" />
 
+        {/* User dropdown trigger */}
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="flex items-center gap-3 rounded-lg p-1.5 transition-all duration-200 hover:bg-white/5"
+            className="group flex items-center gap-3 rounded-xl p-1.5 transition-all duration-200 hover:bg-white/[0.04]"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-xs font-bold text-white shadow-lg shadow-blue-500/20">
-              {initials}
+            {/* Avatar */}
+            <div className="relative">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-purple-500 to-cyan-500 text-xs font-bold text-white shadow-lg shadow-blue-500/20 ring-2 ring-white/[0.08] transition-shadow duration-200 group-hover:ring-white/[0.15]">
+                {initials}
+              </div>
+              {/* Online indicator */}
+              <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#0a0f1e] bg-emerald-400" />
             </div>
+
+            {/* Name & role */}
             <div className="hidden text-left sm:block">
-              <p className="text-sm font-medium text-gray-200">
+              <p className="text-sm font-medium text-gray-200 transition-colors group-hover:text-white">
                 {user?.name || 'User'}
               </p>
               <p className="text-xs text-gray-500">
                 {user?.role || 'member'}
               </p>
             </div>
-            <ChevronDown className="h-4 w-4 text-gray-500 transition-transform duration-200" style={{ transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)' }} />
+
+            {/* Chevron */}
+            <ChevronDown className="h-4 w-4 text-gray-500 transition-all duration-200 group-hover:text-gray-300" style={{ transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)' }} />
           </button>
 
+          {/* Dropdown menu */}
           <AnimatePresence>
             {dropdownOpen && (
               <motion.div
                 initial={{ opacity: 0, y: 8, scale: 0.96 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
-                className="absolute right-0 top-full mt-2 w-56 overflow-hidden rounded-xl border border-white/[0.08] bg-[#0f1525] shadow-2xl shadow-black/40 backdrop-blur-xl"
+                transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                className="absolute right-0 top-full mt-2 w-64 overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0f1525] shadow-2xl shadow-black/50 backdrop-blur-xl"
               >
-                <div className="border-b border-white/[0.06] px-4 py-3">
-                  <p className="text-sm font-medium text-gray-200">
+                {/* Ambient glow */}
+                <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-blue-500/10 blur-3xl" />
+                <div className="pointer-events-none absolute -left-8 bottom-0 h-20 w-20 rounded-full bg-purple-500/10 blur-3xl" />
+
+                {/* User info */}
+                <div className="relative border-b border-white/[0.06] px-4 py-3.5">
+                  <p className="text-sm font-semibold text-gray-100">
                     {user?.name || 'User'}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="mt-0.5 text-xs text-gray-500">
                     {user?.email || ''}
                   </p>
                 </div>
-                <div className="py-1.5">
+
+                {/* Menu items */}
+                <div className="relative py-1.5">
                   <button
                     onClick={() => { navigate('/settings'); setDropdownOpen(false) }}
-                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-gray-400 transition-colors hover:bg-white/5 hover:text-gray-200"
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-gray-400 transition-colors hover:bg-white/[0.05] hover:text-gray-200"
                   >
-                    <Settings className="h-4 w-4" />
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/[0.05] ring-1 ring-white/[0.06]">
+                      <Settings className="h-3.5 w-3.5" />
+                    </div>
                     Settings
                   </button>
                   <button
                     onClick={handleLogout}
                     className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-gray-400 transition-colors hover:bg-red-500/10 hover:text-red-400"
                   >
-                    <LogOut className="h-4 w-4" />
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-500/10 ring-1 ring-red-500/20">
+                      <LogOut className="h-3.5 w-3.5" />
+                    </div>
                     Sign out
                   </button>
                 </div>
