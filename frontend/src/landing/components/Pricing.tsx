@@ -175,6 +175,7 @@ export function Pricing() {
   const [annual, setAnnual] = useState(false)
   const [plans, setPlans] = useState<PricingPlan[]>([...PRICING_PLANS])
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
+  const [hoveredPlan, setHoveredPlan] = useState<string | null>(null)
   const [paymentMethods, setPaymentMethods] = useState<{ method: string; label: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.1 })
@@ -298,6 +299,8 @@ export function Pricing() {
                         setSelectedPlan(plan.planId)
                       }
                     }}
+                    onMouseEnter={() => setHoveredPlan(plan.planId)}
+                    onMouseLeave={() => setHoveredPlan(null)}
                     role="button"
                     tabIndex={0}
                     className="relative cursor-pointer"
@@ -414,7 +417,7 @@ export function Pricing() {
           {/* Feature comparison table */}
           {!loading && plans.length > 0 && (
             <motion.div variants={fadeInUp} className="mt-16">
-              <FeatureComparisonTable plans={plans} />
+              <FeatureComparisonTable plans={plans} hoveredPlan={hoveredPlan} onHoveredPlanChange={setHoveredPlan} />
             </motion.div>
           )}
 
@@ -450,7 +453,7 @@ export function Pricing() {
   )
 }
 
-function FeatureComparisonTable({ plans }: { plans: PricingPlan[] }) {
+function FeatureComparisonTable({ plans, hoveredPlan, onHoveredPlanChange }: { plans: PricingPlan[]; hoveredPlan: string | null; onHoveredPlanChange: (planId: string | null) => void }) {
   const categories = [
     {
       label: 'Monthly SMS',
@@ -527,8 +530,17 @@ function FeatureComparisonTable({ plans }: { plans: PricingPlan[] }) {
               {plans.map((plan) => (
                 <th
                   key={plan.planId}
-                  className={`px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider ${
-                    plan.popular ? 'text-blue-400' : 'text-gray-400'
+                  onMouseEnter={() => onHoveredPlanChange(plan.planId)}
+                  onMouseLeave={() => onHoveredPlanChange(null)}
+                  onFocus={() => onHoveredPlanChange(plan.planId)}
+                  onBlur={() => onHoveredPlanChange(null)}
+                  tabIndex={0}
+                  className={`px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider transition-colors duration-200 ${
+                    hoveredPlan === plan.planId
+                      ? 'bg-white/[0.04] text-white'
+                      : plan.popular
+                        ? 'text-blue-400'
+                        : 'text-gray-400'
                   }`}
                 >
                   {plan.name}
@@ -567,7 +579,7 @@ function FeatureComparisonTable({ plans }: { plans: PricingPlan[] }) {
       {/* Mobile stacked view */}
       <div className="md:hidden">
         {plans.map((plan, planIdx) => (
-          <div key={plan.planId} className={`border-b border-white/[0.06] last:border-b-0 ${plan.popular ? 'bg-blue-500/[0.03]' : ''}`}>
+          <div key={plan.planId} className="border-b border-white/[0.06] last:border-b-0">
             <div className="px-4 py-3 flex items-center justify-between">
               <span className={`text-sm font-semibold ${plan.popular ? 'text-blue-400' : 'text-white'}`}>{plan.name}</span>
               {plan.popular && (
