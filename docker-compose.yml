@@ -66,7 +66,7 @@ services:
       DB_NAME: textbee
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      MQTT_BROKER: 192.168.18.13
+      MQTT_BROKER: mosquitto
       MQTT_PORT: 1883
       MQTT_USERNAME: backend
       MQTT_PASSWORD: dev-backend-password
