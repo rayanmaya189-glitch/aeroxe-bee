@@ -7,9 +7,9 @@ import { useIsMobile } from '@/hooks/useMediaQuery'
 import { cn } from '@/utils/cn'
 import {
   LayoutDashboard, Users, BarChart3, FileText, Webhook,
-  CreditCard, Settings, Zap, ChevronLeft,
+  CreditCard, Settings, Zap, ChevronLeft, ChevronDown,
   MessageSquare, AlertTriangle, BrainCircuit, UserCog,
-  Receipt, Crown, FileCheck,
+  Receipt, Crown, FileCheck, Shield,
 } from 'lucide-react'
 
 interface NavItem {
@@ -19,21 +19,50 @@ interface NavItem {
   adminOnly?: boolean
 }
 
-const adminNav: NavItem[] = [
-  { label: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard className="h-[18px] w-[18px]" /> },
-  { label: 'Accounts', path: '/accounts', icon: <Users className="h-[18px] w-[18px]" />, adminOnly: true },
-  { label: 'Users', path: '/users', icon: <UserCog className="h-[18px] w-[18px]" />, adminOnly: true },
-  { label: 'Analytics', path: '/analytics', icon: <BarChart3 className="h-[18px] w-[18px]" />, adminOnly: true },
-  { label: 'Templates', path: '/templates', icon: <FileText className="h-[18px] w-[18px]" />, adminOnly: true },
-  { label: 'Webhooks', path: '/webhooks', icon: <Webhook className="h-[18px] w-[18px]" />, adminOnly: true },
-  { label: 'Plans', path: '/plans', icon: <Receipt className="h-[18px] w-[18px]" />, adminOnly: true },
-  { label: 'Billing', path: '/billing', icon: <CreditCard className="h-[18px] w-[18px]" />, adminOnly: true },
-  { label: 'Billing Settings', path: '/billing-settings', icon: <Settings className="h-[18px] w-[18px]" />, adminOnly: true },
-  { label: 'Subscriptions', path: '/admin/subscriptions', icon: <Crown className="h-[18px] w-[18px]" />, adminOnly: true },
-  { label: 'Circuit Breakers', path: '/circuit-breakers', icon: <BrainCircuit className="h-[18px] w-[18px]" />, adminOnly: true },
-  { label: 'Dead Letters', path: '/dead-letters', icon: <MessageSquare className="h-[18px] w-[18px]" />, adminOnly: true },
-  { label: 'Fraud Flags', path: '/fraud-flags', icon: <AlertTriangle className="h-[18px] w-[18px]" />, adminOnly: true },
-  { label: 'KYC Reviews', path: '/kyc-reviews', icon: <FileCheck className="h-[18px] w-[18px]" />, adminOnly: true },
+interface NavGroup {
+  label: string
+  icon: React.ReactNode
+  items: NavItem[]
+}
+
+// Flat list is only used for non-grouped top-level items
+const adminNavGroups: NavGroup[] = [
+  {
+    label: 'Management',
+    icon: <Users className="h-[18px] w-[18px]" />,
+    items: [
+      { label: 'Accounts', path: '/accounts', icon: <Users className="h-[14px] w-[14px]" /> },
+      { label: 'Users', path: '/users', icon: <UserCog className="h-[14px] w-[14px]" /> },
+      { label: 'Analytics', path: '/analytics', icon: <BarChart3 className="h-[14px] w-[14px]" /> },
+    ],
+  },
+  {
+    label: 'Content',
+    icon: <FileText className="h-[18px] w-[18px]" />,
+    items: [
+      { label: 'Templates', path: '/templates', icon: <FileText className="h-[14px] w-[14px]" /> },
+      { label: 'Webhooks', path: '/webhooks', icon: <Webhook className="h-[14px] w-[14px]" /> },
+    ],
+  },
+  {
+    label: 'Billing',
+    icon: <CreditCard className="h-[18px] w-[18px]" />,
+    items: [
+      { label: 'Plans', path: '/plans', icon: <Receipt className="h-[14px] w-[14px]" /> },
+      { label: 'Billing Settings', path: '/billing-settings', icon: <Settings className="h-[14px] w-[14px]" /> },
+      { label: 'Subscriptions', path: '/admin/subscriptions', icon: <Crown className="h-[14px] w-[14px]" /> },
+    ],
+  },
+  {
+    label: 'Operations',
+    icon: <Shield className="h-[18px] w-[18px]" />,
+    items: [
+      { label: 'Circuit Breakers', path: '/circuit-breakers', icon: <BrainCircuit className="h-[14px] w-[14px]" /> },
+      { label: 'Dead Letters', path: '/dead-letters', icon: <MessageSquare className="h-[14px] w-[14px]" /> },
+      { label: 'Fraud Flags', path: '/fraud-flags', icon: <AlertTriangle className="h-[14px] w-[14px]" /> },
+      { label: 'KYC Reviews', path: '/kyc-reviews', icon: <FileCheck className="h-[14px] w-[14px]" /> },
+    ],
+  },
 ]
 
 const memberNav: NavItem[] = [
@@ -68,7 +97,8 @@ export function Sidebar() {
   const isAdmin = user?.role === 'admin' || user?.role === 'staff'
   const [hoveredItem, setHoveredItem] = useState<string | null>(null)
 
-  const navItems = isAdmin ? adminNav : memberNav
+  const navItems = isAdmin ? [] : memberNav  // admin uses groups now
+  const navGroups = isAdmin ? adminNavGroups : []
   const isActive = (path: string) => {
     if (path === '/dashboard' || path === '/member') {
       return location.pathname === path
@@ -107,6 +137,7 @@ export function Sidebar() {
             >
               <SidebarContent
                 navItems={navItems}
+                navGroups={navGroups}
                 bottomNav={bottomNav}
                 isActive={isActive}
                 hoveredItem={hoveredItem}
@@ -129,6 +160,7 @@ export function Sidebar() {
     >
       <SidebarContent
         navItems={navItems}
+        navGroups={navGroups}
         bottomNav={bottomNav}
         isActive={isActive}
         hoveredItem={hoveredItem}
@@ -141,8 +173,138 @@ export function Sidebar() {
   )
 }
 
+function SidebarGroupedNav({
+  groups,
+  isActive,
+  hoveredItem,
+  setHoveredItem,
+  onNavClick,
+  collapsed,
+}: {
+  groups: NavGroup[]
+  isActive: (path: string) => boolean
+  hoveredItem: string | null
+  setHoveredItem: (v: string | null) => void
+  onNavClick: (path: string) => void
+  collapsed: boolean
+}) {
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(null)
+
+
+
+  return (
+    <div className="space-y-1">
+      {groups.map((group) => {
+        const isExpanded = expandedGroup === group.label || group.items.some((item) => isActive(item.path))
+        const hasActiveChild = group.items.some((item) => isActive(item.path))
+
+        if (collapsed) {
+          // Collapsed: show first active item or group icon as tooltip
+          const activeItem = group.items.find((item) => isActive(item.path))
+          const displayItem = activeItem ?? group.items[0]
+          if (!displayItem) return null
+          return (
+            <motion.button
+              key={group.label}
+              onClick={() => onNavClick(displayItem.path)}
+              onMouseEnter={() => setHoveredItem(`group-${group.label}`)}
+              onMouseLeave={() => setHoveredItem(null)}
+              className={cn(
+                'group relative flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200',
+                hasActiveChild
+                  ? 'bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-white'
+                  : 'text-gray-400 hover:bg-white/5 hover:text-gray-200',
+              )}
+            >
+              {hasActiveChild && (
+                <motion.div
+                  layoutId="sidebar-active"
+                  className="absolute inset-0 rounded-lg bg-gradient-to-r from-blue-500/10 to-purple-500/10"
+                  transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+                />
+              )}
+              <span className={cn(
+                'relative z-10 shrink-0 transition-colors',
+                hasActiveChild ? 'text-blue-400' : 'text-gray-500 group-hover:text-gray-300',
+              )}>
+                {group.icon}
+              </span>
+              <AnimatePresence>
+                {hoveredItem === `group-${group.label}` && (
+                  <motion.div
+                    initial={{ opacity: 0, x: -4, scale: 0.96 }}
+                    animate={{ opacity: 1, x: 0, scale: 1 }}
+                    exit={{ opacity: 0, x: -4, scale: 0.96 }}
+                    className="absolute left-full z-50 ml-2 rounded-xl border border-white/[0.08] bg-[#0f1525] px-2.5 py-1.5 text-xs font-medium text-white shadow-xl shadow-black/30 backdrop-blur-xl"
+                  >
+                    {group.label}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.button>
+          )
+        }
+
+        return (
+          <div key={group.label} className="mb-1">
+            <button
+              onClick={() => setExpandedGroup(isExpanded ? null : group.label)}
+              className={cn(
+                'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200',
+                hasActiveChild ? 'text-gray-200' : 'text-gray-400 hover:text-gray-200',
+              )}
+            >
+              <span className={cn('shrink-0 transition-colors', hasActiveChild ? 'text-blue-400' : 'text-gray-500')}>
+                {group.icon}
+              </span>
+              <span className="flex-1 truncate text-left">{group.label}</span>
+              <ChevronDown className={cn('h-3.5 w-3.5 text-gray-500 transition-transform duration-200', isExpanded && 'rotate-180')} />
+            </button>
+            <AnimatePresence initial={false}>
+              {isExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1, transition: { duration: 0.2 } }}
+                  exit={{ height: 0, opacity: 0, transition: { duration: 0.15 } }}
+                  className="overflow-hidden pl-3"
+                >
+                  <div className="space-y-0.5 border-l border-white/[0.06] pl-3 py-1">
+                    {group.items.map((item) => {
+                      const active = isActive(item.path)
+                      return (
+                        <button
+                          key={item.path}
+                          onClick={() => onNavClick(item.path)}
+                          onMouseEnter={() => setHoveredItem(item.path)}
+                          onMouseLeave={() => setHoveredItem(null)}
+                          className={cn(
+                            'group relative flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-all duration-200',
+                            active
+                              ? 'bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-white'
+                              : 'text-gray-400 hover:bg-white/5 hover:text-gray-200',
+                          )}
+                        >
+                          <span className={cn('shrink-0 transition-colors', active ? 'text-blue-400' : 'text-gray-500 group-hover:text-gray-300')}>
+                            {item.icon}
+                          </span>
+                          <span className="truncate">{item.label}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function SidebarContent({
   navItems,
+  navGroups,
   bottomNav,
   isActive,
   hoveredItem,
@@ -152,6 +314,7 @@ function SidebarContent({
   onToggle,
 }: {
   navItems: NavItem[]
+  navGroups?: NavGroup[]
   bottomNav: NavItem[]
   isActive: (path: string) => boolean
   hoveredItem: string | null
@@ -192,67 +355,81 @@ function SidebarContent({
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-        <div className="space-y-0.5">
-          {navItems.map((item, index) => {
-            const active = isActive(item.path)
-            return (
-              <motion.button
-                key={item.path}
-                custom={index}
-                variants={navItemVariants}
-                initial="hidden"
-                animate="visible"
-                onClick={() => onNavClick(item.path)}
-                onMouseEnter={() => setHoveredItem(item.path)}
-                onMouseLeave={() => setHoveredItem(null)}
-                className={cn(
-                  'group relative flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200',
-                  active
-                    ? 'bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-white'
-                    : 'text-gray-400 hover:bg-white/5 hover:text-gray-200',
-                )}
-              >
-                {active && (
-                  <motion.div
-                    layoutId="sidebar-active"
-                    className="absolute inset-0 rounded-lg bg-gradient-to-r from-blue-500/10 to-purple-500/10"
-                    transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                  />
-                )}
-                <span className={cn(
-                  'relative z-10 shrink-0 transition-colors',
-                  active ? 'text-blue-400' : 'text-gray-500 group-hover:text-gray-300',
-                )}>
-                  {item.icon}
-                </span>
-                <AnimatePresence mode="wait">
-                  {!collapsed && (
-                    <motion.span
-                      initial={{ opacity: 0, x: -8 }}
-                      animate={{ opacity: 1, x: 0, transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] } }}
-                      exit={{ opacity: 0, x: -8, transition: { duration: 0.12 } }}
-                      className="relative z-10 truncate"
-                    >
-                      {item.label}
-                    </motion.span>
+        {/* Grouped nav (admin) */}
+        {navGroups && navGroups.length > 0 && (
+          <SidebarGroupedNav
+            groups={navGroups}
+            isActive={isActive}
+            hoveredItem={hoveredItem}
+            setHoveredItem={setHoveredItem}
+            onNavClick={onNavClick}
+            collapsed={collapsed}
+          />
+        )}
+        {/* Flat nav (member) */}
+        {navItems.length > 0 && (
+          <div className="space-y-0.5">
+            {navItems.map((item, index) => {
+              const active = isActive(item.path)
+              return (
+                <motion.button
+                  key={item.path}
+                  custom={index}
+                  variants={navItemVariants}
+                  initial="hidden"
+                  animate="visible"
+                  onClick={() => onNavClick(item.path)}
+                  onMouseEnter={() => setHoveredItem(item.path)}
+                  onMouseLeave={() => setHoveredItem(null)}
+                  className={cn(
+                    'group relative flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200',
+                    active
+                      ? 'bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-white'
+                      : 'text-gray-400 hover:bg-white/5 hover:text-gray-200',
                   )}
-                </AnimatePresence>
-                <AnimatePresence>
-                  {collapsed && hoveredItem === item.path && (
+                >
+                  {active && (
                     <motion.div
-                      initial={{ opacity: 0, x: -4, scale: 0.96 }}
-                      animate={{ opacity: 1, x: 0, scale: 1, transition: { duration: 0.15, ease: [0.22, 1, 0.36, 1] } }}
-                      exit={{ opacity: 0, x: -4, scale: 0.96, transition: { duration: 0.1 } }}
-                      className="absolute left-full z-50 ml-2 rounded-xl border border-white/[0.08] bg-[#0f1525] px-2.5 py-1.5 text-xs font-medium text-white shadow-xl shadow-black/30 backdrop-blur-xl"
-                    >
-                      {item.label}
-                    </motion.div>
+                      layoutId="sidebar-active"
+                      className="absolute inset-0 rounded-lg bg-gradient-to-r from-blue-500/10 to-purple-500/10"
+                      transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+                    />
                   )}
-                </AnimatePresence>
-              </motion.button>
-            )
-          })}
-        </div>
+                  <span className={cn(
+                    'relative z-10 shrink-0 transition-colors',
+                    active ? 'text-blue-400' : 'text-gray-500 group-hover:text-gray-300',
+                  )}>
+                    {item.icon}
+                  </span>
+                  <AnimatePresence mode="wait">
+                    {!collapsed && (
+                      <motion.span
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0, transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] } }}
+                        exit={{ opacity: 0, x: -8, transition: { duration: 0.12 } }}
+                        className="relative z-10 truncate"
+                      >
+                        {item.label}
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                  <AnimatePresence>
+                    {collapsed && hoveredItem === item.path && (
+                      <motion.div
+                        initial={{ opacity: 0, x: -4, scale: 0.96 }}
+                        animate={{ opacity: 1, x: 0, scale: 1, transition: { duration: 0.15, ease: [0.22, 1, 0.36, 1] } }}
+                        exit={{ opacity: 0, x: -4, scale: 0.96, transition: { duration: 0.1 } }}
+                        className="absolute left-full z-50 ml-2 rounded-xl border border-white/[0.08] bg-[#0f1525] px-2.5 py-1.5 text-xs font-medium text-white shadow-xl shadow-black/30 backdrop-blur-xl"
+                      >
+                        {item.label}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.button>
+              )
+            })}
+          </div>
+        )}
       </nav>
 
       {/* Bottom nav */}

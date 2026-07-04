@@ -352,6 +352,23 @@ type Plan struct {
 	MonthlyPrice           float64        `db:"monthly_price" json:"monthly_price"`
 	IsPopular              bool           `db:"is_popular" json:"is_popular"`
 	CtaText                string         `db:"cta_text" json:"cta_text"`
+	Features               []string       `db:"features" json:"features"`
+}
+
+// PlanChangeRequest tracks maker-checker flow for non-admin plan modifications
+type PlanChangeRequest struct {
+	ID               string     `db:"id" json:"id"`
+	RequestedBy      string     `db:"requested_by" json:"requested_by"`
+	RequestedByName  string     `db:"requested_by_name" json:"requested_by_name"`
+	Action           string     `db:"action" json:"action"` // create, update, delete
+	PlanID           string     `db:"plan_id" json:"plan_id"`
+	Payload          string     `db:"payload" json:"payload"` // JSONB stored as string
+	Status           string     `db:"status" json:"status"` // pending, approved, rejected
+	ReviewedBy       *string    `db:"reviewed_by" json:"reviewed_by,omitempty"`
+	ReviewedByName   string     `db:"reviewed_by_name" json:"reviewed_by_name"`
+	ReviewNotes      string     `db:"review_notes" json:"review_notes"`
+	CreatedAt        time.Time  `db:"created_at" json:"created_at"`
+	ReviewedAt       *time.Time `db:"reviewed_at" json:"reviewed_at,omitempty"`
 }
 
 // Subscription ties an account to a plan

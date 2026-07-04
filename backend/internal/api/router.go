@@ -28,6 +28,7 @@ func NewRouter(
 	paymentConfigHandler *handlers.PaymentConfigHandler,
 	paymentRequestHandler *handlers.PaymentRequestHandler,
 	subscriptionRequestHandler *handlers.SubscriptionRequestHandler,
+	planChangeRequestHandler *handlers.PlanChangeRequestHandler,
 	sessionHandler *handlers.SessionHandler,
 	kycAdminHandler *handlers.KycAdminHandler,
 	billingService *services.BillingService,
@@ -122,6 +123,12 @@ func NewRouter(
 	mux.Handle("POST /api/v1/plans", authMiddleware.AdminAuth(http.HandlerFunc(billingHandler.CreatePlan)))
 	mux.Handle("PUT /api/v1/plans/{id}", authMiddleware.AdminAuth(http.HandlerFunc(billingHandler.UpdatePlan)))
 	mux.Handle("DELETE /api/v1/plans/{id}", authMiddleware.AdminAuth(http.HandlerFunc(billingHandler.DeletePlan)))
+
+	// Plan change requests (maker-checker: staff submits, admin reviews)
+	mux.Handle("POST /api/v1/plan-requests", authMiddleware.JWTAuth(http.HandlerFunc(planChangeRequestHandler.Submit)))
+	mux.Handle("GET /api/v1/admin/plan-requests", authMiddleware.AdminAuth(http.HandlerFunc(planChangeRequestHandler.ListAll)))
+	mux.Handle("POST /api/v1/admin/plan-requests/{id}/approve", authMiddleware.AdminAuth(http.HandlerFunc(planChangeRequestHandler.Approve)))
+	mux.Handle("POST /api/v1/admin/plan-requests/{id}/reject", authMiddleware.AdminAuth(http.HandlerFunc(planChangeRequestHandler.Reject)))
 	mux.Handle("GET /api/v1/billing/invoice", authMiddleware.JWTAuth(http.HandlerFunc(billingHandler.GetInvoice)))
 	mux.Handle("GET /api/v1/billing/usage", authMiddleware.JWTAuth(http.HandlerFunc(billingHandler.GetUsage)))
 

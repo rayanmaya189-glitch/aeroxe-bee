@@ -116,6 +116,22 @@ export interface Plan {
   monthly_price: number
   is_popular: boolean
   cta_text: string
+  features: string[]
+}
+
+export interface PlanChangeRequest {
+  id: string
+  requested_by: string
+  requested_by_name: string
+  action: 'create' | 'update' | 'delete'
+  plan_id: string
+  payload: Record<string, unknown>
+  status: 'pending' | 'approved' | 'rejected'
+  reviewed_by?: string
+  reviewed_by_name: string
+  review_notes: string
+  created_at: string
+  reviewed_at?: string
 }
 
 export interface Subscription {
