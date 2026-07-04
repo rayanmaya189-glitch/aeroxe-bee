@@ -33,6 +33,10 @@ import (
 	"github.com/textbee/backend/internal/telemetry"
 	"github.com/textbee/backend/internal/webhook"
 	"github.com/textbee/backend/internal/worker"
+	"crypto/rand"
+	"encoding/hex"
+	"strings"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -235,10 +239,11 @@ func main() {
 
 	apiServer := &http.Server{
 		Addr:         fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port),
-		Handler:      corsMiddleware(metrics, router),
+		Handler:      securityPipeline(cfg, metrics, router),
 		ReadTimeout:  cfg.Server.ReadTimeout,
 		WriteTimeout: cfg.Server.WriteTimeout,
 		IdleTimeout:  60 * time.Second,
+		MaxHeaderBytes: 1 << 20, // 1 MB max headers
 	}
 
 	go func() {
@@ -643,12 +648,51 @@ func deviceIDs(devices []models.Device) []string {
 	return ids
 }
 
+func getEnvOrDefault(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
+
+// securityPipeline chains all security middleware: panic recovery → security headers
+// → request ID → client IP extraction → body size limits → CORS → metrics → router
+func securityPipeline(cfg *config.Config, metrics *telemetry.Metrics, router http.Handler) http.Handler {
+	handler := router
+
+	// Innermost: CORS + metrics
+	handler = corsMiddleware(metrics, handler)
+
+	// Request body size limit (1 MB)
+	handler = middleware.MaxBodySize(1 << 20)(handler)
+
+	// Extract client IP from proxy headers
+	handler = middleware.ExtractClientIP(handler)
+
+	// Generate/propagate request ID
+	handler = middleware.RequestID(handler)
+
+	// Security headers (OWASP A05)
+	handler = middleware.SecurityHeaders(cfg.App.Environment)(handler)
+
+	// Panic recovery (OWASP A05) — outermost so it catches everything
+	handler = middleware.RecoverPanic(handler)
+
+	return handler
+}
+
 func corsMiddleware(metrics *telemetry.Metrics, next http.Handler) http.Handler {
+	allowedOrigins := getAllowedOrigins()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+		origin := r.Header.Get("Origin")
+		if isAllowedOrigin(origin, allowedOrigins) {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Vary", "Origin")
+		}
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Idempotency-Key, X-Signature")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Idempotency-Key, X-Signature, X-Request-ID")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		w.Header().Set("Access-Control-Max-Age", "86400")
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusNoContent)
@@ -657,6 +701,33 @@ func corsMiddleware(metrics *telemetry.Metrics, next http.Handler) http.Handler 
 		next.ServeHTTP(w, r)
 		metrics.ObserveAPILatency(r.Method, r.URL.Path, 200, time.Since(start))
 	})
+}
+
+func getAllowedOrigins() []string {
+	origins := os.Getenv("CORS_ALLOWED_ORIGINS")
+	if origins == "" {
+		return []string{"http://localhost:5173", "http://localhost:3000"}
+	}
+	var result []string
+	for _, o := range strings.Split(origins, ",") {
+		o = strings.TrimSpace(o)
+		if o != "" {
+			result = append(result, o)
+		}
+	}
+	return result
+}
+
+func isAllowedOrigin(origin string, allowed []string) bool {
+	if origin == "" {
+		return false
+	}
+	for _, a := range allowed {
+		if a == "*" || a == origin {
+			return true
+		}
+	}
+	return false
 }
 
 // seedAdminUser ensures the users table exists and a default admin user is available.
@@ -723,17 +794,30 @@ func seedAdminUser(ctx context.Context, pool *pgxpool.Pool, logger *telemetry.Lo
 	}
 
 	// Create admin user
-	hash, err := bcrypt.GenerateFromPassword([]byte("admin123456"), bcrypt.DefaultCost)
+	adminEmail := getEnvOrDefault("ADMIN_EMAIL", "admin@aeroxe.com")
+	adminPassword := getEnvOrDefault("ADMIN_PASSWORD", "")
+	if adminPassword == "" {
+		logger.Warn("seed: ADMIN_PASSWORD env not set, generating random password")
+		randBytes := make([]byte, 16)
+		if _, err := rand.Read(randBytes); err != nil {
+			logger.Warn("seed: failed to generate random password", "error", err)
+			return
+		}
+		adminPassword = hex.EncodeToString(randBytes)
+		logger.Info("seed: generated random admin password — set ADMIN_PASSWORD env for stable credentials")
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(adminPassword), 12)
 	if err != nil {
 		logger.Warn("seed: failed to hash password", "error", err)
 		return
 	}
 	if _, err := pool.Exec(ctx,
-		`INSERT INTO users (name, email, password_hash, role, status) VALUES ($1, $2, $3, $4, $5)`,
-		"Admin", "admin@textbee.dev", string(hash), "admin", "active",
+		`INSERT INTO users (name, email, password_hash, role, status) VALUES ($1, $2, $3, $4, $5)
+		 ON CONFLICT (email) DO NOTHING`,
+		"Admin", adminEmail, string(hash), "admin", "active",
 	); err != nil {
 		logger.Warn("seed: failed to create admin user", "error", err)
 		return
 	}
-	logger.Info("seed: admin user created", "email", "admin@textbee.dev", "password", "admin123456")
+	logger.Info("seed: admin user ready", "email", adminEmail)
 }

@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/textbee/backend/internal/api/handlers"
 	"github.com/textbee/backend/internal/api/middleware"
@@ -26,7 +27,8 @@ func NewRouter(
 	twoFAHandler *handlers.TwoFAHandler,
 	paymentConfigHandler *handlers.PaymentConfigHandler,
 	paymentRequestHandler *handlers.PaymentRequestHandler,
-	subscriptionRequestHandler *handlers.SubscriptionRequestHandler,    sessionHandler *handlers.SessionHandler,
+	subscriptionRequestHandler *handlers.SubscriptionRequestHandler,
+	sessionHandler *handlers.SessionHandler,
 	kycAdminHandler *handlers.KycAdminHandler,
 	billingService *services.BillingService,
 	paymentConfigService *services.PaymentConfigService,
@@ -46,10 +48,18 @@ func NewRouter(
 	mux.HandleFunc("GET /api/v1/public/plans", publicBillingHandler.ListPublicPlans)
 	mux.HandleFunc("GET /api/v1/public/payment-methods", publicBillingHandler.ListPublicPaymentMethods)
 
-	// Auth routes
-	mux.HandleFunc("POST /api/v1/auth/register", authHandler.Register)
-	mux.HandleFunc("POST /api/v1/auth/login", authHandler.Login)
-	mux.HandleFunc("POST /api/v1/auth/login/2fa", authHandler.Login2FA)
+	// Brute force protection for auth endpoints (OWASP A07)
+	bfProtector := middleware.NewBruteForceProtector(
+		rdb.Client,
+		5,                // max 5 attempts
+		15*time.Minute,   // per 15-minute window
+		30*time.Minute,   // 30-minute lockout
+	)
+
+	// Auth routes — protected against brute force
+	mux.Handle("POST /api/v1/auth/register", bfProtector.Protect("register")(http.HandlerFunc(authHandler.Register)))
+	mux.Handle("POST /api/v1/auth/login", bfProtector.Protect("login")(http.HandlerFunc(authHandler.Login)))
+	mux.Handle("POST /api/v1/auth/login/2fa", bfProtector.Protect("login-2fa")(http.HandlerFunc(authHandler.Login2FA)))
 	mux.HandleFunc("POST /api/v1/auth/refresh", authHandler.RefreshToken)
 	mux.Handle("GET /api/v1/auth/profile", authMiddleware.JWTAuth(http.HandlerFunc(authHandler.GetProfile)))
 	mux.Handle("PUT /api/v1/auth/profile", authMiddleware.JWTAuth(http.HandlerFunc(authHandler.UpdateProfile)))
@@ -71,8 +81,8 @@ func NewRouter(
 	mux.Handle("POST /api/v1/otp/send", authMiddleware.APIKeyAuth(http.HandlerFunc(otpHandler.Send)))
 	mux.Handle("POST /api/v1/otp/verify", authMiddleware.APIKeyAuth(http.HandlerFunc(otpHandler.Verify)))
 
-	// Device routes
-	mux.HandleFunc("POST /api/v1/devices/login", deviceHandler.DeviceLogin)
+	// Device routes — brute force protected
+	mux.Handle("POST /api/v1/devices/login", bfProtector.Protect("device-login")(http.HandlerFunc(deviceHandler.DeviceLogin)))
 	mux.HandleFunc("POST /api/v1/devices/register", deviceHandler.Register)
 	mux.Handle("POST /api/v1/devices/status", authMiddleware.JWTAuth(http.HandlerFunc(deviceHandler.HandleStatusUpdate)))
 	mux.Handle("POST /api/v1/devices/deregister", authMiddleware.JWTAuth(http.HandlerFunc(deviceHandler.Deregister)))

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/textbee/backend/internal/api/middleware"
 	"github.com/textbee/backend/internal/models"
@@ -86,14 +85,15 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(req.Password) < 8 {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "password must be at least 8 characters"})
+	// Validate email format (OWASP A03)
+	if !middleware.IsValidEmail(req.Email) {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid email format"})
 		return
 	}
 
-	// Validate email format
-	if !strings.Contains(req.Email, "@") || !strings.Contains(req.Email, ".") {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid email format"})
+	// Enforce strong password policy (OWASP A07)
+	if pwErr := middleware.PasswordStrength(req.Password); pwErr != "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: pwErr})
 		return
 	}
 
@@ -118,9 +118,7 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if role == "" {
 		role = "staff"
 	}
-	// Validate role
-	validRoles := map[string]bool{"admin": true, "staff": true, "viewer": true}
-	if !validRoles[role] {
+	if !middleware.ValidateRole(role) {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "role must be one of: admin, staff, viewer"})
 		return
 	}
