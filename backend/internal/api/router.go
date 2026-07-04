@@ -43,6 +43,7 @@ func NewRouter(
 	pg *database.PostgresDB,
 	rdb *database.RedisDB,
 	mqttClient *mqtt.Client,
+	apiKeyMaxPerMin int,
 ) http.Handler {
 	mux := http.NewServeMux()
 
@@ -102,6 +103,9 @@ func NewRouter(
 		30*time.Minute,   // 30-minute lockout
 	)
 
+	// Per-API-key rate limiting for message send endpoint
+	apiKeyRateLimiter := middleware.NewAPIKeyRateLimiter(rdb.Client, apiKeyMaxPerMin)
+
 	// Auth routes — protected against brute force
 	mux.Handle("POST /api/v1/auth/register", bfProtector.Protect("register")(http.HandlerFunc(authHandler.Register)))
 	mux.Handle("POST /api/v1/auth/login", bfProtector.Protect("login")(http.HandlerFunc(authHandler.Login)))
@@ -118,7 +122,7 @@ func NewRouter(
 	mux.Handle("POST /api/v1/auth/2fa/disable", authMiddleware.JWTAuth(http.HandlerFunc(twoFAHandler.Disable)))
 
 	// Message routes
-	mux.Handle("POST /api/v1/send", authMiddleware.APIKeyAuth(http.HandlerFunc(messageHandler.Send)))
+	mux.Handle("POST /api/v1/send", apiKeyRateLimiter.Limit(authMiddleware.APIKeyAuth(http.HandlerFunc(messageHandler.Send))))
 	mux.Handle("GET /api/v1/messages", authMiddleware.APIKeyAuth(http.HandlerFunc(messageHandler.ListMessages)))
 	mux.Handle("GET /api/v1/messages/{id}", authMiddleware.APIKeyAuth(http.HandlerFunc(messageHandler.GetMessage)))
 	mux.Handle("GET /api/v1/messages/{id}/confidence", authMiddleware.APIKeyAuth(http.HandlerFunc(messageHandler.GetConfidence)))

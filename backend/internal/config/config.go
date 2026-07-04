@@ -101,6 +101,7 @@ type RateLimitConfig struct {
 	DeviceMaxPerHour    int
 	SendPacingMin       time.Duration
 	SendPacingMax       time.Duration
+	APIKeyMaxPerMinute  int
 }
 
 type SIMHealthConfig struct {
@@ -238,6 +239,7 @@ func Load() *Config {
 			DeviceMaxPerHour:   getEnvInt("RATE_LIMIT_DEVICE_PER_HOUR", 100),
 			SendPacingMin:      getEnvDuration("RATE_LIMIT_SEND_PACING_MIN", 2*time.Second),
 			SendPacingMax:      getEnvDuration("RATE_LIMIT_SEND_PACING_MAX", 5*time.Second),
+			APIKeyMaxPerMinute:  getEnvInt("RATE_LIMIT_API_KEY_PER_MIN", 60),
 		},
 		SIMHealth: SIMHealthConfig{
 			DegradedThreshold:   getEnvFloat("SIM_HEALTH_DEGRADED_THRESHOLD", 0.6),

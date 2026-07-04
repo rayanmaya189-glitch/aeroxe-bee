@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -11,13 +10,11 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// APIKeyRateLimiter applies per-API-key rate limiting using Redis sliding window.
+// APIKeyRateLimiter applies per-API-key rate limiting using a fixed-window counter.
 type APIKeyRateLimiter struct {
 	rdb       *redis.Client
 	maxPerMin int
 }
-
-type apiKeyRateLimitKey struct{}
 
 func NewAPIKeyRateLimiter(rdb *redis.Client, maxPerMin int) *APIKeyRateLimiter {
 	return &APIKeyRateLimiter{rdb: rdb, maxPerMin: maxPerMin}
@@ -51,7 +48,11 @@ func (l *APIKeyRateLimiter) Limit(next http.Handler) http.Handler {
 
 		// Set rate limit headers
 		w.Header().Set("X-RateLimit-Limit", strconv.Itoa(l.maxPerMin))
-		w.Header().Set("X-RateLimit-Remaining", strconv.Itoa(max(0, l.maxPerMin-int(count))))
+		remaining := l.maxPerMin - int(count)
+		if remaining < 0 {
+			remaining = 0
+		}
+		w.Header().Set("X-RateLimit-Remaining", strconv.Itoa(remaining))
 
 		if int(count) > l.maxPerMin {
 			retryAfter := 60 - (time.Now().Unix() % 60)
@@ -64,9 +65,10 @@ func (l *APIKeyRateLimiter) Limit(next http.Handler) http.Handler {
 	})
 }
 
-// extractAPIKey tries to get the API key from the request.
+// extractAPIKey extracts the API key from the request.
+// API keys are opaque strings (no dots). JWTs are structured tokens with dots.
 func extractAPIKey(r *http.Request) string {
-	// Check X-API-Key header
+	// Check X-API-Key header first (explicit API key)
 	if key := r.Header.Get("X-API-Key"); key != "" {
 		return key
 	}
@@ -75,8 +77,8 @@ func extractAPIKey(r *http.Request) string {
 	auth := r.Header.Get("Authorization")
 	if strings.HasPrefix(auth, "Bearer ") {
 		token := strings.TrimPrefix(auth, "Bearer ")
-		// Only use for rate limiting if it looks like an API key (not a JWT)
-		if len(token) > 20 && !strings.Contains(token, ".") {
+		// API keys are opaque strings without dots; JWTs have 2 dots (header.payload.signature)
+		if !strings.Contains(token, ".") {
 			return token
 		}
 	}
@@ -84,14 +86,3 @@ func extractAPIKey(r *http.Request) string {
 	return ""
 }
 
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-// ContextWithAPIKey stores the API key in context for downstream use.
-func ContextWithAPIKey(ctx context.Context, key string) context.Context {
-	return context.WithValue(ctx, apiKeyRateLimitKey{}, key)
-}
