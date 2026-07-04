@@ -16,6 +16,8 @@ interface ApiPlan {
   max_devices: number
   default_routing_strategy: string
   dedicated_pool: boolean
+  is_popular: boolean
+  cta_text: string
 }
 
 interface PricingPlan {
@@ -120,14 +122,15 @@ function generateFeatures(plan: ApiPlan, index: number, totalPlans: number): str
   return features
 }
 
-function mapApiPlanToPricing(apiPlan: ApiPlan, index: number, totalPlans: number): PricingPlan {
+function mapApiPlanToPricing(apiPlan: ApiPlan, _index: number, _totalPlans: number): PricingPlan {
   const fallback = PRICING_PLANS.find((p) => p.planId === apiPlan.id)
   // Always generate features dynamically from backend data
-  const features = generateFeatures(apiPlan, index, totalPlans)
+  const features = generateFeatures(apiPlan, _index, _totalPlans)
   const monthlyPrice = apiPlan.monthly_price ?? fallback?.monthlyPrice ?? 0
   const description = fallback?.description ?? `${formatQuota(apiPlan.monthly_quota)} SMS/month`
-  const cta = fallback?.cta ?? (index === 0 ? 'Get Started Free' : index <= 1 ? 'Start Free Trial' : 'Contact Sales')
-  const popular = fallback?.popular ?? (index === Math.floor(totalPlans / 2))
+  // CTA and popular are now fully dynamic from the backend
+  const cta = apiPlan.cta_text || fallback?.cta || 'Get Started'
+  const popular = apiPlan.is_popular ?? fallback?.popular ?? false
 
   return {
     name: apiPlan.name,

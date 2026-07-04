@@ -350,6 +350,8 @@ type Plan struct {
 	DefaultRoutingStrategy RoutingStrategy `db:"default_routing_strategy" json:"default_routing_strategy"`
 	PricePerSMS            float64        `db:"price_per_sms" json:"price_per_sms"`
 	MonthlyPrice           float64        `db:"monthly_price" json:"monthly_price"`
+	IsPopular              bool           `db:"is_popular" json:"is_popular"`
+	CtaText                string         `db:"cta_text" json:"cta_text"`
 }
 
 // Subscription ties an account to a plan
