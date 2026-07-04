@@ -19,8 +19,16 @@ import { Footer } from '../components/Footer'
 import { ScrollToTop } from '../components/ScrollToTop'
 import { CookieConsent } from '../components/CookieConsent'
 import { FloatingNotifications } from '../components/FloatingNotifications'
+import { useSEO } from '@/hooks/useSEO'
 
 export function LandingPage() {
+  useSEO({
+    title: 'AeroXe Bee — Distributed SMS Gateway Platform',
+    description: 'Enterprise SMS delivery with intelligent multi-strategy routing, real-time analytics, device fleet management, and self-hosting options. Start free, scale as you grow.',
+    ogImage: '/og-image.png',
+    ogUrl: 'https://aeroxbee.com',
+  })
+
   return (
     <div className="min-h-screen bg-[#030712]">
       <div className="sticky top-0 z-50">

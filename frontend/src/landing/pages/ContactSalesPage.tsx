@@ -6,6 +6,7 @@ import {
   MessageSquare, Building2, Users, Zap, Globe, Shield,
 } from 'lucide-react'
 import { staggerContainer, fadeInUp } from '../animations/variants'
+import { useSEO } from '@/hooks/useSEO'
 
 const REASONS = [
   { icon: Zap, label: 'Volume Pricing', desc: 'Custom pricing for high-volume SMS needs' },
@@ -22,6 +23,12 @@ const CONTACT_INFO = [
 ]
 
 export function ContactSalesPage() {
+  useSEO({
+    title: 'Contact Sales | AeroXe Bee',
+    description: 'Get in touch with the AeroXe Bee sales team for custom pricing, enterprise security, self-hosting options, and team onboarding. We respond within 24 hours.',
+    ogImage: '/og-contact-sales.png',
+    ogUrl: 'https://aeroxbee.com/contact-sales',
+  })
   const [ref] = useInView({ triggerOnce: true, threshold: 0.1 })
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
