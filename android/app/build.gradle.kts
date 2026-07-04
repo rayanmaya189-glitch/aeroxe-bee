@@ -19,16 +19,20 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "BASE_URL", "\"http://192.168.18.13:7090/api/v1/\"")
-        buildConfigField("String", "MQTT_BROKER_URL", "\"tcp://192.168.18.13:1883\"")
         buildConfigField("String", "MQTT_CLIENT_ID", "\"textbee_android_\"")
     }
 
     buildTypes {
+        debug {
+            buildConfigField("String", "BASE_URL", "\"http://192.168.18.13:7090/api/v1/\"")
+            buildConfigField("String", "MQTT_BROKER_URL", "\"tcp://192.168.18.13:1883\"")
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            buildConfigField("String", "BASE_URL", "\"https://api.aeroxe.com/api/v1/\"")
+            buildConfigField("String", "MQTT_BROKER_URL", "\"ssl://mqtt.aeroxe.com:8883\"")
         }
     }
 
