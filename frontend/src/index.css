@@ -65,20 +65,11 @@
   }
 
   body {
-    @apply bg-gray-50 text-gray-900 antialiased;
+    @apply bg-gray-950 text-gray-100 antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11", "cv09";
   }
 
-  .dark body,
-  .dark {
-    @apply bg-gray-950 text-gray-100;
-  }
-
   * {
-    @apply border-gray-200;
-  }
-
-  .dark * {
     @apply border-gray-800;
   }
 }
@@ -88,69 +79,41 @@
 
   /* ─── Glass panels ───────────────────────────────────────── */
   .glass {
-    background: rgba(255, 255, 255, 0.8);
+    background: rgba(18, 22, 35, 0.8);
     backdrop-filter: blur(12px) saturate(150%);
     -webkit-backdrop-filter: blur(12px) saturate(150%);
-    border: 1px solid rgba(228, 231, 236, 0.8);
-  }
-
-  .dark .glass {
-    background: rgba(18, 22, 35, 0.8);
-    border-color: rgba(55, 65, 81, 0.4);
+    border: 1px solid rgba(55, 65, 81, 0.4);
   }
 
   .glass-card {
-    background: rgba(255, 255, 255, 0.72);
+    background: rgba(18, 22, 35, 0.72);
     backdrop-filter: blur(16px) saturate(160%);
     -webkit-backdrop-filter: blur(16px) saturate(160%);
-    border: 1px solid rgba(228, 231, 236, 0.6);
-    box-shadow: 0px 1px 3px rgba(16, 24, 40, 0.1),
-                0px 1px 2px rgba(16, 24, 40, 0.06);
-  }
-
-  .dark .glass-card {
-    background: rgba(18, 22, 35, 0.72);
-    border-color: rgba(55, 65, 81, 0.36);
+    border: 1px solid rgba(55, 65, 81, 0.36);
     box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.3),
                 0px 1px 2px rgba(0, 0, 0, 0.2);
   }
 
   .glass-sidebar {
-    background: rgba(255, 255, 255, 0.92);
+    background: rgba(12, 17, 29, 0.92);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border-right: 1px solid rgba(228, 231, 236, 0.8);
-  }
-
-  .dark .glass-sidebar {
-    background: rgba(12, 17, 29, 0.92);
-    border-right-color: rgba(55, 65, 81, 0.36);
+    border-right: 1px solid rgba(55, 65, 81, 0.36);
   }
 
   .glass-header {
-    background: rgba(255, 255, 255, 0.88);
+    background: rgba(12, 17, 29, 0.88);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border-bottom: 1px solid rgba(228, 231, 236, 0.8);
-  }
-
-  .dark .glass-header {
-    background: rgba(12, 17, 29, 0.88);
-    border-bottom-color: rgba(55, 65, 81, 0.36);
+    border-bottom: 1px solid rgba(55, 65, 81, 0.36);
   }
 
   /* ─── Stat card ──────────────────────────────────────────── */
   .glass-stat {
-    background: rgba(255, 255, 255, 0.65);
+    background: rgba(18, 22, 35, 0.6);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(228, 231, 236, 0.5);
-    box-shadow: 0px 1px 2px rgba(16, 24, 40, 0.05);
-  }
-
-  .dark .glass-stat {
-    background: rgba(18, 22, 35, 0.6);
-    border-color: rgba(55, 65, 81, 0.3);
+    border: 1px solid rgba(55, 65, 81, 0.3);
     box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.2);
   }
 
@@ -165,25 +128,11 @@
 
   /* ─── Focus ring ─────────────────────────────────────────── */
   .focus-ring {
-    @apply outline-none ring-2 ring-primary-500 ring-offset-2 ring-offset-white;
-  }
-  .dark .focus-ring {
-    @apply ring-offset-gray-950;
+    @apply outline-none ring-2 ring-primary-500 ring-offset-2 ring-offset-gray-950;
   }
 
   /* ─── Skeleton shimmer ───────────────────────────────────── */
   .animate-shimmer {
-    background: linear-gradient(
-      90deg,
-      rgba(228, 231, 236, 0) 25%,
-      rgba(228, 231, 236, 0.5) 50%,
-      rgba(228, 231, 236, 0) 75%
-    );
-    background-size: 200% 100%;
-    animation: shimmer 1.5s ease-in-out infinite;
-  }
-
-  .dark .animate-shimmer {
     background: linear-gradient(
       90deg,
       rgba(55, 65, 81, 0) 25%,
@@ -191,6 +140,7 @@
       rgba(55, 65, 81, 0) 75%
     );
     background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
   }
 
   @keyframes shimmer {
