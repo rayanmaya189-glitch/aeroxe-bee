@@ -2,6 +2,7 @@ package com.aeroxebee.client.ui.screens.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aeroxebee.client.analytics.AnalyticsHelper
 import com.aeroxebee.client.data.repository.DeviceRepository
 import com.aeroxebee.client.fcm.FCMRegistrar
 import com.aeroxebee.client.util.TokenManager
@@ -30,6 +31,7 @@ class SettingsViewModel @Inject constructor(
     private val tokenManager: TokenManager,
     private val deviceRepository: DeviceRepository,
     private val fcmRegistrar: FCMRegistrar,
+    private val analytics: AnalyticsHelper,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsState())
@@ -59,8 +61,10 @@ class SettingsViewModel @Inject constructor(
                 )
                 MqttService.start(appContext)
                 fcmRegistrar.registerToken()
+                analytics.logSettingsSaved()
                 _state.update { it.copy(isLoading = false, saved = true) }
             } catch (e: Exception) {
+                analytics.logLoginFailed("settings_reconnect", e.message ?: "unknown")
                 _state.update { it.copy(isLoading = false, saved = false) }
             }
         }

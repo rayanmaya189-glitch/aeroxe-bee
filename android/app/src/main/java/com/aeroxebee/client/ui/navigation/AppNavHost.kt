@@ -35,7 +35,9 @@ import com.aeroxebee.client.ui.screens.settings.SettingsScreen
 import com.aeroxebee.client.ui.screens.splash.SplashScreen
 import com.aeroxebee.client.ui.theme.*
 import com.aeroxebee.client.util.TokenManager
+import com.aeroxebee.client.analytics.AnalyticsHelper
 import dagger.hilt.EntryPoint
+import dagger.hilt.EntryPointAccessors
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 
@@ -51,6 +53,15 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector,
 private val bottomNavItems = listOf(
     Screen.Dashboard, Screen.Logs, Screen.Device, Screen.Settings,
 )
+
+/**
+ * Hilt entry point for accessing AnalyticsHelper from a @Composable function.
+ */
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface NavAnalyticsEntryPoint {
+    fun analyticsHelper(): AnalyticsHelper
+}
 
 private val routeOrder = listOf(
     Screen.Dashboard.route, Screen.Logs.route, Screen.Device.route, Screen.Settings.route,
@@ -84,6 +95,30 @@ fun AppNavHost() {
     val hideBottomBarRoutes = listOf("splash", "onboarding", "registration")
     val showBottomBar = currentDestination?.route !in hideBottomBarRoutes
     val currentRoute = currentDestination?.route
+
+    // ─── Automatic screen view tracking ────────────────────
+    val analytics = remember { EntryPointAccessors.fromApplication(
+        navController.context.applicationContext,
+        NavAnalyticsEntryPoint::class.java,
+    ).analyticsHelper() }
+
+    LaunchedEffect(currentRoute) {
+        currentRoute?.let { route ->
+            val screenName = when (route) {
+                Screen.Dashboard.route -> "Dashboard"
+                Screen.Logs.route -> "SMS Logs"
+                Screen.Device.route -> "Device"
+                Screen.Settings.route -> "Settings"
+                Screen.Profile.route -> "Profile"
+                Screen.Notifications.route -> "Notifications"
+                "splash" -> "Splash"
+                "onboarding" -> "Onboarding"
+                "registration" -> "Registration"
+                else -> route
+            }
+            analytics.logScreenView(screenName)
+        }
+    }
 
     val navHostContent: @Composable (Modifier) -> Unit = { modifier ->
         NavHost(

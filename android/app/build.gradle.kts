@@ -107,6 +107,7 @@ dependencies {
     implementation("com.google.firebase:firebase-messaging")
     implementation("com.google.firebase:firebase-crashlytics")
     implementation("com.google.firebase:firebase-perf")
+    implementation("com.google.firebase:firebase-analytics-ktx")
 
     // EncryptedSharedPreferences
     implementation("androidx.security:security-crypto:1.1.0")

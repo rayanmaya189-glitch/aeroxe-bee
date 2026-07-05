@@ -10,6 +10,7 @@ import androidx.work.Configuration
 import com.aeroxebee.client.fcm.FCMTokenRefreshWorker
 import com.aeroxebee.client.worker.JobSchedulerFallback
 import com.aeroxebee.client.worker.WatchdogScheduler
+import com.google.firebase.analytics.ktx.analytics
 import com.google.firebase.crashlytics.ktx.crashlytics
 import com.google.firebase.ktx.Firebase
 import dagger.hilt.android.HiltAndroidApp
@@ -28,17 +29,19 @@ class AeroXeBeeApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
-        setupCrashlytics()
+        setupFirebase()
         createNotificationChannels()
         startWatchdog()
         startJobSchedulerFallback()
         scheduleFCMTokenRefresh()
     }
 
-    private fun setupCrashlytics() {
-        // Disable crash collection in debug builds to avoid noise from dev testing
-        Firebase.crashlytics.setCrashlyticsCollectionEnabled(!BuildConfig.DEBUG)
-        Log.i(TAG, "Firebase Crashlytics enabled: ${!BuildConfig.DEBUG}")
+    private fun setupFirebase() {
+        val isDebug = BuildConfig.DEBUG
+        // Disable Crashlytics + Analytics collection in debug builds to avoid noise
+        Firebase.crashlytics.setCrashlyticsCollectionEnabled(!isDebug)
+        Firebase.analytics.setAnalyticsCollectionEnabled(!isDebug)
+        Log.i(TAG, "Firebase Crashlytics enabled: ${!isDebug}, Analytics enabled: ${!isDebug}")
     }
 
     private fun createNotificationChannels() {

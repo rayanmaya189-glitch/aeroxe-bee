@@ -4,6 +4,7 @@ import android.util.Log
 import com.google.firebase.messaging.FirebaseMessaging
 import com.aeroxebee.client.data.remote.api.AeroXeBeeApi
 import com.aeroxebee.client.data.remote.model.FCMTokenRequest
+import com.aeroxebee.client.analytics.AnalyticsHelper
 import com.aeroxebee.client.util.TokenManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,6 +22,7 @@ import javax.inject.Singleton
 class FCMRegistrar @Inject constructor(
     private val api: AeroXeBeeApi,
     private val tokenManager: TokenManager,
+    private val analytics: AnalyticsHelper,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -56,6 +58,7 @@ class FCMRegistrar @Inject constructor(
                     )
                     if (response.isSuccessful) {
                         Log.i(TAG, "FCM token registered with backend")
+                        analytics.logFcmTokenRegistered()
                     } else {
                         Log.w(TAG, "FCM token registration failed: ${response.code()}")
                     }

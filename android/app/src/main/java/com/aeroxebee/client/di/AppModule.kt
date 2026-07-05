@@ -3,6 +3,7 @@ package com.aeroxebee.client.di
 import android.content.Context
 import androidx.room.Room
 import com.aeroxebee.client.BuildConfig
+import com.aeroxebee.client.analytics.AnalyticsHelper
 import com.aeroxebee.client.data.local.AeroXeBeeDatabase
 import com.aeroxebee.client.data.local.dao.SMSTaskDao
 import com.aeroxebee.client.data.local.dao.SyncLogDao
@@ -10,6 +11,9 @@ import com.aeroxebee.client.data.remote.api.AeroXeBeeApi
 import com.aeroxebee.client.data.remote.interceptor.AuthInterceptor
 import com.aeroxebee.client.data.remote.interceptor.RetryInterceptor
 import com.aeroxebee.client.util.TokenManager
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.analytics.ktx.analytics
+import com.google.firebase.ktx.Firebase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -69,6 +73,9 @@ object AppModule {
             .build()
             .create(AeroXeBeeApi::class.java)
     }
+
+    @Provides @Singleton
+    fun provideAnalytics(): FirebaseAnalytics = Firebase.analytics
 
     @Provides @Singleton
     fun provideAuthInterceptor(tokenManager: TokenManager): AuthInterceptor {

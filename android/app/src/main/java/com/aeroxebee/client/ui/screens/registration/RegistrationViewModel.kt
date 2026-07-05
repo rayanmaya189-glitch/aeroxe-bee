@@ -10,6 +10,7 @@ import com.aeroxebee.client.util.ExactAlarmHandler
 import com.aeroxebee.client.util.OEMBatteryGuide
 import com.aeroxebee.client.util.OEMBatteryGuideEntry
 import com.aeroxebee.client.util.SimManager
+import com.aeroxebee.client.analytics.AnalyticsHelper
 import com.aeroxebee.client.util.TokenManager
 import com.aeroxebee.client.worker.MqttService
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -53,6 +54,7 @@ class RegistrationViewModel @Inject constructor(
     private val deviceRepository: DeviceRepository,
     private val simManager: SimManager,
     private val exactAlarmHandler: ExactAlarmHandler,
+    private val analytics: AnalyticsHelper,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(RegistrationState())
@@ -174,8 +176,10 @@ class RegistrationViewModel @Inject constructor(
                     simSlot = s.selectedSlotIndex,
                 )
                 MqttService.start(appContext)
+                analytics.logLogin("device")
                 _state.update { it.copy(isLoading = false, isRegistered = true) }
             } catch (e: Exception) {
+                analytics.logLoginFailed("device", e.message ?: "unknown")
                 _state.update {
                     it.copy(
                         isLoading = false,
