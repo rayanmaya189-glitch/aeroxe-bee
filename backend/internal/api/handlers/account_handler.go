@@ -99,16 +99,7 @@ func (h *AccountHandler) ListAPIKeys(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "database error"})
 		return
 	}
-	total := int64(len(keys))
-	start := pg.Offset
-	if start > len(keys) {
-		start = len(keys)
-	}
-	end := start + pg.PageSize
-	if end > len(keys) {
-		end = len(keys)
-	}
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(keys[start:end], total)})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(SlicePage(keys, pg), int64(len(keys)))})
 }
 
 type CreateAPIKeyRequest struct {

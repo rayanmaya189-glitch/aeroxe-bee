@@ -456,16 +456,7 @@ func (h *DeviceHandler) List(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	total := int64(len(result))
-	start := pg.Offset
-	if start > len(result) {
-		start = len(result)
-	}
-	end := start + pg.PageSize
-	if end > len(result) {
-		end = len(result)
-	}
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(result[start:end], total)})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(SlicePage(result, pg), int64(len(result)))})
 }
 
 // Legacy Get handler - GET /api/v1/devices/{id}

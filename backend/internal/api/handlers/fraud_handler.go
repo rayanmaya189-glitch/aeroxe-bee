@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/aeroxe-bee/backend/internal/fraud"
-	"github.com/aeroxe-bee/backend/internal/models"
 )
 
 type FraudHandler struct {
@@ -20,19 +19,7 @@ func NewFraudHandler(detector *fraud.Detector) *FraudHandler {
 func (h *FraudHandler) ListFlags(w http.ResponseWriter, r *http.Request) {
 	pg := ParsePagination(r, 20, 100)
 	flags := h.detector.GetPendingFlags(r.Context())
-	if flags == nil {
-		flags = []models.FraudFlag{}
-	}
-	total := int64(len(flags))
-	start := pg.Offset
-	if start > len(flags) {
-		start = len(flags)
-	}
-	end := start + pg.PageSize
-	if end > len(flags) {
-		end = len(flags)
-	}
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(flags[start:end], total)})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(SlicePage(flags, pg), int64(len(flags)))})
 }
 
 func (h *FraudHandler) ReviewFlag(w http.ResponseWriter, r *http.Request) {
@@ -47,22 +34,7 @@ func (h *FraudHandler) ReviewFlag(w http.ResponseWriter, r *http.Request) {
 func (h *FraudHandler) ListAbuseFlags(w http.ResponseWriter, r *http.Request) {
 	pg := ParsePagination(r, 20, 100)
 	flags := h.detector.GetPendingFlags(r.Context())
-	if flags == nil {
-		flags = []models.FraudFlag{}
-	}
-	total := int64(len(flags))
-	start := pg.Offset
-	if start > len(flags) {
-		start = len(flags)
-	}
-	end := start + pg.PageSize
-	if end > len(flags) {
-		end = len(flags)
-	}
-	writeJSON(w, http.StatusOK, APIResponse{
-		Success: true,
-		Data:    pg.ToResponse(flags[start:end], total),
-	})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(SlicePage(flags, pg), int64(len(flags)))})
 }
 
 func (h *FraudHandler) Check(w http.ResponseWriter, r *http.Request) {

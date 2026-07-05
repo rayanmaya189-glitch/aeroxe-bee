@@ -89,16 +89,7 @@ func (h *AppReleaseHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	total := int64(len(releases))
-	start := pg.Offset
-	if start > len(releases) {
-		start = len(releases)
-	}
-	end := start + pg.PageSize
-	if end > len(releases) {
-		end = len(releases)
-	}
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(releases[start:end], total)})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(SlicePage(releases, pg), int64(len(releases)))})
 }
 
 // Get handles GET /api/v1/admin/releases/{id}

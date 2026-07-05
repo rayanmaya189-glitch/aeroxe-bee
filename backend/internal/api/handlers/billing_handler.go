@@ -39,13 +39,8 @@ func (h *BillingHandler) ListPlans(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Plans are a small reference table - return with standard envelope
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: map[string]interface{}{
-		"data":        plans,
-		"total":       len(plans),
-		"page":        1,
-		"page_size":   len(plans),
-		"total_pages": 1,
-	}})
+	pg := ParsePagination(r, 50, 200)
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(SlicePage(plans, pg), int64(len(plans)))})
 }
 
 func (h *BillingHandler) GetPlan(w http.ResponseWriter, r *http.Request) {

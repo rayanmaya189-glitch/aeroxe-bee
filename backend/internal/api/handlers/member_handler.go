@@ -425,16 +425,7 @@ func (h *MemberHandler) ListTemplates(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to list templates"})
 		return
 	}
-	total := int64(len(templates))
-	start := pg.Offset
-	if start > len(templates) {
-		start = len(templates)
-	}
-	end := start + pg.PageSize
-	if end > len(templates) {
-		end = len(templates)
-	}
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(templates[start:end], total)})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(SlicePage(templates, pg), int64(len(templates)))})
 }
 
 func (h *MemberHandler) GetTemplate(w http.ResponseWriter, r *http.Request) {
@@ -575,16 +566,7 @@ func (h *MemberHandler) ListWebhooks(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to list webhooks"})
 		return
 	}
-	total := int64(len(webhooks))
-	start := pg.Offset
-	if start > len(webhooks) {
-		start = len(webhooks)
-	}
-	end := start + pg.PageSize
-	if end > len(webhooks) {
-		end = len(webhooks)
-	}
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(webhooks[start:end], total)})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(SlicePage(webhooks, pg), int64(len(webhooks)))})
 }
 
 func (h *MemberHandler) GetWebhook(w http.ResponseWriter, r *http.Request) {

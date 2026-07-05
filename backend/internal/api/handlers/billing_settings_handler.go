@@ -27,16 +27,7 @@ func (h *PaymentConfigHandler) List(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to list payment configs"})
 		return
 	}
-	total := int64(len(configs))
-	start := pg.Offset
-	if start > len(configs) {
-		start = len(configs)
-	}
-	end := start + pg.PageSize
-	if end > len(configs) {
-		end = len(configs)
-	}
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(configs[start:end], total)})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(SlicePage(configs, pg), int64(len(configs)))})
 }
 
 func (h *PaymentConfigHandler) ListEnabled(w http.ResponseWriter, r *http.Request) {
@@ -46,16 +37,7 @@ func (h *PaymentConfigHandler) ListEnabled(w http.ResponseWriter, r *http.Reques
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to list payment configs"})
 		return
 	}
-	total := int64(len(configs))
-	start := pg.Offset
-	if start > len(configs) {
-		start = len(configs)
-	}
-	end := start + pg.PageSize
-	if end > len(configs) {
-		end = len(configs)
-	}
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(configs[start:end], total)})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(SlicePage(configs, pg), int64(len(configs)))})
 }
 
 func (h *PaymentConfigHandler) Update(w http.ResponseWriter, r *http.Request) {

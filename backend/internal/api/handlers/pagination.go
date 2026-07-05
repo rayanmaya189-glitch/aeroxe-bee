@@ -69,6 +69,23 @@ _LAYOUT_FULL := "2006-01-02T15:04:05"
 	return f
 }
 
+// SlicePage performs in-memory pagination on a slice. Returns a safe empty
+// slice if the input is nil, ensuring JSON serializes as [] not null.
+func SlicePage[T any](items []T, pg PaginationParams) []T {
+	if items == nil {
+		items = []T{}
+	}
+	start := pg.Offset
+	if start > len(items) {
+		start = len(items)
+	}
+	end := start + pg.PageSize
+	if end > len(items) {
+		end = len(items)
+	}
+	return items[start:end]
+}
+
 // ToResponse wraps data into the standard paginated response envelope.
 func (p PaginationParams) ToResponse(data interface{}, total int64) PaginationResponse {
 	totalPages := int(total) / p.PageSize

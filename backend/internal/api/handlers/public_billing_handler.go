@@ -33,7 +33,8 @@ func (h *PublicBillingHandler) ListPublicPlans(w http.ResponseWriter, r *http.Re
 	if public == nil {
 		public = []models.Plan{}
 	}
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: map[string]interface{}{"data": public, "total": len(public), "page": 1, "page_size": len(public), "total_pages": 1}})
+	pg := ParsePagination(r, 50, 200)
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(SlicePage(public, pg), int64(len(public)))})
 }
 
 // ListPublicPaymentMethods returns enabled payment configs for the public pricing page.
