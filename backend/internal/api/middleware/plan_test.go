@@ -67,11 +67,12 @@ func (r *mockRows) Scan(dest ...interface{}) error {
 }
 
 type mockQuerier struct {
-	accountRow *mockRow
-	subRow     *mockRow
-	usageRow   *mockRow
-	execErr    error
-	lastQuery  string
+	accountRow   *mockRow
+	subRow       *mockRow
+	usageRow     *mockRow
+	execErr      error
+	lastQuery    string
+	subQueryCount int // tracks how many times subscription was queried
 }
 
 func (m *mockQuerier) QueryRow(_ context.Context, sql string, _ ...any) pgx.Row {
@@ -80,6 +81,7 @@ func (m *mockQuerier) QueryRow(_ context.Context, sql string, _ ...any) pgx.Row 
 		return m.accountRow
 	}
 	if strings.Contains(sql, "FROM subscriptions") {
+		m.subQueryCount++
 		return m.subRow
 	}
 	if strings.Contains(sql, "FROM usage_counters") {
@@ -445,5 +447,89 @@ func TestMemberPlanCheck_SkipsWhenNoAccountID(t *testing.T) {
 	rec := executeMiddleware(t, mw.MemberPlanCheck, context.Background())
 	if rec.Code != http.StatusOK {
 		t.Errorf("expected pass-through (200), got %d", rec.Code)
+	}
+}
+
+// --- Integration Test: Context-sharing optimization ---
+
+func TestIntegration_RequireActiveSubscription_ThenEnforceQuota_SharedContext(t *testing.T) {
+	// Verify that when RequireActiveSubscription runs before EnforceQuota,
+	// the subscription is fetched from the DB only ONCE (by RequireActiveSubscription)
+	// and EnforceQuota reuses it from context instead of making a second DB call.
+	db := &mockQuerier{
+		subRow:   newSubscriptionRow("active"),
+		usageRow: newUsageRow(50), // within quota
+	}
+	svc := services.NewAccountService(db)
+	mw := NewPlanMiddleware(svc)
+
+	// Compose: RequireActiveSubscription → EnforceQuota → okHandler
+	chain := mw.RequireActiveSubscription(mw.EnforceQuota(okHandler()))
+
+	req := httptest.NewRequestWithContext(contextWithAccountID("acct-123"), "GET", "/test", nil)
+	rec := httptest.NewRecorder()
+	chain.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rec.Code)
+	}
+
+	// The subscription query should have been called exactly ONCE
+	// (by RequireActiveSubscription). EnforceQuota should reuse it from context.
+	if db.subQueryCount != 1 {
+		t.Errorf("expected 1 subscription DB call, got %d — context-sharing optimization not working", db.subQueryCount)
+	}
+}
+
+func TestIntegration_RequireActiveSubscription_ThenEnforceQuota_ExceedsQuota(t *testing.T) {
+	// Verify the full chain blocks when quota is exceeded,
+	// and still only makes one subscription DB call.
+	db := &mockQuerier{
+		subRow:   newSubscriptionRow("active"),
+		usageRow: newUsageRow(200), // exceeds 100 quota
+	}
+	svc := services.NewAccountService(db)
+	mw := NewPlanMiddleware(svc)
+
+	chain := mw.RequireActiveSubscription(mw.EnforceQuota(okHandler()))
+
+	req := httptest.NewRequestWithContext(contextWithAccountID("acct-123"), "GET", "/test", nil)
+	rec := httptest.NewRecorder()
+	chain.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusTooManyRequests {
+		t.Errorf("expected 429, got %d", rec.Code)
+	}
+
+	// Still only one subscription query even though the request was blocked
+	if db.subQueryCount != 1 {
+		t.Errorf("expected 1 subscription DB call, got %d", db.subQueryCount)
+	}
+}
+
+func TestIntegration_EnforceQuota_Alone_FallsBackToDB(t *testing.T) {
+	// Verify that when EnforceQuota runs WITHOUT RequireActiveSubscription,
+	// it falls back to fetching the subscription from the DB itself.
+	db := &mockQuerier{
+		subRow:   newSubscriptionRow("active"),
+		usageRow: newUsageRow(50),
+	}
+	svc := services.NewAccountService(db)
+	mw := NewPlanMiddleware(svc)
+
+	// Only EnforceQuota — no RequireActiveSubscription before it
+	chain := mw.EnforceQuota(okHandler())
+
+	req := httptest.NewRequestWithContext(contextWithAccountID("acct-123"), "GET", "/test", nil)
+	rec := httptest.NewRecorder()
+	chain.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rec.Code)
+	}
+
+	// Without RequireActiveSubscription, EnforceQuota must fetch sub itself
+	if db.subQueryCount != 1 {
+		t.Errorf("expected 1 subscription DB call (fallback), got %d", db.subQueryCount)
 	}
 }
