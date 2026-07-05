@@ -1,11 +1,18 @@
 package middleware
 
 import (
+	"context"
 	"log"
 	"net/http"
 
+	"github.com/aeroxe-bee/backend/internal/models"
 	"github.com/aeroxe-bee/backend/internal/services"
 )
+
+// ContextSubscription is the context key for storing the subscription
+// fetched by RequireActiveSubscription, so downstream middleware
+// (e.g. EnforceQuota) can reuse it without a redundant DB query.
+const ContextSubscription contextKey = "subscription"
 
 // PlanMiddleware enforces subscription, account status, and quota checks.
 // It must be placed AFTER JWTAuth or APIKeyAuth in the middleware chain,
@@ -61,6 +68,9 @@ func (m *PlanMiddleware) RequireActiveAccount(next http.Handler) http.Handler {
 // Returns 403 Forbidden if the subscription is canceled or past_due.
 // Free-plan accounts with no subscription row are treated as having a free
 // subscription (they are allowed through).
+//
+// On success, the subscription is stored in the request context so that
+// downstream middleware (e.g. EnforceQuota) can reuse it without a redundant DB query.
 func (m *PlanMiddleware) RequireActiveSubscription(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		accountID := GetAccountID(r.Context())
@@ -90,13 +100,19 @@ func (m *PlanMiddleware) RequireActiveSubscription(next http.Handler) http.Handl
 			return
 		}
 
-		next.ServeHTTP(w, r)
+		// Store subscription in context for downstream middleware (e.g. EnforceQuota)
+		ctx := context.WithValue(r.Context(), ContextSubscription, sub)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
 // EnforceQuota checks that the account has not exceeded its daily message quota.
 // Returns 429 Too Many Requests if the quota is exceeded.
 // Used on message-sending and OTP endpoints.
+//
+// If RequireActiveSubscription has already run, the subscription is read from
+// context (avoids a redundant DB query). Otherwise, it falls back to fetching
+// the subscription directly.
 func (m *PlanMiddleware) EnforceQuota(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		accountID := GetAccountID(r.Context())
@@ -105,7 +121,10 @@ func (m *PlanMiddleware) EnforceQuota(next http.Handler) http.Handler {
 			return
 		}
 
-		ok, err := m.accountService.CheckQuota(r.Context(), accountID)
+		// Try to reuse subscription from context (set by RequireActiveSubscription)
+		sub, _ := r.Context().Value(ContextSubscription).(*models.Subscription)
+
+		ok, err := m.accountService.CheckQuotaWithSub(r.Context(), accountID, sub)
 		if err != nil {
 			log.Printf("[PLAN MW] quota check failed for %s: %v", accountID, err)
 			next.ServeHTTP(w, r)

@@ -145,6 +145,13 @@ func (s *AccountService) GetOrCreateSubscription(ctx context.Context, accountID 
 }
 
 func (s *AccountService) CheckQuota(ctx context.Context, accountID string) (bool, error) {
+	return s.CheckQuotaWithSub(ctx, accountID, nil)
+}
+
+// CheckQuotaWithSub checks the daily message quota, reusing a pre-fetched
+// subscription to avoid a redundant DB query. Pass nil for sub if the
+// subscription has not been fetched yet (falls back to fetching).
+func (s *AccountService) CheckQuotaWithSub(ctx context.Context, accountID string, sub *models.Subscription) (bool, error) {
 	var usage models.UsageCounter
 	today := time.Now().Format("2006-01-02")
 	err := s.db.QueryRow(ctx,
@@ -157,9 +164,13 @@ func (s *AccountService) CheckQuota(ctx context.Context, accountID string) (bool
 		return false, err
 	}
 
-	sub, err := s.GetOrCreateSubscription(ctx, accountID)
-	if err != nil || sub == nil {
-		return true, nil
+	// Reuse subscription from context if available, otherwise fetch
+	if sub == nil {
+		var fetchErr error
+		sub, fetchErr = s.GetOrCreateSubscription(ctx, accountID)
+		if fetchErr != nil || sub == nil {
+			return true, nil
+		}
 	}
 
 	withBuffer := int64(float64(sub.QuotaDaily) * (1 + sub.OverageBufferPct/100))
