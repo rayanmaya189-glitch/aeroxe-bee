@@ -9,6 +9,9 @@ interface AeroXeBeeApi {
     @POST("devices/login")
     suspend fun deviceLogin(@Body request: DeviceLoginRequest): Response<ApiResponse<DeviceLoginResponse>>
 
+    @POST("devices/qr-login")
+    suspend fun qrLogin(@Body request: QRLoginRequest): Response<ApiResponse<DeviceLoginResponse>>
+
     @POST("devices/register")
     suspend fun registerDevice(@Body request: RegisterRequest): Response<ApiResponse<RegisterResponse>>
 

@@ -69,6 +69,17 @@ data class DeviceLoginRequest(
     @SerializedName("sim_slot") val simSlot: Int = 1,
 )
 
+data class QRLoginRequest(
+    @SerializedName("pairing_token") val pairingToken: String,
+    @SerializedName("device_id") val deviceId: String,
+    @SerializedName("phone_number") val phoneNumber: String = "",
+    @SerializedName("carrier") val carrier: String = "",
+    @SerializedName("sim_slot") val simSlot: Int = 1,
+    @SerializedName("app_version") val appVersion: String = "",
+    @SerializedName("model") val model: String = "",
+    @SerializedName("os_version") val osVersion: String = "",
+)
+
 data class DeviceLoginResponse(
     @SerializedName("device_id") val deviceId: String,
     @SerializedName("is_new_device") val isNewDevice: Boolean,

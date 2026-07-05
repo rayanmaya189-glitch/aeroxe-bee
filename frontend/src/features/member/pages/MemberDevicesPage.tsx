@@ -14,13 +14,15 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { PageSkeleton } from '@/components/ui/Skeleton'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
-import { Pencil, Unplug, Smartphone } from 'lucide-react'
+import { AddDeviceQRModal } from '@/features/member/components/AddDeviceQRModal'
+import { Pencil, Unplug, Smartphone, Plus } from 'lucide-react'
 
 export function MemberDevicesPage() {
   const queryClient = useQueryClient()
   const [renameTarget, setRenameTarget] = useState<Device | null>(null)
   const [renameName, setRenameName] = useState('')
   const [disconnectTarget, setDisconnectTarget] = useState<Device | null>(null)
+  const [showQRModal, setShowQRModal] = useState(false)
 
   const { data: devices = [], isLoading, error } = useQuery({
     queryKey: ['member-devices'],
@@ -59,6 +61,11 @@ export function MemberDevicesPage() {
               </h1>
               <p className="mt-1 text-sm text-gray-400">{devices.length} devices · {onlineCount} online</p>
             </div>
+            <div className="ml-auto">
+              <Button size="sm" onClick={() => setShowQRModal(true)} icon={<Plus className="h-4 w-4" />}>
+                Add Device
+              </Button>
+            </div>
           </div>
         </div>
       </motion.div>
@@ -87,6 +94,8 @@ export function MemberDevicesPage() {
           </motion.div>
         ))}
       </div>
+
+      <AddDeviceQRModal open={showQRModal} onClose={() => setShowQRModal(false)} />
 
       <Modal open={!!renameTarget} onClose={() => { setRenameTarget(null); setRenameName('') }} title="Rename device"
         footer={<><Button variant="ghost" size="sm" onClick={() => { setRenameTarget(null); setRenameName('') }} disabled={renameMutation.isPending}>Cancel</Button><Button size="sm" onClick={() => renameMutation.mutate()} loading={renameMutation.isPending}>Save</Button></>}>

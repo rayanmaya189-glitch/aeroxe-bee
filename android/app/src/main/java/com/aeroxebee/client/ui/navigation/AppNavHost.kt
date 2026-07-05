@@ -30,6 +30,7 @@ import com.aeroxebee.client.ui.screens.logs.LogsScreen
 import com.aeroxebee.client.ui.screens.notifications.NotificationsScreen
 import com.aeroxebee.client.ui.screens.onboarding.OnboardingScreen
 import com.aeroxebee.client.ui.screens.profile.ProfileScreen
+import com.aeroxebee.client.ui.screens.qrscanner.QrScannerScreen
 import com.aeroxebee.client.ui.screens.registration.RegistrationScreen
 import com.aeroxebee.client.ui.screens.settings.SettingsScreen
 import com.aeroxebee.client.ui.screens.splash.SplashScreen
@@ -168,7 +169,20 @@ fun AppNavHost() {
                         navController.navigate(Screen.Dashboard.route) {
                             popUpTo("registration") { inclusive = true }
                         }
-                    }
+                    },
+                    onScanQr = {
+                        navController.navigate("qr-scan")
+                    },
+                )
+            }
+            composable("qr-scan") {
+                QrScannerScreen(
+                    onBack = { navController.popBackStack() },
+                    onPaired = {
+                        navController.navigate(Screen.Dashboard.route) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    },
                 )
             }
             composable(Screen.Dashboard.route) { DashboardScreen() }

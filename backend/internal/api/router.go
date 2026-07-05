@@ -37,6 +37,7 @@ func NewRouter(
 	planChangeRequestHandler *handlers.PlanChangeRequestHandler,
 	sessionHandler *handlers.SessionHandler,
 	kycAdminHandler *handlers.KycAdminHandler,
+	qrPairingHandler *handlers.QRPairingHandler,
 	billingService *services.BillingService,
 	paymentConfigService *services.PaymentConfigService,
 	authMiddleware *middleware.AuthMiddleware,
@@ -142,6 +143,7 @@ func NewRouter(
 	// Device routes — brute force protected
 	mux.Handle("POST /api/v1/devices/login", bfProtector.Protect("device-login")(http.HandlerFunc(deviceHandler.DeviceLogin)))
 	mux.HandleFunc("POST /api/v1/devices/register", deviceHandler.Register)
+	mux.Handle("POST /api/v1/devices/qr-login", bfProtector.Protect("device-qr-login")(http.HandlerFunc(qrPairingHandler.QRLogin)))
 	mux.Handle("POST /api/v1/devices/status", authMiddleware.JWTAuth(http.HandlerFunc(deviceHandler.HandleStatusUpdate)))
 	mux.Handle("POST /api/v1/devices/deregister", authMiddleware.JWTAuth(http.HandlerFunc(deviceHandler.Deregister)))
 	mux.Handle("POST /api/v1/devices", authMiddleware.JWTAuth(http.HandlerFunc(deviceHandler.RegisterDeprecated)))
@@ -201,6 +203,9 @@ func NewRouter(
 	mux.Handle("GET /api/v1/member/messages", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(memberHandler.GetMessages))))
 	mux.Handle("GET /api/v1/member/analytics", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(memberHandler.GetAnalytics))))
 	mux.Handle("GET /api/v1/member/stats", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(memberHandler.GetStats))))
+
+	// QR pairing route (member portal generates QR code for device pairing)
+	mux.Handle("POST /api/v1/member/devices/qr-code", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(qrPairingHandler.GenerateQRCode))))
 
 	// Member template routes (scoped to the member's account + rate limited)
 	mux.Handle("GET /api/v1/member/templates", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(memberHandler.ListTemplates))))

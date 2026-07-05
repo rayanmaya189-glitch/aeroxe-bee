@@ -24,6 +24,7 @@
     { "name": "Messages", "description": "SMS message sending and retrieval" },
     { "name": "OTP", "description": "One-time password generation and verification" },
     { "name": "Devices", "description": "Physical device registration and management" },
+    { "name": "QR Pairing", "description": "QR code-based device pairing" },
     { "name": "Account", "description": "Account profile, API keys, and usage" },
     { "name": "Templates", "description": "SMS template management" },
     { "name": "Webhooks", "description": "Webhook endpoint configuration" },
@@ -79,7 +80,7 @@
       "get": {
         "tags": ["Health"],
         "summary": "MQTT broker health check",
-        "description": "Returns the connection status of the MQTT broker (Mosquitto). Reports whether the backend can communicate with the message broker.",
+        "description": "Returns the connection status of the MQTT broker (Mosquitto).",
         "operationId": "mqttHealthCheck",
         "responses": {
           "200": {
@@ -106,9 +107,7 @@
               }
             }
           },
-          "503": {
-            "description": "MQTT broker is not connected"
-          }
+          "503": { "description": "MQTT broker is not connected" }
         }
       }
     },
@@ -145,7 +144,7 @@
         "tags": ["Auth"],
         "summary": "Login (staff or member)",
         "operationId": "login",
-        "description": "Authenticates against both the users table (staff/admin) and accounts table (members). If 2FA is enabled, returns a temporary token for the second step.",
+        "description": "Authenticates against both the users table (staff/admin) and accounts table (members).",
         "requestBody": {
           "required": true,
           "content": {
@@ -162,121 +161,8 @@
           }
         },
         "responses": {
-          "200": {
-            "description": "Login successful (or 2FA required)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    { "$ref": "#/components/schemas/APIResponse" },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "data": {
-                          "type": "object",
-                          "properties": {
-                            "token": { "type": "string" },
-                            "refreshToken": { "type": "string" },
-                            "requires_2fa": { "type": "boolean" },
-                            "two_fa_token": { "type": "string" },
-                            "user": { "$ref": "#/components/schemas/UserProfile" }
-                          }
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
+          "200": { "description": "Login successful (or 2FA required)" },
           "401": { "description": "Invalid credentials" }
-        }
-      }
-    },
-    "/api/v1/auth/profile": {
-      "get": {
-        "tags": ["Auth"],
-        "summary": "Get current user profile",
-        "operationId": "getProfile",
-        "security": [{ "BearerAuth": [] }],
-        "responses": {
-          "200": { "description": "Profile returned" },
-          "401": { "description": "Unauthorized" }
-        }
-      },
-      "put": {
-        "tags": ["Auth"],
-        "summary": "Update profile name",
-        "operationId": "updateProfile",
-        "security": [{ "BearerAuth": [] }],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "name": { "type": "string" }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": { "description": "Profile updated" },
-          "401": { "description": "Unauthorized" }
-        }
-      }
-    },
-    "/api/v1/auth/change-password": {
-      "post": {
-        "tags": ["Auth"],
-        "summary": "Change password",
-        "operationId": "changePassword",
-        "security": [{ "BearerAuth": [] }],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["old_password", "new_password"],
-                "properties": {
-                  "old_password": { "type": "string" },
-                  "new_password": { "type": "string", "minLength": 8 }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": { "description": "Password changed" },
-          "401": { "description": "Incorrect password" }
-        }
-      }
-    },
-    "/api/v1/auth/login/2fa": {
-      "post": {
-        "tags": ["Auth"],
-        "summary": "Complete 2FA login",
-        "operationId": "login2FA",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["token", "code"],
-                "properties": {
-                  "token": { "type": "string", "description": "Temporary 2FA token from first login step" },
-                  "code": { "type": "string", "description": "6-digit TOTP code" }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": { "description": "2FA verified, full tokens issued" },
-          "401": { "description": "Invalid 2FA code" }
         }
       }
     },
@@ -285,7 +171,7 @@
         "tags": ["Messages"],
         "summary": "Send an SMS message",
         "operationId": "sendMessage",
-        "description": "Queues an SMS message for delivery. Messages are routed through eligible devices based on the account's routing strategy.",
+        "description": "Queues an SMS message for delivery.",
         "security": [{ "APIKeyAuth": [] }],
         "parameters": [
           {
@@ -293,7 +179,7 @@
             "in": "header",
             "required": false,
             "schema": { "type": "integer", "default": 1 },
-            "description": "API version for backward compatibility. Defaults to 1. Stored in request context for future version-specific behavior."
+            "description": "API version for backward compatibility."
           }
         ],
         "requestBody": {
@@ -323,123 +209,125 @@
         }
       }
     },
-    "/api/v1/messages": {
-      "get": {
-        "tags": ["Messages"],
-        "summary": "List messages",
-        "operationId": "listMessages",
-        "security": [{ "APIKeyAuth": [] }],
-        "parameters": [
-          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
-          { "name": "pageSize", "in": "query", "schema": { "type": "integer", "default": 50 } },
-          { "name": "status", "in": "query", "schema": { "type": "string" } },
-          { "name": "message_type", "in": "query", "schema": { "type": "string", "enum": ["otp", "transactional", "marketing"] } }
-        ],
-        "responses": {
-          "200": { "description": "Paginated message list" },
-          "401": { "description": "Invalid API key" }
-        }
-      }
-    },
-    "/api/v1/messages/{id}": {
-      "get": {
-        "tags": ["Messages"],
-        "summary": "Get message by ID",
-        "operationId": "getMessage",
-        "security": [{ "APIKeyAuth": [] }],
-        "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
-        ],
-        "responses": {
-          "200": { "description": "Message details" },
-          "404": { "description": "Message not found" }
-        }
-      }
-    },
-    "/api/v1/otp/send": {
+    "/api/v1/devices/login": {
       "post": {
-        "tags": ["OTP"],
-        "summary": "Send an OTP",
-        "operationId": "sendOTP",
-        "security": [{ "APIKeyAuth": [] }],
+        "tags": ["Devices"],
+        "summary": "Device login (email/password)",
+        "operationId": "deviceLogin",
+        "description": "Authenticates a device via email/password. Creates or updates the device and returns MQTT credentials.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["phone"],
+                "required": ["email", "password", "device_id"],
                 "properties": {
-                  "phone": { "type": "string", "example": "+1234567890" },
-                  "template": { "type": "string" }
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string" },
+                  "device_id": { "type": "string", "description": "Android device unique ID" },
+                  "sim_slot": { "type": "integer", "default": 1 }
                 }
               }
             }
           }
         },
         "responses": {
-          "202": { "description": "OTP sent" },
-          "429": { "description": "Too many OTP requests" }
+          "200": { "description": "Login successful, returns JWT + MQTT credentials" },
+          "401": { "description": "Invalid credentials" }
         }
       }
     },
-    "/api/v1/otp/verify": {
+    "/api/v1/devices/qr-login": {
       "post": {
-        "tags": ["OTP"],
-        "summary": "Verify an OTP",
-        "operationId": "verifyOTP",
-        "security": [{ "APIKeyAuth": [] }],
+        "tags": ["QR Pairing"],
+        "summary": "Device login via QR code",
+        "operationId": "deviceQRLogin",
+        "description": "Validates a QR pairing token generated by the member portal, creates the device, and returns MQTT credentials. The pairing token is single-use and expires after 5 minutes.",
+        "security": [],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["phone", "code"],
+                "required": ["pairing_token", "device_id"],
                 "properties": {
-                  "phone": { "type": "string" },
-                  "code": { "type": "string", "example": "482916" }
+                  "pairing_token": { "type": "string", "description": "Token scanned from QR code" },
+                  "device_id": { "type": "string", "description": "Android device unique ID (ANDROID_ID)" },
+                  "phone_number": { "type": "string", "description": "Device phone number for country detection" },
+                  "carrier": { "type": "string", "description": "SIM carrier name" },
+                  "sim_slot": { "type": "integer", "default": 1 },
+                  "app_version": { "type": "string" },
+                  "model": { "type": "string" },
+                  "os_version": { "type": "string" }
                 }
               }
             }
           }
         },
         "responses": {
-          "200": { "description": "OTP verified" },
-          "401": { "description": "Invalid or expired OTP" }
-        }
-      }
-    },
-    "/api/v1/devices": {
-      "get": {
-        "tags": ["Devices"],
-        "summary": "List devices",
-        "operationId": "listDevices",
-        "security": [{ "BearerAuth": [] }],
-        "responses": {
-          "200": { "description": "List of devices" }
-        }
-      }
-    },
-    "/api/v1/devices/{id}": {
-      "get": {
-        "tags": ["Devices"],
-        "summary": "Get device details",
-        "operationId": "getDevice",
-        "security": [{ "BearerAuth": [] }],
-        "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": { "description": "Device details" },
-          "404": { "description": "Device not found" }
+          "200": {
+            "description": "Device paired successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/APIResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "device_id": { "type": "string" },
+                            "is_new_device": { "type": "boolean" },
+                            "token": { "type": "string", "description": "JWT for subsequent API calls" },
+                            "mqtt": {
+                              "type": "object",
+                              "properties": {
+                                "broker_url": { "type": "string" },
+                                "username": { "type": "string" },
+                                "password": { "type": "string" }
+                              }
+                            },
+                            "device": {
+                              "type": "object",
+                              "properties": {
+                                "id": { "type": "string" },
+                                "name": { "type": "string" },
+                                "sim_slot": { "type": "integer" },
+                                "status": { "type": "string" },
+                                "carrier": { "type": "string" }
+                              }
+                            },
+                            "account": {
+                              "type": "object",
+                              "properties": {
+                                "id": { "type": "string" },
+                                "email": { "type": "string" },
+                                "name": { "type": "string" }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": { "description": "Invalid pairing token" },
+          "409": { "description": "Pairing token already used" },
+          "410": { "description": "Pairing token expired" }
         }
       }
     },
     "/api/v1/devices/register": {
       "post": {
         "tags": ["Devices"],
-        "summary": "Register a new device",
+        "summary": "Register a new device (API key)",
         "operationId": "registerDevice",
         "requestBody": {
           "required": true,
@@ -447,11 +335,16 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["model", "os_version"],
+                "required": ["physical_device_id", "api_key"],
                 "properties": {
+                  "physical_device_id": { "type": "string" },
+                  "phone_number": { "type": "string" },
+                  "carrier": { "type": "string" },
+                  "sim_slot": { "type": "integer" },
+                  "app_version": { "type": "string" },
                   "model": { "type": "string" },
                   "os_version": { "type": "string" },
-                  "app_version": { "type": "string" }
+                  "api_key": { "type": "string" }
                 }
               }
             }
@@ -462,346 +355,35 @@
         }
       }
     },
-    "/api/v1/account/api-keys": {
-      "get": {
-        "tags": ["Account"],
-        "summary": "List API keys",
-        "operationId": "listAPIKeys",
+    "/api/v1/member/devices/qr-code": {
+      "post": {
+        "tags": ["QR Pairing"],
+        "summary": "Generate QR pairing token",
+        "operationId": "generateQRCode",
+        "description": "Generates a short-lived (5 minute) pairing token for QR code device pairing. The frontend displays this token as a QR code. The Android app scans the QR code and calls POST /api/v1/devices/qr-login with the token. Only one active QR token per account at a time — generating a new one invalidates any previous unused token.",
         "security": [{ "BearerAuth": [] }],
         "responses": {
-          "200": { "description": "List of API keys" }
-        }
-      },
-      "post": {
-        "tags": ["Account"],
-        "summary": "Create API key",
-        "operationId": "createAPIKey",
-        "security": [{ "BearerAuth": [] }],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "label": { "type": "string" },
-                  "scopes": { "type": "array", "items": { "type": "string" } },
-                  "expires_at": { "type": "string", "format": "date-time" }
+          "200": {
+            "description": "QR pairing token generated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/APIResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/QRCodeResponse"
+                        }
+                      }
+                    }
+                  ]
                 }
               }
             }
-          }
-        },
-        "responses": {
-          "201": { "description": "API key created" }
-        }
-      }
-    },
-    "/api/v1/account/subscription": {
-      "get": {
-        "tags": ["Account"],
-        "summary": "Get current subscription",
-        "operationId": "getSubscription",
-        "security": [{ "BearerAuth": [] }],
-        "responses": {
-          "200": { "description": "Subscription details" }
-        }
-      }
-    },
-    "/api/v1/plans": {
-      "get": {
-        "tags": ["Billing"],
-        "summary": "List plans (admin)",
-        "operationId": "listPlans",
-        "security": [{ "BearerAuth": [] }],
-        "responses": {
-          "200": { "description": "List of all plans" }
-        }
-      },
-      "post": {
-        "tags": ["Billing"],
-        "summary": "Create a plan (admin only)",
-        "operationId": "createPlan",
-        "security": [{ "AdminAuth": [] }],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["id", "name"],
-                "properties": {
-                  "id": { "type": "string" },
-                  "name": { "type": "string" },
-                  "visibility": { "type": "string", "enum": ["public", "private", "custom"] },
-                  "daily_quota": { "type": "integer" },
-                  "monthly_quota": { "type": "integer" },
-                  "monthly_price": { "type": "number" },
-                  "price_per_sms": { "type": "number" },
-                  "max_devices": { "type": "integer" },
-                  "features": { "type": "array", "items": { "type": "string" } },
-                  "is_popular": { "type": "boolean" },
-                  "cta_text": { "type": "string" }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": { "description": "Plan created" },
-          "403": { "description": "Admin only" }
-        }
-      }
-    },
-    "/api/v1/plans/{id}": {
-      "get": {
-        "tags": ["Billing"],
-        "summary": "Get plan by ID",
-        "operationId": "getPlan",
-        "security": [{ "BearerAuth": [] }],
-        "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": { "description": "Plan details" },
-          "404": { "description": "Plan not found" }
-        }
-      },
-      "put": {
-        "tags": ["Billing"],
-        "summary": "Update a plan (admin only)",
-        "operationId": "updatePlan",
-        "security": [{ "AdminAuth": [] }],
-        "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/Plan" }
-            }
-          }
-        },
-        "responses": {
-          "200": { "description": "Plan updated" },
-          "403": { "description": "Admin only" }
-        }
-      },
-      "delete": {
-        "tags": ["Billing"],
-        "summary": "Delete a plan (admin only)",
-        "operationId": "deletePlan",
-        "security": [{ "AdminAuth": [] }],
-        "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": { "description": "Plan deleted" },
-          "403": { "description": "Admin only" }
-        }
-      }
-    },
-    "/api/v1/templates": {
-      "get": {
-        "tags": ["Templates"],
-        "summary": "List templates (admin)",
-        "operationId": "listTemplates",
-        "security": [{ "AdminAuth": [] }],
-        "responses": {
-          "200": { "description": "List of templates" }
-        }
-      },
-      "post": {
-        "tags": ["Templates"],
-        "summary": "Create template (admin)",
-        "operationId": "createTemplate",
-        "security": [{ "AdminAuth": [] }],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["name", "body"],
-                "properties": {
-                  "name": { "type": "string" },
-                  "body": { "type": "string" },
-                  "variables": { "type": "array", "items": { "type": "string" } }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": { "description": "Template created" }
-        }
-      }
-    },
-    "/api/v1/webhooks": {
-      "get": {
-        "tags": ["Webhooks"],
-        "summary": "List webhooks (admin)",
-        "operationId": "listWebhooks",
-        "security": [{ "AdminAuth": [] }],
-        "responses": {
-          "200": { "description": "List of webhooks" }
-        }
-      },
-      "post": {
-        "tags": ["Webhooks"],
-        "summary": "Create webhook (admin)",
-        "operationId": "createWebhook",
-        "security": [{ "AdminAuth": [] }],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["url", "events"],
-                "properties": {
-                  "url": { "type": "string", "format": "uri" },
-                  "events": { "type": "array", "items": { "type": "string" } }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": { "description": "Webhook created" }
-        }
-      }
-    },
-    "/api/v1/admin/stats": {
-      "get": {
-        "tags": ["Admin"],
-        "summary": "Dashboard statistics",
-        "operationId": "getAdminStats",
-        "security": [{ "AdminAuth": [] }],
-        "responses": {
-          "200": { "description": "Dashboard stats" }
-        }
-      }
-    },
-    "/api/v1/admin/accounts": {
-      "get": {
-        "tags": ["Admin"],
-        "summary": "List all accounts",
-        "operationId": "listAccounts",
-        "security": [{ "AdminAuth": [] }],
-        "parameters": [
-          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
-          { "name": "pageSize", "in": "query", "schema": { "type": "integer", "default": 20 } },
-          { "name": "search", "in": "query", "schema": { "type": "string" } },
-          { "name": "status", "in": "query", "schema": { "type": "string" } }
-        ],
-        "responses": {
-          "200": { "description": "Paginated account list" }
-        }
-      }
-    },
-    "/api/v1/admin/analytics": {
-      "get": {
-        "tags": ["Admin"],
-        "summary": "Analytics data",
-        "operationId": "getAnalytics",
-        "security": [{ "AdminAuth": [] }],
-        "responses": {
-          "200": { "description": "Analytics breakdown" }
-        }
-      }
-    },
-    "/api/v1/admin/circuit-breakers": {
-      "get": {
-        "tags": ["Admin"],
-        "summary": "List circuit breakers",
-        "operationId": "getCircuitBreakers",
-        "security": [{ "AdminAuth": [] }],
-        "responses": {
-          "200": { "description": "Circuit breaker states" }
-        }
-      }
-    },
-    "/api/v1/admin/fraud-flags": {
-      "get": {
-        "tags": ["Admin"],
-        "summary": "List fraud flags",
-        "operationId": "getFraudFlags",
-        "security": [{ "AdminAuth": [] }],
-        "responses": {
-          "200": { "description": "Fraud flag list" }
-        }
-      }
-    },
-    "/api/v1/admin/users": {
-      "get": {
-        "tags": ["Admin"],
-        "summary": "List admin panel users",
-        "operationId": "listUsers",
-        "security": [{ "AdminAuth": [] }],
-        "parameters": [
-          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
-          { "name": "pageSize", "in": "query", "schema": { "type": "integer", "default": 20 } },
-          { "name": "role", "in": "query", "schema": { "type": "string", "enum": ["admin", "staff", "viewer"] } },
-          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["active", "inactive", "suspended"] } }
-        ],
-        "responses": {
-          "200": { "description": "Paginated user list" }
-        }
-      },
-      "post": {
-        "tags": ["Admin"],
-        "summary": "Create admin user",
-        "operationId": "createUser",
-        "security": [{ "AdminAuth": [] }],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["name", "email", "password"],
-                "properties": {
-                  "name": { "type": "string" },
-                  "email": { "type": "string", "format": "email" },
-                  "password": { "type": "string", "minLength": 8 },
-                  "role": { "type": "string", "enum": ["admin", "staff", "viewer"], "default": "staff" }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": { "description": "User created" }
-        }
-      }
-    },
-    "/api/v1/member/dashboard": {
-      "get": {
-        "tags": ["Member"],
-        "summary": "Member dashboard",
-        "operationId": "getMemberDashboard",
-        "security": [{ "BearerAuth": [] }],
-        "responses": {
-          "200": { "description": "Dashboard data" }
-        }
-      }
-    },
-    "/api/v1/member/devices": {
-      "get": {
-        "tags": ["Member"],
-        "summary": "List member devices",
-        "operationId": "listMemberDevices",
-        "security": [{ "BearerAuth": [] }],
-        "responses": {
-          "200": { "description": "Device list" }
-        }
-      }
-    },
-    "/api/v1/member/messages": {
-      "get": {
-        "tags": ["Member"],
-        "summary": "List member messages",
-        "operationId": "listMemberMessages",
-        "security": [{ "BearerAuth": [] }],
-        "responses": {
-          "200": { "description": "Message list" }
+          },
+          "401": { "description": "Unauthorized" }
         }
       }
     },
@@ -810,7 +392,6 @@
         "tags": ["Public"],
         "summary": "List public plans",
         "operationId": "listPublicPlans",
-        "description": "Returns plans visible to unauthenticated visitors (public plans only).",
         "responses": {
           "200": { "description": "List of public plans" }
         }
@@ -833,13 +414,13 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT",
-        "description": "JWT token from login endpoint. Used for admin panel and member portal."
+        "description": "JWT token from login endpoint."
       },
       "APIKeyAuth": {
         "type": "apiKey",
         "in": "header",
         "name": "Authorization",
-        "description": "API key passed as Bearer token. Used for SMS/OTP/device API calls."
+        "description": "API key passed as Bearer token."
       },
       "AdminAuth": {
         "type": "http",
@@ -855,6 +436,25 @@
           "success": { "type": "boolean" },
           "data": {},
           "error": { "type": "string" }
+        }
+      },
+      "QRCodeResponse": {
+        "type": "object",
+        "description": "QR pairing token response",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Pairing token (64 hex chars)"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Token expiration timestamp (5 minutes from generation)"
+          },
+          "qr_data": {
+            "type": "string",
+            "description": "JSON payload to encode in the QR code. Contains token, type, and server URL."
+          }
         }
       },
       "UserProfile": {

@@ -245,6 +245,7 @@ func main() {
 	preferencesService := services.NewUserPreferencesService(postgres.Pool)
 	kycService := services.NewKycService(postgres.Pool)
 	memberHandler := handlers.NewMemberHandler(svc.Accounts, svc.Devices, svc.Messages, svc.Billing, svc.Subscriptions, svc.Templates, svc.Webhooks, preferencesService, kycService)
+	qrPairingHandler := handlers.NewQRPairingHandler(svc.Devices, svc.Accounts, svc.MQTTCredentials, encMgr, cfg.MQTT.BrokerURL(), authMiddleware)
 
 	sessionHandler := handlers.NewSessionHandler(sessionService)
 	kycAdminHandler := handlers.NewKycAdminHandler(postgres.Pool)
@@ -257,7 +258,7 @@ func main() {
 	router := api.NewRouter(authHandler, messageHandler, deviceHandler, accountHandler,
 		adminHandler, userHandler, templateHandler, webhookHandler, otpHandler, billingHandler,
 		fraudHandler, memberHandler, twoFAHandler, paymentConfigHandler, paymentRequestHandler,
-		subscriptionRequestHandler, planChangeRequestHandler, sessionHandler, kycAdminHandler, svc.Billing, svc.PaymentConfigs, authMiddleware, metrics, postgres, redisDB, mqttClient, cfg, sseHandler)
+		subscriptionRequestHandler, planChangeRequestHandler, sessionHandler, kycAdminHandler, qrPairingHandler, svc.Billing, svc.PaymentConfigs, authMiddleware, metrics, postgres, redisDB, mqttClient, cfg, sseHandler)
 
 	promMux := http.NewServeMux()
 	promMux.Handle("/metrics", promhttp.Handler())

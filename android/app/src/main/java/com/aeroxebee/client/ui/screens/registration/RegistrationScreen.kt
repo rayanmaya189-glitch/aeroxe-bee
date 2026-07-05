@@ -41,6 +41,7 @@ private enum class Step(val index: Int, val label: String, val icon: ImageVector
 @Composable
 fun RegistrationScreen(
     onRegistered: () -> Unit,
+    onScanQr: () -> Unit = {},
     viewModel: RegistrationViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -104,7 +105,7 @@ fun RegistrationScreen(
             label = "stepContent",
         ) { step ->
             when (step) {
-                RegistrationStep.CREDENTIALS -> CredentialsStep(state, viewModel)
+                RegistrationStep.CREDENTIALS -> CredentialsStep(state, viewModel, onScanQr)
                 RegistrationStep.SIM_SELECTION -> SimSelectionStep(state, viewModel)
                 RegistrationStep.BATTERY_OPT -> BatteryOptStep(state, viewModel)
                 RegistrationStep.CONFIRM -> ConfirmStep(state, viewModel)
@@ -184,7 +185,7 @@ private fun StepProgressIndicator(currentStep: Step) {
 }
 
 @Composable
-private fun CredentialsStep(state: RegistrationState, viewModel: RegistrationViewModel) {
+private fun CredentialsStep(state: RegistrationState, viewModel: RegistrationViewModel, onScanQr: () -> Unit = {}) {
     Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.LG)) {
         AeroTextField(
             value = state.serverUrl,
@@ -224,6 +225,23 @@ private fun CredentialsStep(state: RegistrationState, viewModel: RegistrationVie
         AeroButton(
             text = "Next",
             onClick = { viewModel.nextStep() },
+        )
+
+        Spacer(Modifier.height(AppSpacing.XS))
+
+        // QR Code pairing option
+        Text(
+            text = "or",
+            style = AppTypography.Caption,
+            color = AppColors.TextMuted,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        AeroButton(
+            text = "Scan QR Code to Pair",
+            onClick = onScanQr,
+            variant = ButtonVariant.Secondary,
         )
     }
 }
