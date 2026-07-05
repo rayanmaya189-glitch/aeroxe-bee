@@ -11,6 +11,7 @@ import androidx.core.content.ContextCompat
 import com.aeroxebee.client.data.local.entity.toEntity
 import com.aeroxebee.client.data.repository.SMSTaskRepository
 import com.aeroxebee.client.domain.model.SMSTask
+import com.aeroxebee.client.performance.PerformanceTracer
 import com.aeroxebee.client.util.RateLimiter
 import com.aeroxebee.client.util.SimManager
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -25,6 +26,7 @@ class SMSEngine @Inject constructor(
     private val repository: SMSTaskRepository,
     private val rateLimiter: RateLimiter,
     private val simManager: SimManager,
+    private val tracer: PerformanceTracer,
 ) {
     companion object {
         const val MAX_PARTS = 5
@@ -42,12 +44,15 @@ class SMSEngine @Inject constructor(
         }
 
         return withContext(Dispatchers.IO) {
-            try {
-                val smsManager = getSmsManager(slot)
-                val message = task.message
-                val parts = smsManager.divideMessage(message)
+            val smsManager = getSmsManager(slot)
+            val message = task.message
+            val parts = smsManager.divideMessage(message)
+            val trace = tracer.traceSmsSend(task.recipient, parts.size)
 
+            try {
                 if (parts.size > MAX_PARTS) {
+                    trace.putAttribute("error", "too_long")
+                    tracer.stopTrace(trace, "SMSEngine")
                     repository.addLog(task.id, "TOO_LONG", "Message exceeds ${MAX_PARTS} parts")
                     return@withContext SMSTask.Status.FAILED
                 }
@@ -66,9 +71,12 @@ class SMSEngine @Inject constructor(
                 rateLimiter.recordSend(slot)
                 repository.markSent(task.id)
                 repository.addLog(task.id, "SENT", "SIM slot $slot")
+                tracer.stopTrace(trace, "SMSEngine")
 
                 SMSTask.Status.SENT
             } catch (e: Exception) {
+                trace.putAttribute("error", e.message?.take(100) ?: "unknown")
+                tracer.stopTrace(trace, "SMSEngine")
                 val newRetry = task.retryCount + 1
                 repository.markFailed(task.id, newRetry, e.message)
                 repository.addLog(task.id, "FAILED", e.message)

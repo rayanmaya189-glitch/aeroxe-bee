@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 import android.content.Context
+import com.aeroxebee.client.performance.PerformanceTracer
 import org.eclipse.paho.client.mqttv3.*
 import org.eclipse.paho.client.mqttv3.persist.MqttDefaultFilePersistence
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -27,6 +28,7 @@ import javax.net.ssl.X509TrustManager
 @Singleton
 class MqttManager @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val tracer: PerformanceTracer,
 ) {
     companion object {
         private const val TAG = "MqttManager"
@@ -83,6 +85,7 @@ class MqttManager @Inject constructor(
         lastUsername = username
         lastPassword = password
 
+        val trace = tracer.traceMqttConnect(brokerUrl)
         try {
             if (client?.isConnected == true) disconnect()
 
@@ -115,10 +118,13 @@ class MqttManager @Inject constructor(
             reconnectDelay = RECONNECT_DELAY_MS
             _connectionState.tryEmit(true)
             Log.i(TAG, "MQTT connected to $brokerUrl")
+            tracer.stopTrace(trace, TAG)
 
             // Resubscribe to all previously subscribed topics
             resubscribeAll()
         } catch (e: Exception) {
+            trace.putAttribute("error", e.message?.take(100) ?: "unknown")
+            tracer.stopTrace(trace, TAG)
             Log.e(TAG, "MQTT connect failed: ${e.message}")
             scheduleReconnect()
         }
@@ -135,22 +141,30 @@ class MqttManager @Inject constructor(
     }
 
     fun publish(topic: String, payload: String, timeoutMs: Long = 5000L): Boolean {
+        val trace = tracer.traceMqttPublish(topic)
         try {
             val message = MqttMessage(payload.toByteArray()).apply { qos = QOS }
             val token = client?.publish(topic, message)
             if (token != null) {
                 token.waitFor(timeoutMs)
                 if (!token.isComplete) {
+                    trace.putAttribute("result", "timeout")
+                    tracer.stopTrace(trace, TAG)
                     Log.w(TAG, "Publish timeout on $topic after ${timeoutMs}ms")
                     return false
                 }
                 if (token.exception != null) {
+                    trace.putAttribute("error", token.exception?.message?.take(100) ?: "unknown")
+                    tracer.stopTrace(trace, TAG)
                     Log.e(TAG, "Publish failed on $topic: ${token.exception?.message}")
                     return false
                 }
             }
+            tracer.stopTrace(trace, TAG)
             return true
         } catch (e: Exception) {
+            trace.putAttribute("error", e.message?.take(100) ?: "unknown")
+            tracer.stopTrace(trace, TAG)
             Log.e(TAG, "Publish failed: ${e.message}")
             return false
         }
