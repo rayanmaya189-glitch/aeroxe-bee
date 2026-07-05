@@ -373,6 +373,26 @@ data class MemberFeatureCatalogItem(
     @SerializedName("category") val category: String,
 )
 
+// ─── Version Check (in-app update) ──────────────────────
+data class VersionCheckResponse(
+    @SerializedName("update_available") val updateAvailable: Boolean,
+    @SerializedName("force_update") val forceUpdate: Boolean,
+    @SerializedName("version_code") val versionCode: Int = 0,
+    @SerializedName("version_name") val versionName: String = "",
+    @SerializedName("release_type") val releaseType: String = "normal",
+    @SerializedName("title") val title: String = "",
+    @SerializedName("release_notes") val releaseNotes: String = "",
+    @SerializedName("download_url") val downloadUrl: String? = null,
+    @SerializedName("apk_filename") val apkFilename: String? = null,
+    @SerializedName("release_id") val releaseId: String? = null,
+)
+
+// ─── Firebase Config (public) ──────────────────────────────
+data class FirebaseConfigResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("data") val data: Map<String, Any>? = null,
+)
+
 // ─── OTP ────────────────────────────────────────────────────
 
 data class OtpSendRequest(

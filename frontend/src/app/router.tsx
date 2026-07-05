@@ -33,6 +33,8 @@ const FeatureCatalogPage = lazy(() => import('@/features/billing/pages/FeatureCa
 const BillingSettingsPage = lazy(() => import('@/features/billing/pages/BillingSettingsPage').then((m) => ({ default: m.BillingSettingsPage })))
 const AdminSubscriptionsPage = lazy(() => import('@/features/billing/pages/AdminSubscriptionsPage').then((m) => ({ default: m.AdminSubscriptionsPage })))
 const KycReviewPage = lazy(() => import('@/features/accounts/pages/KycReviewPage').then((m) => ({ default: m.KycReviewPage })))
+const AppReleasesPage = lazy(() => import('@/features/accounts/pages/AppReleasesPage').then((m) => ({ default: m.AppReleasesPage })))
+const FirebaseConfigPage = lazy(() => import('@/features/accounts/pages/FirebaseConfigPage').then((m) => ({ default: m.FirebaseConfigPage })))
 const MemberUpgradePage = lazy(() => import('@/features/member/pages/MemberUpgradePage').then((m) => ({ default: m.MemberUpgradePage })))
 const MemberPaymentRequestsPage = lazy(() => import('@/features/member/pages/MemberPaymentRequestsPage').then((m) => ({ default: m.MemberPaymentRequestsPage })))
 const MemberSubscriptionRequestsPage = lazy(() => import('@/features/member/pages/MemberSubscriptionRequestsPage').then((m) => ({ default: m.MemberSubscriptionRequestsPage })))
@@ -155,6 +157,8 @@ const routes: RouteObject[] = [
           { path: 'billing-settings', element: <LazyLoader><BillingSettingsPage /></LazyLoader> },
           { path: 'admin/subscriptions', element: <LazyLoader><AdminSubscriptionsPage /></LazyLoader> },
           { path: 'kyc-reviews', element: <LazyLoader><KycReviewPage /></LazyLoader> },
+          { path: 'app-releases', element: <LazyLoader><AppReleasesPage /></LazyLoader> },
+          { path: 'firebase-config', element: <LazyLoader><FirebaseConfigPage /></LazyLoader> },
         ],
       },
       // Shared routes (accessible to both admin and member)

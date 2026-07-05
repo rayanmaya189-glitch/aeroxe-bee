@@ -38,6 +38,8 @@ func NewRouter(
 	sessionHandler *handlers.SessionHandler,
 	kycAdminHandler *handlers.KycAdminHandler,
 	qrPairingHandler *handlers.QRPairingHandler,
+	releaseHandler *handlers.AppReleaseHandler,
+	firebaseConfigHandler *handlers.FirebaseConfigHandler,
 	billingService *services.BillingService,
 	paymentConfigService *services.PaymentConfigService,
 	authMiddleware *middleware.AuthMiddleware,
@@ -317,6 +319,28 @@ func NewRouter(
 	mux.Handle("PUT /api/v1/admin/feature-catalog/{id}", authMiddleware.AdminAuth(http.HandlerFunc(featureCatalogHandler.UpdateStatus)))
 	mux.Handle("DELETE /api/v1/admin/feature-catalog/{id}", authMiddleware.AdminAuth(http.HandlerFunc(featureCatalogHandler.Delete)))
 	mux.Handle("POST /api/v1/admin/feature-catalog/{id}/reorder", authMiddleware.AdminAuth(http.HandlerFunc(featureCatalogHandler.Reorder)))
+
+	// App release management routes
+	mux.Handle("GET /api/v1/admin/releases", authMiddleware.JWTAuth(http.HandlerFunc(releaseHandler.List)))
+	mux.Handle("POST /api/v1/admin/releases", authMiddleware.JWTAuth(http.HandlerFunc(releaseHandler.Create)))
+	mux.Handle("GET /api/v1/admin/releases/{id}", authMiddleware.JWTAuth(http.HandlerFunc(releaseHandler.Get)))
+	mux.Handle("POST /api/v1/admin/releases/{id}/submit", authMiddleware.JWTAuth(http.HandlerFunc(releaseHandler.Submit)))
+	mux.Handle("POST /api/v1/admin/releases/{id}/approve", authMiddleware.AdminAuth(http.HandlerFunc(releaseHandler.Approve)))
+	mux.Handle("POST /api/v1/admin/releases/{id}/reject", authMiddleware.AdminAuth(http.HandlerFunc(releaseHandler.Reject)))
+	mux.Handle("POST /api/v1/admin/releases/{id}/release", authMiddleware.AdminAuth(http.HandlerFunc(releaseHandler.Release)))
+	mux.Handle("DELETE /api/v1/admin/releases/{id}", authMiddleware.AdminAuth(http.HandlerFunc(releaseHandler.Delete)))
+	mux.Handle("POST /api/v1/admin/releases/{id}/upload", authMiddleware.JWTAuth(http.HandlerFunc(releaseHandler.UploadAPK)))
+	mux.HandleFunc("GET /api/v1/version-check", releaseHandler.VersionCheck)
+
+	// Firebase config management routes
+	mux.Handle("GET /api/v1/admin/firebase-config", authMiddleware.JWTAuth(http.HandlerFunc(firebaseConfigHandler.List)))
+	mux.Handle("PUT /api/v1/admin/firebase-config", authMiddleware.AdminAuth(http.HandlerFunc(firebaseConfigHandler.BulkUpdate)))
+	mux.Handle("PUT /api/v1/admin/firebase-config/{key}", authMiddleware.AdminAuth(http.HandlerFunc(firebaseConfigHandler.Upsert)))
+	mux.Handle("DELETE /api/v1/admin/firebase-config/{key}", authMiddleware.AdminAuth(http.HandlerFunc(firebaseConfigHandler.Delete)))
+	mux.HandleFunc("GET /api/v1/firebase-config", firebaseConfigHandler.PublicConfig)
+
+	// Static file serving for uploaded APKs
+	mux.Handle("GET /api/v1/uploads/apks/", http.StripPrefix("/api/v1/uploads/apks/", http.FileServer(http.Dir("uploads/apks"))))
 
 	// SSE (Server-Sent Events) for real-time device status updates
 	if sseHandler != nil {

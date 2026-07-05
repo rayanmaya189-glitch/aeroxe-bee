@@ -246,6 +246,10 @@ func main() {
 	kycService := services.NewKycService(postgres.Pool)
 	memberHandler := handlers.NewMemberHandler(svc.Accounts, svc.Devices, svc.Messages, svc.Billing, svc.Subscriptions, svc.Templates, svc.Webhooks, preferencesService, kycService)
 	qrPairingHandler := handlers.NewQRPairingHandler(svc.Devices, svc.Accounts, svc.MQTTCredentials, encMgr, cfg.MQTT.BrokerURL(), authMiddleware)
+	releaseService := services.NewAppReleaseService(postgres.Pool)
+	firebaseConfigService := services.NewFirebaseConfigService(postgres.Pool)
+	releaseHandler := handlers.NewAppReleaseHandler(releaseService)
+	firebaseConfigHandler := handlers.NewFirebaseConfigHandler(firebaseConfigService)
 
 	sessionHandler := handlers.NewSessionHandler(sessionService)
 	kycAdminHandler := handlers.NewKycAdminHandler(postgres.Pool)
@@ -258,7 +262,7 @@ func main() {
 	router := api.NewRouter(authHandler, messageHandler, deviceHandler, accountHandler,
 		adminHandler, userHandler, templateHandler, webhookHandler, otpHandler, billingHandler,
 		fraudHandler, memberHandler, twoFAHandler, paymentConfigHandler, paymentRequestHandler,
-		subscriptionRequestHandler, planChangeRequestHandler, sessionHandler, kycAdminHandler, qrPairingHandler, svc.Billing, svc.PaymentConfigs, authMiddleware, metrics, postgres, redisDB, mqttClient, cfg, sseHandler)
+		subscriptionRequestHandler, planChangeRequestHandler, sessionHandler, kycAdminHandler, qrPairingHandler, releaseHandler, firebaseConfigHandler, svc.Billing, svc.PaymentConfigs, authMiddleware, metrics, postgres, redisDB, mqttClient, cfg, sseHandler)
 
 	promMux := http.NewServeMux()
 	promMux.Handle("/metrics", promhttp.Handler())

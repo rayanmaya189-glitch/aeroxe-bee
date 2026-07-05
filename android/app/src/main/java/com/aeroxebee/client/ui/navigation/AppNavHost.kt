@@ -34,9 +34,14 @@ import com.aeroxebee.client.ui.screens.qrscanner.QrScannerScreen
 import com.aeroxebee.client.ui.screens.registration.RegistrationScreen
 import com.aeroxebee.client.ui.screens.settings.SettingsScreen
 import com.aeroxebee.client.ui.screens.splash.SplashScreen
+import com.aeroxebee.client.ui.screens.update.UpdateCheckerViewModel
+import com.aeroxebee.client.ui.screens.update.UpdateDialog
+import com.aeroxebee.client.ui.screens.update.UpdateDownloadDialog
+import com.aeroxebee.client.ui.screens.update.UpdateState
 import com.aeroxebee.client.ui.theme.*
 import com.aeroxebee.client.util.TokenManager
 import com.aeroxebee.client.analytics.AnalyticsHelper
+import androidx.hilt.navigation.compose.hiltViewModel
 import dagger.hilt.EntryPoint
 import dagger.hilt.EntryPointAccessors
 import dagger.hilt.InstallIn
@@ -96,6 +101,15 @@ fun AppNavHost() {
     val hideBottomBarRoutes = listOf("splash", "onboarding", "registration")
     val showBottomBar = currentDestination?.route !in hideBottomBarRoutes
     val currentRoute = currentDestination?.route
+
+    // ─── In-app update checker ─────────────────────────────
+    val updateViewModel: UpdateCheckerViewModel = hiltViewModel()
+    val updateState by updateViewModel.updateState.collectAsState()
+
+    // Check for updates once when the composable first appears
+    LaunchedEffect(Unit) {
+        updateViewModel.checkForUpdate()
+    }
 
     // ─── Automatic screen view tracking ────────────────────
     val analytics = remember { EntryPointAccessors.fromApplication(
@@ -214,6 +228,21 @@ fun AppNavHost() {
         }
     } else {
         navHostContent(Modifier)
+    }
+
+    // ─── Update dialogs ─────────────────────────────────────
+    when (val state = updateState) {
+        is UpdateState.UpdateAvailable -> {
+            UpdateDialog(
+                state = state,
+                onDownload = { updateViewModel.downloadAndInstall() },
+                onDismiss = { updateViewModel.dismissUpdate() },
+            )
+        }
+        is UpdateState.Downloading -> {
+            UpdateDownloadDialog(progress = state.progress)
+        }
+        else -> { /* No dialog */ }
     }
 }
 

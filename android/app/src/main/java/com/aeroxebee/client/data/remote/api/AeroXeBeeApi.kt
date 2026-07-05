@@ -166,6 +166,10 @@ interface AeroXeBeeApi {
     @GET("feature-catalog")
     suspend fun getFeatureCatalog(@Query("active_only") activeOnly: Boolean = false): Response<ApiResponse<List<MemberFeatureCatalogItem>>>
 
+    // ─── Version Check (in-app update) ──────────────────────
+    @GET("version-check")
+    suspend fun checkForUpdate(@Query("version_code") versionCode: Int): Response<ApiResponse<VersionCheckResponse>>
+
     // ─── OTP ────────────────────────────────────────────────
     @POST("otp/send")
     suspend fun sendOtp(@Body request: OtpSendRequest): Response<ApiResponse<OtpSendResponse>>

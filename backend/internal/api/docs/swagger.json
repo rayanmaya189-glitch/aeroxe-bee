@@ -32,6 +32,8 @@
     { "name": "Admin", "description": "Admin-only dashboard and management endpoints" },
     { "name": "Member", "description": "Member portal endpoints" },
     { "name": "Fraud", "description": "Fraud detection and abuse flagging" },
+    { "name": "App Releases", "description": "App version management, in-app updates, and maker-checker release flow" },
+    { "name": "Firebase Config", "description": "Firebase Remote Config key-value management for feature flags and app settings" },
     { "name": "Public", "description": "Public endpoints (no auth required)" }
   ],
   "paths": {
@@ -39,7 +41,6 @@
       "get": {
         "tags": ["Health"],
         "summary": "Health check",
-        "description": "Returns the health status of the API server, database, and Redis.",
         "operationId": "healthCheck",
         "responses": {
           "200": {
@@ -56,14 +57,7 @@
                           "type": "object",
                           "properties": {
                             "status": { "type": "string", "enum": ["healthy", "degraded"] },
-                            "timestamp": { "type": "string", "format": "date-time" },
-                            "checks": {
-                              "type": "object",
-                              "properties": {
-                                "postgres": { "type": "string" },
-                                "redis": { "type": "string" }
-                              }
-                            }
+                            "timestamp": { "type": "string", "format": "date-time" }
                           }
                         }
                       }
@@ -80,33 +74,9 @@
       "get": {
         "tags": ["Health"],
         "summary": "MQTT broker health check",
-        "description": "Returns the connection status of the MQTT broker (Mosquitto).",
         "operationId": "mqttHealthCheck",
         "responses": {
-          "200": {
-            "description": "MQTT broker is connected",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    { "$ref": "#/components/schemas/APIResponse" },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "data": {
-                          "type": "object",
-                          "properties": {
-                            "service": { "type": "string", "example": "mqtt" },
-                            "status": { "type": "string", "enum": ["up", "down"] }
-                          }
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
+          "200": { "description": "MQTT broker status" },
           "503": { "description": "MQTT broker is not connected" }
         }
       }
@@ -125,15 +95,15 @@
                 "required": ["name", "email", "password"],
                 "properties": {
                   "name": { "type": "string", "example": "John Doe" },
-                  "email": { "type": "string", "format": "email", "example": "john@example.com" },
-                  "password": { "type": "string", "minLength": 8, "example": "SecureP@ss123" }
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string", "minLength": 8 }
                 }
               }
             }
           }
         },
         "responses": {
-          "201": { "description": "Account created successfully" },
+          "201": { "description": "Account created" },
           "400": { "description": "Validation error" },
           "409": { "description": "Email already registered" }
         }
@@ -144,7 +114,6 @@
         "tags": ["Auth"],
         "summary": "Login (staff or member)",
         "operationId": "login",
-        "description": "Authenticates against both the users table (staff/admin) and accounts table (members).",
         "requestBody": {
           "required": true,
           "content": {
@@ -171,17 +140,7 @@
         "tags": ["Messages"],
         "summary": "Send an SMS message",
         "operationId": "sendMessage",
-        "description": "Queues an SMS message for delivery.",
         "security": [{ "APIKeyAuth": [] }],
-        "parameters": [
-          {
-            "name": "X-API-Version",
-            "in": "header",
-            "required": false,
-            "schema": { "type": "integer", "default": 1 },
-            "description": "API version for backward compatibility."
-          }
-        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -191,18 +150,16 @@
                 "required": ["recipient", "message"],
                 "properties": {
                   "recipient": { "type": "string", "example": "+1234567890" },
-                  "message": { "type": "string", "example": "Your OTP is 4829" },
+                  "message": { "type": "string" },
                   "sender": { "type": "string" },
-                  "message_type": { "type": "string", "enum": ["otp", "transactional", "marketing"], "default": "transactional" },
-                  "routing_strategy": { "type": "string", "enum": ["fastest_delivery", "lowest_cost", "highest_reliability", "geo_affinity", "profit_optimized"] },
-                  "idempotency_key": { "type": "string" }
+                  "message_type": { "type": "string", "enum": ["otp", "transactional", "marketing"] }
                 }
               }
             }
           }
         },
         "responses": {
-          "202": { "description": "Message accepted and queued" },
+          "202": { "description": "Message queued" },
           "400": { "description": "Validation error" },
           "401": { "description": "Invalid API key" },
           "429": { "description": "Rate limited" }
@@ -214,7 +171,6 @@
         "tags": ["Devices"],
         "summary": "Device login (email/password)",
         "operationId": "deviceLogin",
-        "description": "Authenticates a device via email/password. Creates or updates the device and returns MQTT credentials.",
         "requestBody": {
           "required": true,
           "content": {
@@ -225,7 +181,7 @@
                 "properties": {
                   "email": { "type": "string", "format": "email" },
                   "password": { "type": "string" },
-                  "device_id": { "type": "string", "description": "Android device unique ID" },
+                  "device_id": { "type": "string" },
                   "sim_slot": { "type": "integer", "default": 1 }
                 }
               }
@@ -243,7 +199,6 @@
         "tags": ["QR Pairing"],
         "summary": "Device login via QR code",
         "operationId": "deviceQRLogin",
-        "description": "Validates a QR pairing token generated by the member portal, creates the device, and returns MQTT credentials. The pairing token is single-use and expires after 5 minutes.",
         "security": [],
         "requestBody": {
           "required": true,
@@ -253,22 +208,70 @@
                 "type": "object",
                 "required": ["pairing_token", "device_id"],
                 "properties": {
-                  "pairing_token": { "type": "string", "description": "Token scanned from QR code" },
-                  "device_id": { "type": "string", "description": "Android device unique ID (ANDROID_ID)" },
-                  "phone_number": { "type": "string", "description": "Device phone number for country detection" },
-                  "carrier": { "type": "string", "description": "SIM carrier name" },
-                  "sim_slot": { "type": "integer", "default": 1 },
-                  "app_version": { "type": "string" },
-                  "model": { "type": "string" },
-                  "os_version": { "type": "string" }
+                  "pairing_token": { "type": "string" },
+                  "device_id": { "type": "string" },
+                  "phone_number": { "type": "string" },
+                  "carrier": { "type": "string" },
+                  "sim_slot": { "type": "integer", "default": 1 }
                 }
               }
             }
           }
         },
         "responses": {
+          "200": { "description": "Device paired successfully" },
+          "401": { "description": "Invalid pairing token" },
+          "409": { "description": "Token already used" },
+          "410": { "description": "Token expired" }
+        }
+      }
+    },
+    "/api/v1/member/devices/qr-code": {
+      "post": {
+        "tags": ["QR Pairing"],
+        "summary": "Generate QR pairing token",
+        "operationId": "generateQRCode",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "QR pairing token generated" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/public/plans": {
+      "get": {
+        "tags": ["Public"],
+        "summary": "List public plans",
+        "operationId": "listPublicPlans",
+        "responses": { "200": { "description": "List of public plans" } }
+      }
+    },
+    "/api/v1/public/payment-methods": {
+      "get": {
+        "tags": ["Public"],
+        "summary": "List accepted payment methods",
+        "operationId": "listPaymentMethods",
+        "responses": { "200": { "description": "Enabled payment methods" } }
+      }
+    },
+    "/api/v1/version-check": {
+      "get": {
+        "tags": ["App Releases"],
+        "summary": "Check for app updates (Android client)",
+        "operationId": "versionCheck",
+        "description": "Public endpoint (no auth). Android app calls this on startup to check if a newer version is available. Returns update availability, release type (force/normal), and download URL.",
+        "parameters": [
+          {
+            "name": "version_code",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "integer" },
+            "description": "Current app version code (BuildConfig.VERSION_CODE)"
+          }
+        ],
+        "responses": {
           "200": {
-            "description": "Device paired successfully",
+            "description": "Version check result",
             "content": {
               "application/json": {
                 "schema": {
@@ -280,35 +283,14 @@
                         "data": {
                           "type": "object",
                           "properties": {
-                            "device_id": { "type": "string" },
-                            "is_new_device": { "type": "boolean" },
-                            "token": { "type": "string", "description": "JWT for subsequent API calls" },
-                            "mqtt": {
-                              "type": "object",
-                              "properties": {
-                                "broker_url": { "type": "string" },
-                                "username": { "type": "string" },
-                                "password": { "type": "string" }
-                              }
-                            },
-                            "device": {
-                              "type": "object",
-                              "properties": {
-                                "id": { "type": "string" },
-                                "name": { "type": "string" },
-                                "sim_slot": { "type": "integer" },
-                                "status": { "type": "string" },
-                                "carrier": { "type": "string" }
-                              }
-                            },
-                            "account": {
-                              "type": "object",
-                              "properties": {
-                                "id": { "type": "string" },
-                                "email": { "type": "string" },
-                                "name": { "type": "string" }
-                              }
-                            }
+                            "update_available": { "type": "boolean" },
+                            "force_update": { "type": "boolean" },
+                            "version_code": { "type": "integer" },
+                            "version_name": { "type": "string" },
+                            "release_type": { "type": "string", "enum": ["force", "normal"] },
+                            "title": { "type": "string" },
+                            "release_notes": { "type": "string" },
+                            "download_url": { "type": "string" }
                           }
                         }
                       }
@@ -317,54 +299,301 @@
                 }
               }
             }
-          },
-          "401": { "description": "Invalid pairing token" },
-          "409": { "description": "Pairing token already used" },
-          "410": { "description": "Pairing token expired" }
+          }
         }
       }
     },
-    "/api/v1/devices/register": {
+    "/api/v1/admin/releases": {
+      "get": {
+        "tags": ["App Releases"],
+        "summary": "List all app releases",
+        "operationId": "listReleases",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "List of releases ordered by version_code desc" }
+        }
+      },
       "post": {
-        "tags": ["Devices"],
-        "summary": "Register a new device (API key)",
-        "operationId": "registerDevice",
+        "tags": ["App Releases"],
+        "summary": "Create a new app release draft",
+        "operationId": "createRelease",
+        "description": "Any authenticated user can create (maker role). The release starts in 'draft' status.",
+        "security": [{ "BearerAuth": [] }],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["physical_device_id", "api_key"],
+                "required": ["version_code", "version_name"],
                 "properties": {
-                  "physical_device_id": { "type": "string" },
-                  "phone_number": { "type": "string" },
-                  "carrier": { "type": "string" },
-                  "sim_slot": { "type": "integer" },
-                  "app_version": { "type": "string" },
-                  "model": { "type": "string" },
-                  "os_version": { "type": "string" },
-                  "api_key": { "type": "string" }
+                  "version_code": { "type": "integer", "example": 2 },
+                  "version_name": { "type": "string", "example": "1.1.0" },
+                  "release_type": { "type": "string", "enum": ["force", "normal"], "default": "normal" },
+                  "title": { "type": "string" },
+                  "release_notes": { "type": "string" },
+                  "min_required_version": { "type": "integer", "default": 1 },
+                  "apk_url": { "type": "string", "description": "External APK download URL" }
                 }
               }
             }
           }
         },
         "responses": {
-          "201": { "description": "Device registered" }
+          "201": { "description": "Release created" },
+          "409": { "description": "version_code already exists" }
         }
       }
     },
-    "/api/v1/member/devices/qr-code": {
-      "post": {
-        "tags": ["QR Pairing"],
-        "summary": "Generate QR pairing token",
-        "operationId": "generateQRCode",
-        "description": "Generates a short-lived (5 minute) pairing token for QR code device pairing. The frontend displays this token as a QR code. The Android app scans the QR code and calls POST /api/v1/devices/qr-login with the token. Only one active QR token per account at a time — generating a new one invalidates any previous unused token.",
+    "/api/v1/admin/releases/{id}": {
+      "get": {
+        "tags": ["App Releases"],
+        "summary": "Get release details",
+        "operationId": "getRelease",
         "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Release details" },
+          "404": { "description": "Release not found" }
+        }
+      },
+      "delete": {
+        "tags": ["App Releases"],
+        "summary": "Delete a release (admin only)",
+        "operationId": "deleteRelease",
+        "description": "Only admin can delete. Only draft or rejected releases can be deleted.",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Release deleted" },
+          "400": { "description": "Cannot delete released or approved releases" }
+        }
+      }
+    },
+    "/api/v1/admin/releases/{id}/submit": {
+      "post": {
+        "tags": ["App Releases"],
+        "summary": "Submit release for approval (maker)",
+        "operationId": "submitRelease",
+        "description": "Any authenticated user can submit a draft release for admin approval.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Submitted for approval" }
+        }
+      }
+    },
+    "/api/v1/admin/releases/{id}/approve": {
+      "post": {
+        "tags": ["App Releases"],
+        "summary": "Approve release (admin only)",
+        "operationId": "approveRelease",
+        "description": "Admin reviews and approves a pending release. Changes status from pending_approval to approved.",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Release approved" },
+          "403": { "description": "Only admin can approve" }
+        }
+      }
+    },
+    "/api/v1/admin/releases/{id}/reject": {
+      "post": {
+        "tags": ["App Releases"],
+        "summary": "Reject release (admin only)",
+        "operationId": "rejectRelease",
+        "description": "Admin rejects a pending release with a reason.",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": { "type": "string", "description": "Rejection reason" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Release rejected" }
+        }
+      }
+    },
+    "/api/v1/admin/releases/{id}/release": {
+      "post": {
+        "tags": ["App Releases"],
+        "summary": "Publish release (admin only)",
+        "operationId": "publishRelease",
+        "description": "Admin publishes an approved release. This makes it the active version for all Android clients. Any previously released version is un-released.",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Release published" },
+          "403": { "description": "Only admin can publish" }
+        }
+      }
+    },
+    "/api/v1/admin/releases/{id}/upload": {
+      "post": {
+        "tags": ["App Releases"],
+        "summary": "Upload APK file for a release",
+        "operationId": "uploadAPK",
+        "description": "Upload an APK file (max 100MB) and associate it with a draft release. Only draft releases can have APKs uploaded.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["apk"],
+                "properties": {
+                  "apk": { "type": "string", "format": "binary", "description": "APK file" }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
-            "description": "QR pairing token generated",
+            "description": "APK uploaded and associated with release",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "filename": { "type": "string" },
+                    "file_path": { "type": "string" },
+                    "size_bytes": { "type": "integer" },
+                    "download_url": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "File too large or not an APK" }
+        }
+      }
+    },
+    "/api/v1/admin/firebase-config": {
+      "get": {
+        "tags": ["Firebase Config"],
+        "summary": "List all Firebase config entries (admin)",
+        "operationId": "listFirebaseConfig",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "All config entries including sensitive ones" }
+        }
+      },
+      "put": {
+        "tags": ["Firebase Config"],
+        "summary": "Bulk update Firebase config entries (admin only)",
+        "operationId": "bulkUpdateFirebaseConfig",
+        "security": [{ "AdminAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "entries": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "config_key": { "type": "string" },
+                        "config_value": { "type": "string" },
+                        "value_type": { "type": "string", "enum": ["string", "boolean", "integer"] },
+                        "category": { "type": "string" },
+                        "description": { "type": "string" },
+                        "is_sensitive": { "type": "boolean" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Config updated" },
+          "403": { "description": "Only admin can bulk update" }
+        }
+      }
+    },
+    "/api/v1/admin/firebase-config/{key}": {
+      "put": {
+        "tags": ["Firebase Config"],
+        "summary": "Upsert a single Firebase config entry (admin only)",
+        "operationId": "upsertFirebaseConfig",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "key", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "value": { "type": "string" },
+                  "value_type": { "type": "string", "enum": ["string", "boolean", "integer"] },
+                  "category": { "type": "string" },
+                  "description": { "type": "string" },
+                  "is_sensitive": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Config entry created or updated" },
+          "403": { "description": "Only admin can update" }
+        }
+      },
+      "delete": {
+        "tags": ["Firebase Config"],
+        "summary": "Delete a Firebase config entry (admin only)",
+        "operationId": "deleteFirebaseConfig",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "key", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Config entry deleted" },
+          "403": { "description": "Only admin can delete" }
+        }
+      }
+    },
+    "/api/v1/firebase-config": {
+      "get": {
+        "tags": ["Firebase Config"],
+        "summary": "Get public Firebase config (Android client)",
+        "operationId": "getPublicFirebaseConfig",
+        "description": "Public endpoint (no auth). Returns only non-sensitive config entries as a key-value map. Android app fetches this to apply feature flags and settings.",
+        "responses": {
+          "200": {
+            "description": "Public config map",
             "content": {
               "application/json": {
                 "schema": {
@@ -374,7 +603,9 @@
                       "type": "object",
                       "properties": {
                         "data": {
-                          "$ref": "#/components/schemas/QRCodeResponse"
+                          "type": "object",
+                          "description": "Key-value map of non-sensitive config entries",
+                          "additionalProperties": true
                         }
                       }
                     }
@@ -382,28 +613,7 @@
                 }
               }
             }
-          },
-          "401": { "description": "Unauthorized" }
-        }
-      }
-    },
-    "/api/v1/public/plans": {
-      "get": {
-        "tags": ["Public"],
-        "summary": "List public plans",
-        "operationId": "listPublicPlans",
-        "responses": {
-          "200": { "description": "List of public plans" }
-        }
-      }
-    },
-    "/api/v1/public/payment-methods": {
-      "get": {
-        "tags": ["Public"],
-        "summary": "List accepted payment methods",
-        "operationId": "listPaymentMethods",
-        "responses": {
-          "200": { "description": "Enabled payment methods" }
+          }
         }
       }
     }
@@ -442,31 +652,57 @@
         "type": "object",
         "description": "QR pairing token response",
         "properties": {
-          "token": {
-            "type": "string",
-            "description": "Pairing token (64 hex chars)"
-          },
-          "expires_at": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Token expiration timestamp (5 minutes from generation)"
-          },
-          "qr_data": {
-            "type": "string",
-            "description": "JSON payload to encode in the QR code. Contains token, type, and server URL."
-          }
+          "token": { "type": "string", "description": "Pairing token (64 hex chars)" },
+          "expires_at": { "type": "string", "format": "date-time" },
+          "qr_data": { "type": "string", "description": "JSON payload for QR code" }
         }
       },
-      "UserProfile": {
+      "AppRelease": {
         "type": "object",
+        "description": "App release with version info and approval workflow status",
         "properties": {
           "id": { "type": "string" },
-          "name": { "type": "string" },
-          "email": { "type": "string" },
-          "role": { "type": "string", "enum": ["admin", "staff", "viewer", "member"] },
-          "status": { "type": "string" },
-          "avatar": { "type": "string" },
-          "is_admin": { "type": "boolean" }
+          "version_code": { "type": "integer" },
+          "version_name": { "type": "string" },
+          "release_type": { "type": "string", "enum": ["force", "normal"] },
+          "title": { "type": "string" },
+          "release_notes": { "type": "string" },
+          "min_required_version": { "type": "integer" },
+          "apk_url": { "type": "string" },
+          "apk_filename": { "type": "string" },
+          "apk_size_bytes": { "type": "integer" },
+          "status": { "type": "string", "enum": ["draft", "pending_approval", "approved", "released", "rejected"] },
+          "submitted_by_name": { "type": "string" },
+          "approved_by_name": { "type": "string" },
+          "rejection_reason": { "type": "string" },
+          "released_at": { "type": "string", "format": "date-time" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "VersionCheckResponse": {
+        "type": "object",
+        "properties": {
+          "update_available": { "type": "boolean" },
+          "force_update": { "type": "boolean" },
+          "version_code": { "type": "integer" },
+          "version_name": { "type": "string" },
+          "release_type": { "type": "string", "enum": ["force", "normal"] },
+          "title": { "type": "string" },
+          "release_notes": { "type": "string" },
+          "download_url": { "type": "string" }
+        }
+      },
+      "FirebaseConfigEntry": {
+        "type": "object",
+        "properties": {
+          "config_key": { "type": "string" },
+          "config_value": { "type": "string" },
+          "value_type": { "type": "string", "enum": ["string", "boolean", "integer"] },
+          "category": { "type": "string", "enum": ["feature_flags", "update", "general", "mqtt"] },
+          "description": { "type": "string" },
+          "is_sensitive": { "type": "boolean" },
+          "updated_by_name": { "type": "string" },
+          "updated_at": { "type": "string", "format": "date-time" }
         }
       },
       "Plan": {
@@ -480,8 +716,6 @@
           "monthly_price": { "type": "number" },
           "price_per_sms": { "type": "number" },
           "max_devices": { "type": "integer" },
-          "dedicated_pool": { "type": "boolean" },
-          "default_routing_strategy": { "type": "string" },
           "is_popular": { "type": "boolean" },
           "cta_text": { "type": "string" },
           "features": { "type": "array", "items": { "type": "string" } }
