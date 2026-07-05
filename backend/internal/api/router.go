@@ -136,14 +136,18 @@ func NewRouter(
 	mux.Handle("GET /api/v1/auth/2fa/status", authMiddleware.JWTAuth(http.HandlerFunc(twoFAHandler.Status)))
 	mux.Handle("POST /api/v1/auth/2fa/disable", authMiddleware.JWTAuth(http.HandlerFunc(twoFAHandler.Disable)))
 
-	// Message routes (rate-limited + versioned)
-	mux.Handle("POST /api/v1/send", versionMiddleware(apiKeyRateLimiter.Limit(authMiddleware.APIKeyAuth(http.HandlerFunc(messageHandler.Send)))))
+	// Message routes (rate-limited + versioned + plan-checked)
+	// APIKeyAuth sets accountID → RequireActiveAccount blocks suspended/disabled → EnforceQuota blocks over-quota → rate limit → version check → handler
+	apiKeyPlanChain := func(next http.Handler) http.Handler {
+		return planMiddleware.RequireActiveAccount(planMiddleware.EnforceQuota(next))
+	}
+	mux.Handle("POST /api/v1/send", versionMiddleware(apiKeyRateLimiter.Limit(authMiddleware.APIKeyAuth(apiKeyPlanChain(http.HandlerFunc(messageHandler.Send))))))
 	mux.Handle("GET /api/v1/messages", authMiddleware.APIKeyAuth(http.HandlerFunc(messageHandler.ListMessages)))
 	mux.Handle("GET /api/v1/messages/{id}", authMiddleware.APIKeyAuth(http.HandlerFunc(messageHandler.GetMessage)))
 	mux.Handle("GET /api/v1/messages/{id}/confidence", authMiddleware.APIKeyAuth(http.HandlerFunc(messageHandler.GetConfidence)))
 
-	// OTP routes
-	mux.Handle("POST /api/v1/otp/send", authMiddleware.APIKeyAuth(http.HandlerFunc(otpHandler.Send)))
+	// OTP routes (plan-checked + rate-limited)
+	mux.Handle("POST /api/v1/otp/send", authMiddleware.APIKeyAuth(apiKeyPlanChain(http.HandlerFunc(otpHandler.Send))))
 	mux.Handle("POST /api/v1/otp/verify", authMiddleware.APIKeyAuth(http.HandlerFunc(otpHandler.Verify)))
 
 	// Device routes — brute force protected
