@@ -3,6 +3,7 @@ package api
 import (
 	"embed"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/aeroxe-bee/backend/internal/api/handlers"
@@ -15,6 +16,7 @@ import (
 )
 
 //go:embed docs/swagger.json
+//go:embed docs/swagger-ui/*
 var swaggerSpec embed.FS
 
 func NewRouter(
@@ -75,11 +77,11 @@ func NewRouter(
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>AeroXe Bee API Docs</title>
-  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.19.0/swagger-ui.css"/>
+  <link rel="stylesheet" href="/api/v1/docs/ui/swagger-ui.css"/>
 </head>
 <body>
   <div id="swagger-ui"></div>
-  <script src="https://unpkg.com/swagger-ui-dist@5.19.0/swagger-ui-bundle.js"></script>
+  <script src="/api/v1/docs/ui/swagger-ui-bundle.js"></script>
   <script>
     SwaggerUIBundle({
       url: '/api/v1/docs',
@@ -92,6 +94,29 @@ func NewRouter(
   </script>
 </body>
 </html>`))
+	})
+	// Serve vendored swagger-ui static assets
+	mux.HandleFunc("GET /api/v1/docs/ui/{file}", func(w http.ResponseWriter, r *http.Request) {
+		file := r.PathValue("file")
+		if file == "" {
+			http.NotFound(w, r)
+			return
+		}
+		data, err := swaggerSpec.ReadFile("docs/swagger-ui/" + file)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		switch {
+		case strings.HasSuffix(file, ".css"):
+			w.Header().Set("Content-Type", "text/css")
+		case strings.HasSuffix(file, ".js"):
+			w.Header().Set("Content-Type", "application/javascript")
+		case strings.HasSuffix(file, ".png"):
+			w.Header().Set("Content-Type", "image/png")
+		}
+		w.Header().Set("Cache-Control", "public, max-age=86400")
+		w.Write(data)
 	})
 
 	// Public routes (no auth required)
