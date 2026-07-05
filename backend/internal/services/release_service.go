@@ -3,6 +3,9 @@ package services
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/aeroxe-bee/backend/internal/models"
@@ -135,6 +138,38 @@ func (s *AppReleaseService) Delete(ctx context.Context, id string) error {
 	_, err := s.db.Exec(ctx,
 		`DELETE FROM app_releases WHERE id = $1 AND status IN ('draft', 'rejected')`, id)
 	return err
+}
+
+// CleanupOldAPKs removes APK files from uploads/apks/ that are older than
+// the specified maxAge and not referenced by any active release.
+// Runs periodically in the background job ticker.
+// Returns the number of files removed.
+func CleanupOldAPKs(uploadDir string, maxAge time.Duration) (int64, error) {
+	entries, err := os.ReadDir(uploadDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil
+		}
+		return 0, err
+	}
+
+	var totalCleaned int64
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".apk") {
+			continue
+		}
+		filePath := filepath.Join(uploadDir, entry.Name())
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+		if time.Since(info.ModTime()) > maxAge {
+			if err := os.Remove(filePath); err == nil {
+				totalCleaned++
+			}
+		}
+	}
+	return totalCleaned, nil
 }
 
 // UpdateAPK updates the APK metadata on a draft release

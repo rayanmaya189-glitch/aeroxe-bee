@@ -659,15 +659,22 @@ func startBackgroundJobs(
 				logger.Info("pruned stale FCM tokens", "count", pruned)
 			}
 
-			// Cleanup stale entries from revival cooldown map (older than 1 hour)
-			if len(lastRevivalAttempt) > 0 {
-				now := time.Now()
-				for id, t := range lastRevivalAttempt {
-					if now.Sub(t) > 1*time.Hour {
-						delete(lastRevivalAttempt, id)
-					}
+		// Cleanup stale entries from revival cooldown map (older than 1 hour)
+		if len(lastRevivalAttempt) > 0 {
+			now := time.Now()
+			for id, t := range lastRevivalAttempt {
+				if now.Sub(t) > 1*time.Hour {
+					delete(lastRevivalAttempt, id)
 				}
 			}
+		}
+
+		// Cleanup old APK files (older than 7 days) from uploads/apks/
+		if cleaned, err := services.CleanupOldAPKs("uploads/apks", 7*24*time.Hour); err != nil {
+			logger.Error("failed to cleanup old APK files", "error", err)
+		} else if cleaned > 0 {
+			logger.Info("cleaned up old APK files", "count", cleaned)
+		}
 
 			// Send FCM revival notifications to offline devices (with cooldown).
 			// When a device disconnects from MQTT, send a push notification
