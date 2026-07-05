@@ -1,8 +1,8 @@
 package deliveryconf
 
 import (
-	"github.com/textbee/backend/internal/config"
-	"github.com/textbee/backend/internal/models"
+	"github.com/aeroxe-bee/backend/internal/config"
+	"github.com/aeroxe-bee/backend/internal/models"
 )
 
 type Engine struct {

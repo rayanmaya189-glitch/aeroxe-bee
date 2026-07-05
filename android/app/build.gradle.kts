@@ -8,11 +8,11 @@ plugins {
 }
 
 android {
-    namespace = "com.textbee.client"
+    namespace = "com.aeroxebee.client"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.textbee.client"
+        applicationId = "com.aeroxebee.client"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
@@ -20,7 +20,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "MQTT_CLIENT_ID", "\"textbee_android_\"")
+        buildConfigField("String", "MQTT_CLIENT_ID", "\"aeroxebee_android_\"")
     }
 
     buildTypes {
@@ -81,6 +81,7 @@ dependencies {
     ksp("com.google.dagger:hilt-compiler:2.55")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
     implementation("androidx.hilt:hilt-work:1.2.0")
+    ksp("androidx.hilt:hilt-compiler:1.2.0")  // Required for @HiltWorker (FCMTokenRefreshWorker, SMSSendingService)
 
     // Room
     implementation("androidx.room:room-runtime:2.6.1")

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/textbee/backend/internal/models"
+	"github.com/aeroxe-bee/backend/internal/models"
 )
 
 type MessageService struct {

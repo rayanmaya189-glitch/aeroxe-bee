@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/textbee/backend/internal/circuitbreaker"
-	"github.com/textbee/backend/internal/models"
-	"github.com/textbee/backend/internal/services"
-	"github.com/textbee/backend/internal/telemetry"
+	"github.com/aeroxe-bee/backend/internal/circuitbreaker"
+	"github.com/aeroxe-bee/backend/internal/models"
+	"github.com/aeroxe-bee/backend/internal/services"
+	"github.com/aeroxe-bee/backend/internal/telemetry"
 )
 
 type AdminHandler struct {

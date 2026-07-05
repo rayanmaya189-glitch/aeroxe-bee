@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/textbee/backend/internal/services"
+	"github.com/aeroxe-bee/backend/internal/services"
 )
 
 // SSEHandler provides Server-Sent Events for real-time updates.

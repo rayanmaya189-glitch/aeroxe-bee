@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/textbee/backend/internal/models"
-	"github.com/textbee/backend/internal/services"
+	"github.com/aeroxe-bee/backend/internal/models"
+	"github.com/aeroxe-bee/backend/internal/services"
 )
 
 func writeJSON(w http.ResponseWriter, status int, data interface{}) {
@@ -180,7 +180,7 @@ func (m *AuthMiddleware) GenerateTokenWithPurpose(accountID, email string, admin
 		"admin": admin,
 		"iat":   time.Now().Unix(),
 		"exp":   time.Now().Add(ttl).Unix(),
-		"iss":   "textbee",
+		"iss":   "aeroxebee",
 	}
 	if purpose != "" {
 		claims["purpose"] = purpose

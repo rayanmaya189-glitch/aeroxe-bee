@@ -7,14 +7,14 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/textbee/backend/internal/api/middleware"
-	"github.com/textbee/backend/internal/config"
-	"github.com/textbee/backend/internal/encryption"
-	"github.com/textbee/backend/internal/idempotency"
-	"github.com/textbee/backend/internal/models"
-	"github.com/textbee/backend/internal/services"
-	"github.com/textbee/backend/internal/telemetry"
-	"github.com/textbee/backend/internal/worker"
+	"github.com/aeroxe-bee/backend/internal/api/middleware"
+	"github.com/aeroxe-bee/backend/internal/config"
+	"github.com/aeroxe-bee/backend/internal/encryption"
+	"github.com/aeroxe-bee/backend/internal/idempotency"
+	"github.com/aeroxe-bee/backend/internal/models"
+	"github.com/aeroxe-bee/backend/internal/services"
+	"github.com/aeroxe-bee/backend/internal/telemetry"
+	"github.com/aeroxe-bee/backend/internal/worker"
 )
 
 type MessageHandler struct {
@@ -85,7 +85,7 @@ func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.Sender == "" {
-		req.Sender = "TextBee"
+		req.Sender = "AeroXe Bee"
 	}
 	if req.MessageType == "" {
 		req.MessageType = models.MessageTypeTransactional

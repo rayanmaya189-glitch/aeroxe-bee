@@ -7,20 +7,15 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:868199089803:android:PLACEHOLDER_ANDROID_APP_ID",
+        "mobilesdk_app_id": "1:868199089803:android:a287c8d6acf6403576f68e",
         "android_client_info": {
-          "package_name": "com.textbee.client"
+          "package_name": "com.aeroxebee.client"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "868199089803-.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBT0k3Vwe4ZSvYO7KXX357G-P8jRYnOvN8"
+          "current_key": "AIzaSyD5wBcCqp9iMxOxn8O5fSJeEeTRZHVDOWE"
         }
       ],
       "services": {

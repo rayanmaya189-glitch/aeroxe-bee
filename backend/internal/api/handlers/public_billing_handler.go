@@ -3,8 +3,8 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/textbee/backend/internal/models"
-	"github.com/textbee/backend/internal/services"
+	"github.com/aeroxe-bee/backend/internal/models"
+	"github.com/aeroxe-bee/backend/internal/services"
 )
 
 // PublicBillingHandler serves unauthenticated public pricing endpoints.

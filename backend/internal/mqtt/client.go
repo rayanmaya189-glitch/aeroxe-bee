@@ -11,7 +11,7 @@ import (
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
-	"github.com/textbee/backend/internal/config"
+	"github.com/aeroxe-bee/backend/internal/config"
 )
 
 type MessageHandler func(topic string, payload []byte)

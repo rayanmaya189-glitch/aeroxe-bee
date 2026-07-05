@@ -7,9 +7,9 @@
 -keepattributes Exceptions
 
 # --- App models (Retrofit DTOs, Room entities, domain models) ---
--keep class com.textbee.client.data.remote.model.** { *; }
--keep class com.textbee.client.data.local.entity.** { *; }
--keep class com.textbee.client.domain.model.** { *; }
+-keep class com.aeroxebee.client.data.remote.model.** { *; }
+-keep class com.aeroxebee.client.data.local.entity.** { *; }
+-keep class com.aeroxebee.client.domain.model.** { *; }
 
 # --- Retrofit ---
 -keep,allowobfuscation interface * {

@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/textbee/backend/internal/database"
-	"github.com/textbee/backend/internal/telemetry"
+	"github.com/aeroxe-bee/backend/internal/database"
+	"github.com/aeroxe-bee/backend/internal/telemetry"
 )
 
 type HealthHandler struct {

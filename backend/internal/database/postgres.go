@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/textbee/backend/internal/config"
+	"github.com/aeroxe-bee/backend/internal/config"
 )
 
 type PostgresDB struct {

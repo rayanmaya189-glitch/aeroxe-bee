@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/textbee/backend/internal/config"
-	"github.com/textbee/backend/internal/models"
+	"github.com/aeroxe-bee/backend/internal/config"
+	"github.com/aeroxe-bee/backend/internal/models"
 )
 
 type Dispatcher struct {
@@ -76,7 +76,7 @@ func (d *Dispatcher) Dispatch(ctx context.Context, webhook models.Webhook, paylo
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Signature", signature)
 	req.Header.Set("X-Timestamp", fmt.Sprintf("%d", time.Now().Unix()))
-	req.Header.Set("User-Agent", "TextBee-Webhook/1.0")
+	req.Header.Set("User-Agent", "AeroXeBee-Webhook/1.0")
 
 	resp, err := d.client.Do(req)
 	if err != nil {

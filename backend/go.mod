@@ -1,4 +1,4 @@
-module github.com/textbee/backend
+module github.com/aeroxe-bee/backend
 
 go 1.25.8
 

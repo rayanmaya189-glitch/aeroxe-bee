@@ -14,26 +14,26 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/textbee/backend/internal/api"
-	"github.com/textbee/backend/internal/api/handlers"
-	"github.com/textbee/backend/internal/api/middleware"
-	"github.com/textbee/backend/internal/circuitbreaker"
-	"github.com/textbee/backend/internal/config"
-	"github.com/textbee/backend/internal/database"
-	"github.com/textbee/backend/internal/deliveryconf"
-	"github.com/textbee/backend/internal/encryption"
-	"github.com/textbee/backend/internal/fraud"
-	"github.com/textbee/backend/internal/idempotency"
-	"github.com/textbee/backend/internal/models"
-	"github.com/textbee/backend/internal/mqtt"
-	"github.com/textbee/backend/internal/ratecontrol"
-	"github.com/textbee/backend/internal/routing"
-	"github.com/textbee/backend/internal/services"
-	"github.com/textbee/backend/internal/simhealth"
-	"github.com/textbee/backend/internal/telemetry"
-	"github.com/textbee/backend/internal/webhook"
-	"github.com/textbee/backend/internal/fcm"
-	"github.com/textbee/backend/internal/worker"
+	"github.com/aeroxe-bee/backend/internal/api"
+	"github.com/aeroxe-bee/backend/internal/api/handlers"
+	"github.com/aeroxe-bee/backend/internal/api/middleware"
+	"github.com/aeroxe-bee/backend/internal/circuitbreaker"
+	"github.com/aeroxe-bee/backend/internal/config"
+	"github.com/aeroxe-bee/backend/internal/database"
+	"github.com/aeroxe-bee/backend/internal/deliveryconf"
+	"github.com/aeroxe-bee/backend/internal/encryption"
+	"github.com/aeroxe-bee/backend/internal/fraud"
+	"github.com/aeroxe-bee/backend/internal/idempotency"
+	"github.com/aeroxe-bee/backend/internal/models"
+	"github.com/aeroxe-bee/backend/internal/mqtt"
+	"github.com/aeroxe-bee/backend/internal/ratecontrol"
+	"github.com/aeroxe-bee/backend/internal/routing"
+	"github.com/aeroxe-bee/backend/internal/services"
+	"github.com/aeroxe-bee/backend/internal/simhealth"
+	"github.com/aeroxe-bee/backend/internal/telemetry"
+	"github.com/aeroxe-bee/backend/internal/webhook"
+	"github.com/aeroxe-bee/backend/internal/fcm"
+	"github.com/aeroxe-bee/backend/internal/worker"
 	"crypto/rand"
 	"encoding/hex"
 	"strings"
@@ -909,13 +909,13 @@ func seedAdminUser(ctx context.Context, pool *pgxpool.Pool, logger *telemetry.Lo
 
 	// Check if admin user already exists
 	var exists bool
-	err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE email = 'admin@textbee.dev' LIMIT 1)`).Scan(&exists)
+	err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE email = 'admin@aeroxe.com' LIMIT 1)`).Scan(&exists)
 	if err != nil {
 		logger.Warn("seed: failed to check admin user", "error", err)
 		return
 	}
 	if exists {
-		logger.Info("seed: admin user already exists, skipping creation", "email", "admin@textbee.dev")
+		logger.Info("seed: admin user already exists, skipping creation", "email", "admin@aeroxe.com")
 		return
 	}
 

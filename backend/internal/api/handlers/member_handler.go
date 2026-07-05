@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/textbee/backend/internal/api/middleware"
-	"github.com/textbee/backend/internal/models"
-	"github.com/textbee/backend/internal/services"
+	"github.com/aeroxe-bee/backend/internal/api/middleware"
+	"github.com/aeroxe-bee/backend/internal/models"
+	"github.com/aeroxe-bee/backend/internal/services"
 )
 
 // MemberHandler handles member portal API endpoints

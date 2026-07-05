@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"sort"
 
-	"github.com/textbee/backend/internal/models"
+	"github.com/aeroxe-bee/backend/internal/models"
 )
 
 type Strategy struct {

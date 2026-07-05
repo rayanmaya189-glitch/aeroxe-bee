@@ -9,7 +9,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/textbee/backend/internal/config"
+	"github.com/aeroxe-bee/backend/internal/config"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -45,81 +45,81 @@ type Metrics struct {
 func NewMetrics() *Metrics {
 	return &Metrics{
 		MessagesSent: promauto.NewCounter(prometheus.CounterOpts{
-			Name: "textbee_messages_sent_total",
+			Name: "aeroxebee_messages_sent_total",
 			Help: "Total messages sent from API",
 		}),
 		MessagesDelivered: promauto.NewCounter(prometheus.CounterOpts{
-			Name: "textbee_messages_delivered_total",
+			Name: "aeroxebee_messages_delivered_total",
 			Help: "Total messages confirmed delivered",
 		}),
 		MessagesFailed: promauto.NewCounter(prometheus.CounterOpts{
-			Name: "textbee_messages_failed_total",
+			Name: "aeroxebee_messages_failed_total",
 			Help: "Total messages failed permanently",
 		}),
 		QueueDepth: promauto.NewGaugeVec(prometheus.GaugeOpts{
-			Name: "textbee_queue_depth",
+			Name: "aeroxebee_queue_depth",
 			Help: "Current queue depth per priority lane",
 		}, []string{"lane"}),
 		DeviceUptime: promauto.NewGaugeVec(prometheus.GaugeOpts{
-			Name: "textbee_device_uptime_ratio",
+			Name: "aeroxebee_device_uptime_ratio",
 			Help: "24h uptime ratio per device",
 		}, []string{"device_id", "carrier"}),
 		CarrierFailureRate: promauto.NewGaugeVec(prometheus.GaugeOpts{
-			Name: "textbee_carrier_failure_rate",
+			Name: "aeroxebee_carrier_failure_rate",
 			Help: "Rolling failure rate per carrier",
 		}, []string{"carrier"}),
 		CircuitBreakerState: promauto.NewGaugeVec(prometheus.GaugeOpts{
-			Name: "textbee_circuit_breaker_state",
+			Name: "aeroxebee_circuit_breaker_state",
 			Help: "Circuit breaker state: 0=closed 1=half-open 2=open",
 		}, []string{"scope", "scope_value"}),
 		MessageLatency: promauto.NewHistogram(prometheus.HistogramOpts{
-			Name:    "textbee_message_latency_seconds",
+			Name:    "aeroxebee_message_latency_seconds",
 			Help:    "End-to-end message delivery latency",
 			Buckets: []float64{0.5, 1, 2, 3, 5, 10, 30, 60, 120},
 		}),
 		APILatency: promauto.NewHistogramVec(prometheus.HistogramOpts{
-			Name:    "textbee_api_latency_seconds",
+			Name:    "aeroxebee_api_latency_seconds",
 			Help:    "API request latency by endpoint",
 			Buckets: prometheus.DefBuckets,
 		}, []string{"method", "path", "status"}),
 		ActiveDevices: promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "textbee_active_devices",
+			Name: "aeroxebee_active_devices",
 			Help: "Number of devices currently ONLINE",
 		}),
 		OTPLatency: promauto.NewHistogram(prometheus.HistogramOpts{
-			Name:    "textbee_otp_latency_seconds",
+			Name:    "aeroxebee_otp_latency_seconds",
 			Help:    "OTP delivery latency",
 			Buckets: []float64{0.5, 1, 2, 3, 5, 10, 30},
 		}),
 		DeliveryConfidence: promauto.NewHistogram(prometheus.HistogramOpts{
-			Name:    "textbee_delivery_confidence",
+			Name:    "aeroxebee_delivery_confidence",
 			Help:    "Delivery confidence score distribution",
 			Buckets: []float64{0.1, 0.3, 0.5, 0.7, 0.9, 0.95, 0.99},
 		}),
 		SIMHealthStatus: promauto.NewGaugeVec(prometheus.GaugeOpts{
-			Name: "textbee_sim_health_status",
+			Name: "aeroxebee_sim_health_status",
 			Help: "SIM health 0=healthy 1=degraded 2=blocked",
 		}, []string{"device_id", "carrier"}),
 		WorkersActive: promauto.NewGauge(prometheus.GaugeOpts{
-			Name: "textbee_workers_active",
+			Name: "aeroxebee_workers_active",
 			Help: "Number of active worker goroutines",
 		}),
 		QueueProcessed: promauto.NewCounterVec(prometheus.CounterOpts{
-			Name: "textbee_queue_processed_total",
+			Name: "aeroxebee_queue_processed_total",
 			Help: "Messages processed from queue by lane",
 		}, []string{"lane", "status"}),
 
 		// FCM token lifecycle metrics
 		FCMTokensPruned: promauto.NewCounter(prometheus.CounterOpts{
-			Name: "textbee_fcm_tokens_pruned_total",
+			Name: "aeroxebee_fcm_tokens_pruned_total",
 			Help: "Total FCM tokens pruned (>30 days inactive or marked invalid)",
 		}),
 		FCMTokensInvalidated: promauto.NewCounter(prometheus.CounterOpts{
-			Name: "textbee_fcm_tokens_invalidated_total",
+			Name: "aeroxebee_fcm_tokens_invalidated_total",
 			Help: "Total FCM tokens invalidated by FCM UNREGISTERED/INVALID_ARGUMENT errors",
 		}),
 		FCMSendsTotal: promauto.NewCounterVec(prometheus.CounterOpts{
-			Name: "textbee_fcm_sends_total",
+			Name: "aeroxebee_fcm_sends_total",
 			Help: "Total FCM push notification attempts",
 		}, []string{"status"}), // status: success, invalid_token, error
 	}

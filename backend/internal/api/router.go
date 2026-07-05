@@ -5,13 +5,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/textbee/backend/internal/api/handlers"
-	"github.com/textbee/backend/internal/api/middleware"
-	"github.com/textbee/backend/internal/config"
-	"github.com/textbee/backend/internal/database"
-	"github.com/textbee/backend/internal/mqtt"
-	"github.com/textbee/backend/internal/services"
-	"github.com/textbee/backend/internal/telemetry"
+	"github.com/aeroxe-bee/backend/internal/api/handlers"
+	"github.com/aeroxe-bee/backend/internal/api/middleware"
+	"github.com/aeroxe-bee/backend/internal/config"
+	"github.com/aeroxe-bee/backend/internal/database"
+	"github.com/aeroxe-bee/backend/internal/mqtt"
+	"github.com/aeroxe-bee/backend/internal/services"
+	"github.com/aeroxe-bee/backend/internal/telemetry"
 )
 
 //go:embed docs/swagger.json

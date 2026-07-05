@@ -15,5 +15,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "TextBeeClient"
+rootProject.name = "AeroXeBeeClient"
 include(":app")

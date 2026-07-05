@@ -20,13 +20,13 @@
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
 
     <application
-        android:name=".TextBeeApplication"
+        android:name=".AeroXeBeeApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.TextBeeClient">
+        android:theme="@style/Theme.AeroXeBeeClient">
 
         <provider
             android:name="androidx.startup.InitializationProvider"
@@ -42,7 +42,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.TextBeeClient">
+            android:theme="@style/Theme.AeroXeBeeClient">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

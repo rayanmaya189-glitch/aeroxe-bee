@@ -7,10 +7,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/textbee/backend/internal/api/middleware"
-	"github.com/textbee/backend/internal/encryption"
-	"github.com/textbee/backend/internal/models"
-	"github.com/textbee/backend/internal/services"
+	"github.com/aeroxe-bee/backend/internal/api/middleware"
+	"github.com/aeroxe-bee/backend/internal/encryption"
+	"github.com/aeroxe-bee/backend/internal/models"
+	"github.com/aeroxe-bee/backend/internal/services"
 	"golang.org/x/crypto/bcrypt"
 )
 

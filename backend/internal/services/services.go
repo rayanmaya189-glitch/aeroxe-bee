@@ -6,7 +6,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/redis/go-redis/v9"
-	"github.com/textbee/backend/internal/config"
+	"github.com/aeroxe-bee/backend/internal/config"
 )
 
 type DatabaseQuerier interface {

@@ -6,8 +6,8 @@ import (
 	"net/http"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/textbee/backend/internal/api/middleware"
-	"github.com/textbee/backend/internal/telemetry"
+	"github.com/aeroxe-bee/backend/internal/api/middleware"
+	"github.com/aeroxe-bee/backend/internal/telemetry"
 )
 
 // FCMTokenHandler handles FCM token registration from Android devices

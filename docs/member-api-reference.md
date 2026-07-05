@@ -331,7 +331,7 @@ curl -X POST https://api.aeroxe.com/api/v1/send \
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `recipient` | string | Yes | — | Phone number in E.164 format (`+1234567890`) |
-| `sender` | string | No | `TextBee` | Sender ID / name |
+| `sender` | string | No | `AeroXe Bee` | Sender ID / name |
 | `message` | string | Yes | — | SMS body text |
 | `message_type` | string | No | `transactional` | `otp`, `transactional`, or `marketing` |
 | `idempotency_key` | string | Yes | — | Unique key to prevent duplicate sends |
@@ -455,7 +455,7 @@ curl https://api.aeroxe.com/api/v1/messages \
     {
       "id": "uuid",
       "recipient": "+1234567890",
-      "sender": "TextBee",
+      "sender": "AeroXe Bee",
       "message_type": "transactional",
       "status": "delivered",
       "delivery_status": "PROBABLE_DELIVERED",
@@ -482,7 +482,7 @@ curl https://api.aeroxe.com/api/v1/messages/{message_id} \
   "data": {
     "id": "uuid",
     "recipient": "+1234567890",
-    "sender": "TextBee",
+    "sender": "AeroXe Bee",
     "message": "Hello from AeroXe!",
     "message_type": "transactional",
     "status": "delivered",
@@ -859,7 +859,7 @@ curl -X POST https://api.aeroxe.com/api/v1/member/webhooks \
   "event": "message.delivered",
   "message_id": "uuid",
   "recipient": "+1234567890",
-  "sender": "TextBee",
+  "sender": "AeroXe Bee",
   "message_type": "transactional",
   "delivery_status": "PROBABLE_DELIVERED",
   "confidence_score": 0.92,

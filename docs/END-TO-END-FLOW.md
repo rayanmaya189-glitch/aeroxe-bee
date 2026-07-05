@@ -726,7 +726,7 @@ All API calls are organized in two service files:
 ### 13.2 Retrofit API Interface
 
 ```kotlin
-interface TextBeeApi {
+interface AeroXeBeeApi {
     @POST("devices/login")
     suspend fun deviceLogin(@Body request: DeviceLoginRequest): Response<ApiResponse<DeviceLoginResponse>>
 
@@ -942,19 +942,19 @@ docker compose down -v && docker compose up --build -d
 
 ```bash
 # Create database
-psql -U postgres -c "CREATE USER textbee WITH PASSWORD 'textbee';"
-psql -U postgres -c "CREATE DATABASE textbee OWNER textbee;"
+psql -U postgres -c "CREATE USER aeroxebee WITH PASSWORD 'aeroxebee';"
+psql -U postgres -c "CREATE DATABASE aeroxebee OWNER aeroxebee;"
 
 # Run migrations
 cd backend
-psql -U textbee -d textbee -f migrations/001_init.sql
-psql -U textbee -d textbee -f migrations/002_add_users_table.sql
-psql -U textbee -d textbee -f migrations/003_add_2fa_and_preferences.sql
-psql -U textbee -d textbee -f migrations/003_add_device_name.sql
-psql -U textbee -d textbee -f migrations/004_add_mqtt_encrypted_password.sql
-psql -U textbee -d textbee -f migrations/004_payment_configs_and_subscription_requests.sql
-psql -U textbee -d textbee -f migrations/005_add_mqtt_auth_index.sql
-psql -U textbee -d textbee -f migrations/006_plan_visibility.sql
+psql -U aeroxebee -d aeroxebee -f migrations/001_init.sql
+psql -U aeroxebee -d aeroxebee -f migrations/002_add_users_table.sql
+psql -U aeroxebee -d aeroxebee -f migrations/003_add_2fa_and_preferences.sql
+psql -U aeroxebee -d aeroxebee -f migrations/003_add_device_name.sql
+psql -U aeroxebee -d aeroxebee -f migrations/004_add_mqtt_encrypted_password.sql
+psql -U aeroxebee -d aeroxebee -f migrations/004_payment_configs_and_subscription_requests.sql
+psql -U aeroxebee -d aeroxebee -f migrations/005_add_mqtt_auth_index.sql
+psql -U aeroxebee -d aeroxebee -f migrations/006_plan_visibility.sql
 ```
 
 #### Step 2: Set Up Redis
@@ -1123,9 +1123,9 @@ go test ./...        # Run tests
 |----------|---------|-------------|
 | `DB_HOST` | `localhost` | PostgreSQL host |
 | `DB_PORT` | `5432` | PostgreSQL port |
-| `DB_USER` | `textbee` | Database user |
-| `DB_PASSWORD` | `textbee` | Database password |
-| `DB_NAME` | `textbee` | Database name |
+| `DB_USER.*aeroxebee` | Database user |
+| `DB_PASSWORD.*aeroxebee` | Database password |
+| `DB_NAME.*aeroxebee` | Database name |
 | `DB_SSLMODE` | `disable` | SSL mode |
 | `DB_MAX_OPEN_CONNS` | `25` | Connection pool max open |
 | `DB_MAX_IDLE_CONNS` | `10` | Connection pool max idle |
@@ -1147,7 +1147,7 @@ go test ./...        # Run tests
 | `MQTT_USERNAME` | (empty) | Backend MQTT username |
 | `MQTT_PASSWORD` | (empty) | Backend MQTT password |
 | `MQTT_CA_CERT` | (empty) | CA certificate path |
-| `MQTT_CLIENT_ID` | `textbee-backend` | MQTT client ID |
+| `MQTT_CLIENT_ID.*aeroxebee-backend` | MQTT client ID |
 | `MQTT_QOS` | `1` | Default QoS level |
 | `MQTT_USE_TLS` | `false` | Enable TLS |
 | `MQTT_TLS_INSECURE` | `false` | Skip TLS verification |
@@ -1158,7 +1158,7 @@ go test ./...        # Run tests
 | `JWT_SECRET` | `change-me-in-production` | JWT signing secret |
 | `JWT_ACCESS_TTL` | `15m` | Access token TTL |
 | `JWT_REFRESH_TTL` | `168h` | Refresh token TTL |
-| `JWT_ISSUER` | `textbee` | JWT issuer claim |
+| `JWT_ISSUER` | `aeroxebee` | JWT issuer claim |
 
 ### Encryption
 | Variable | Default | Description |

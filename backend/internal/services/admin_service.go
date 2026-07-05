@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/textbee/backend/internal/models"
+	"github.com/aeroxe-bee/backend/internal/models"
 )
 
 type AdminService struct {

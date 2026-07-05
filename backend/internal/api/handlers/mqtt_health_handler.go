@@ -3,7 +3,7 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/textbee/backend/internal/mqtt"
+	"github.com/aeroxe-bee/backend/internal/mqtt"
 )
 
 type MQTTHealthHandler struct {

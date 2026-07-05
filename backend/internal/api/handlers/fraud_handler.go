@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/textbee/backend/internal/fraud"
-	"github.com/textbee/backend/internal/models"
+	"github.com/aeroxe-bee/backend/internal/fraud"
+	"github.com/aeroxe-bee/backend/internal/models"
 )
 
 type FraudHandler struct {

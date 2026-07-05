@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/textbee/backend/internal/config"
-	"github.com/textbee/backend/internal/models"
+	"github.com/aeroxe-bee/backend/internal/config"
+	"github.com/aeroxe-bee/backend/internal/models"
 )
 
 var (

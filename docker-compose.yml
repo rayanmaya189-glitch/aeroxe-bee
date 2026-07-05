@@ -4,16 +4,16 @@ services:
   postgres:
     image: postgres:18-alpine
     environment:
-      POSTGRES_USER: textbee
-      POSTGRES_PASSWORD: textbee
-      POSTGRES_DB: textbee
+      POSTGRES_USER: aeroxebee
+      POSTGRES_PASSWORD: aeroxebee
+      POSTGRES_DB: aeroxebee
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql
       - ./backend/migrations:/docker-entrypoint-initdb.d/
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U textbee"]
+      test: ["CMD-SHELL", "pg_isready -U aeroxebee"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -66,9 +66,9 @@ services:
       SERVER_PORT: 8080
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_USER: textbee
-      DB_PASSWORD: textbee
-      DB_NAME: textbee
+      DB_USER: aeroxebee
+      DB_PASSWORD: aeroxebee
+      DB_NAME: aeroxebee
       REDIS_HOST: redis
       REDIS_PORT: 6379
       MQTT_BROKER: mosquitto

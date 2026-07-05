@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/textbee/backend/internal/api/middleware"
-	"github.com/textbee/backend/internal/services"
+	"github.com/aeroxe-bee/backend/internal/api/middleware"
+	"github.com/aeroxe-bee/backend/internal/services"
 )
 
 type KycAdminHandler struct {
