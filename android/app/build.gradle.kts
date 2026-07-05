@@ -108,6 +108,7 @@ dependencies {
     implementation("com.google.firebase:firebase-crashlytics")
     implementation("com.google.firebase:firebase-perf")
     implementation("com.google.firebase:firebase-analytics-ktx")
+    implementation("com.google.firebase:firebase-config")
 
     // EncryptedSharedPreferences
     implementation("androidx.security:security-crypto:1.1.0")

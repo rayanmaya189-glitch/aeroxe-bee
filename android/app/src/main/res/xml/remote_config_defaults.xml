@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<defaultsMap>
+    <!-- Feature Flags -->
+    <entry>
+        <key>mqtt_enabled</key>
+        <value>true</value>
+    </entry>
+    <entry>
+        <key>sms_retry_enabled</key>
+        <value>true</value>
+    </entry>
+    <entry>
+        <key>push_notifications_enabled</key>
+        <value>true</value>
+    </entry>
+    <entry>
+        <key>onboarding_required</key>
+        <value>true</value>
+    </entry>
+    <entry>
+        <key>maintenance_mode</key>
+        <value>false</value>
+    </entry>
+
+    <!-- A/B Testing -->
+    <entry>
+        <key>max_sms_parts</key>
+        <value>5</value>
+    </entry>
+    <entry>
+        <key>heartbeat_interval_ms</key>
+        <value>30000</value>
+    </entry>
+    <entry>
+        <key>retry_interval_ms</key>
+        <value>60000</value>
+    </entry>
+
+    <!-- Dynamic Configuration -->
+    <entry>
+        <key>min_app_version_code</key>
+        <value>1</value>
+    </entry>
+    <entry>
+        <key>force_update_message</key>
+        <value></value>
+    </entry>
+    <entry>
+        <key>support_email</key>
+        <value>support@aeroxe.com</value>
+    </entry>
+</defaultsMap>

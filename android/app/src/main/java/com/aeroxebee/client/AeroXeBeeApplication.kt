@@ -7,6 +7,7 @@ import android.os.Build
 import android.util.Log
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import com.aeroxebee.client.config.RemoteConfigManager
 import com.aeroxebee.client.fcm.FCMTokenRefreshWorker
 import com.aeroxebee.client.worker.JobSchedulerFallback
 import com.aeroxebee.client.worker.WatchdogScheduler
@@ -21,6 +22,7 @@ class AeroXeBeeApplication : Application(), Configuration.Provider {
 
     @Inject lateinit var workerFactory: HiltWorkerFactory
     @Inject lateinit var watchdogScheduler: WatchdogScheduler
+    @Inject lateinit var remoteConfigManager: RemoteConfigManager
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
@@ -30,6 +32,7 @@ class AeroXeBeeApplication : Application(), Configuration.Provider {
     override fun onCreate() {
         super.onCreate()
         setupFirebase()
+        remoteConfigManager.fetchAndActivate()
         createNotificationChannels()
         startWatchdog()
         startJobSchedulerFallback()
