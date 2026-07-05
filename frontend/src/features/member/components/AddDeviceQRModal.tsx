@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { QRCodeSVG } from 'qrcode.react'
-import { X, RefreshCw, Smartphone, Clock, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { X, RefreshCw, Smartphone, Clock, AlertCircle } from 'lucide-react'
 import api from '@/services/api'
 import type { ApiResponse } from '@/types/api'
 import { Button } from '@/components/ui/Button'

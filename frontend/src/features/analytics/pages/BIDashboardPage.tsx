@@ -309,7 +309,7 @@ function BusinessForecastSection({
   const totalRevenue = revenueData.reduce((s, r) => s + r.revenue, 0)
   const avgRevenuePerPlan = revenueData.length > 0 ? totalRevenue / revenueData.length : 0
   const projectedMonthly = totalRevenue * 1.1 // Simple 10% growth assumption
-  const growthRate = growthPoints.length >= 2 ? (growthRegression.slope / Math.max(growthPoints[growthPoints.length - 1].y, 1)) * 100 : 0
+  const growthRate = growthPoints.length >= 2 ? (growthRegression.slope / Math.max(growthPoints[growthPoints.length - 1]?.y ?? 1, 1)) * 100 : 0
 
   // Combine actual + forecast for chart
   const combinedGrowth = [

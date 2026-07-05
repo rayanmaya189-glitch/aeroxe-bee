@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { PageTransition } from '@/components/ui/PageTransition'
 import { useQuery } from '@tanstack/react-query'
-import { getMySubscriptionRequests, type SubscriptionRequest } from '@/services/dashboard'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
+import { getMySubscriptionRequests } from '@/services/dashboard'
+import { Card, CardHeader, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
 import { ArrowUpCircle, Clock, CheckCircle, XCircle, ArrowRight } from 'lucide-react'
@@ -67,15 +67,15 @@ export function MemberSubscriptionRequestsPage() {
           <>
             <div className="space-y-3">
               {requests.map((req) => {
-                const status = statusConfig[req.status] ?? statusConfig.pending
+                const statusDef = statusConfig[req.status] ?? statusConfig.pending!
                 return (
                   <motion.div key={req.id} variants={itemVariants}>
                     <Card hover glow="bg-purple-500/10">
                       <CardHeader>
                         <div className="flex items-center gap-3">
-                          <div className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${status.color}`}>
-                            {status.icon}
-                            {status.label}
+                          <div className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${statusDef.color}`}>
+                            {statusDef.icon}
+                            {statusDef.label}
                           </div>
                           <span className="text-xs text-gray-500">
                             {new Date(req.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}

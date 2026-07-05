@@ -265,13 +265,14 @@ function APKUpload({ releaseId, onDone }: { releaseId: string; onDone: () => voi
     e.preventDefault()
     const form = e.currentTarget
     const fileInput = form.elements.namedItem('apk') as HTMLInputElement
-    if (!fileInput.files?.length) return
+    const file = fileInput.files?.[0]
+    if (!file) return
 
     setUploading(true)
     setError('')
     try {
       const formData = new FormData()
-      formData.append('apk', fileInput.files[0])
+      formData.append('apk', file)
 
       const res = await api.post(`/admin/releases/${releaseId}/upload`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
