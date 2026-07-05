@@ -72,6 +72,28 @@
   * {
     @apply border-gray-800;
   }
+
+  /* Dark-themed select dropdown options */
+  select {
+    color-scheme: dark;
+  }
+
+  select option {
+    background-color: #1a1f2e;
+    color: #e5e7eb;
+    padding: 8px 12px;
+  }
+
+  select option:hover,
+  select option:focus,
+  select option:active {
+    background-color: #252d3d;
+  }
+
+  select option:checked {
+    background-color: #1e3a5f;
+    color: #93c5fd;
+  }
 }
 
 /* ─── Components ────────────────────────────────────────────── */

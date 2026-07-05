@@ -255,6 +255,31 @@
         }
       }
     },
+    "/api/v1/member/plan": {
+      "get": {
+        "tags": ["Member"],
+        "summary": "Get current plan and quota details",
+        "operationId": "getMemberPlan",
+        "security": [{ "BearerAuth": [] }],
+        "description": "Returns the member's current subscription plan details, daily/monthly usage, and remaining quota. Protected by plan middleware — blocks suspended accounts and canceled subscriptions.",
+        "responses": {
+          "200": {
+            "description": "Plan details with usage and quota info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/APIResponse" },
+                    { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/MemberPlanResponse" } } }
+                  ]
+                }
+              }
+            }
+          },
+          "403": { "description": "Account suspended/disabled or subscription canceled/past due" }
+        }
+      }
+    },
     "/api/v1/public/plans": {
       "get": {
         "tags": ["Public"],
@@ -781,6 +806,29 @@
           "is_popular": { "type": "boolean" },
           "cta_text": { "type": "string" },
           "features": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "MemberPlanResponse": {
+        "type": "object",
+        "description": "Current plan details with usage and remaining quota",
+        "properties": {
+          "id": { "type": "string", "description": "Plan type (e.g. free, pro, scale, enterprise)" },
+          "name": { "type": "string", "description": "Plan display name" },
+          "status": { "type": "string", "description": "Account status" },
+          "daily_quota": { "type": "integer", "description": "Daily SMS quota" },
+          "monthly_quota": { "type": "integer", "description": "Monthly SMS quota" },
+          "max_devices": { "type": "integer", "description": "Maximum allowed devices" },
+          "daily_used": { "type": "integer", "description": "SMS sent today" },
+          "monthly_used": { "type": "integer", "description": "SMS sent this month" },
+          "daily_remaining": { "type": "integer", "description": "Remaining daily quota" },
+          "monthly_remaining": { "type": "integer", "description": "Remaining monthly quota" },
+          "price_per_sms": { "type": "number", "description": "Cost per SMS" },
+          "monthly_price": { "type": "number", "description": "Monthly subscription price" },
+          "features": { "type": "array", "items": { "type": "string" }, "description": "Plan feature list" },
+          "routing_strategy": { "type": "string", "description": "Default routing strategy" },
+          "subscription_status": { "type": "string", "enum": ["active", "past_due", "canceled", "trialing"], "description": "Subscription status" },
+          "billing_cycle": { "type": "string", "enum": ["monthly", "yearly"], "description": "Billing cycle" },
+          "renewal_date": { "type": "string", "format": "date-time", "description": "Next renewal date" }
         }
       },
       "PaginatedResponse": {
