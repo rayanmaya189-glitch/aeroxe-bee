@@ -157,12 +157,13 @@ func main() {
 					logger.Error("mqtt status: mark failed", "msg_id", statusReport.MessageID, "error", err)
 				}
 				if statusReport.DeviceID != "" {
-					if err := svc.Devices.UpdateStatus(context.Background(), statusReport.DeviceID, models.DeviceStatusOffline); err != nil {
-						logger.Error("mqtt status: update status failed", "device_id", statusReport.DeviceID, "error", err)
+					// Device is still connected to MQTT — only the SMS send failed.
+					// UpdatePong to keep the device alive; don't mark it OFFLINE.
+					if err := svc.Devices.UpdatePong(context.Background(), statusReport.DeviceID); err != nil {
+						logger.Error("mqtt status: update pong failed", "device_id", statusReport.DeviceID, "error", err)
 					}
 					if sseHandler != nil {
 						sseHandler.BroadcastMessageStatus(statusReport.MessageID, statusReport.DeviceID, statusReport.Status, "FAILED", 0.0)
-						sseHandler.BroadcastDeviceStatus(statusReport.DeviceID, "OFFLINE")
 					}
 				}
 			}
