@@ -47,16 +47,15 @@ class SMSEngine @Inject constructor(
             val smsManager = getSmsManager(slot)
             val message = task.message
             val parts = smsManager.divideMessage(message)
+
+            if (parts.size > MAX_PARTS) {
+                repository.addLog(task.id, "TOO_LONG", "Message exceeds ${MAX_PARTS} parts")
+                return@withContext SMSTask.Status.FAILED
+            }
+
             val trace = tracer.traceSmsSend(task.recipient, parts.size)
 
             try {
-                if (parts.size > MAX_PARTS) {
-                    trace.putAttribute("error", "too_long")
-                    tracer.stopTrace(trace, "SMSEngine")
-                    repository.addLog(task.id, "TOO_LONG", "Message exceeds ${MAX_PARTS} parts")
-                    return@withContext SMSTask.Status.FAILED
-                }
-
                 val sentIntent = PendingIntentHolder.createSentIntent(context, task.id)
                 val deliveryIntent = PendingIntentHolder.createDeliveryIntent(context, task.id)
 

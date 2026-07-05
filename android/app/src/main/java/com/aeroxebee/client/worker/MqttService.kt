@@ -14,6 +14,7 @@ import com.aeroxebee.client.data.remote.model.SMSCommand
 import com.aeroxebee.client.data.remote.model.StatusUpdateRequest
 import com.aeroxebee.client.data.repository.SMSTaskRepository
 import com.aeroxebee.client.domain.model.SMSTask
+import com.aeroxebee.client.performance.PerformanceTracer
 import com.aeroxebee.client.sms.SMSEngine
 import com.aeroxebee.client.util.DeviceStateClassifier
 import com.aeroxebee.client.util.TokenManager
@@ -30,6 +31,7 @@ class MqttService : Service() {
     @Inject lateinit var smsEngine: SMSEngine
     @Inject lateinit var smsRepository: SMSTaskRepository
     @Inject lateinit var deviceStateClassifier: DeviceStateClassifier
+    @Inject lateinit var tracer: PerformanceTracer
 
     private val gson = Gson()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -144,9 +146,11 @@ class MqttService : Service() {
     }
 
     private fun processMqttMessage(payload: String) {
+        val trace = tracer.traceMessageRoundTrip("unknown")
         try {
             val json = gson.fromJson(payload, Map::class.java) as? Map<String, Any> ?: return
             val action = json["action"] as? String ?: return
+            trace.putAttribute("action", action)
 
             when (action) {
                 "send_sms" -> {
@@ -199,7 +203,10 @@ class MqttService : Service() {
                 }
             }
         } catch (e: Exception) {
+            trace.putAttribute("error", e.message?.take(100) ?: "unknown")
             android.util.Log.e("MqttService", "Failed to process MQTT message", e)
+        } finally {
+            tracer.stopTrace(trace, TAG)
         }
     }
 
