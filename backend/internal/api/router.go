@@ -43,6 +43,7 @@ func NewRouter(
 	billingService *services.BillingService,
 	paymentConfigService *services.PaymentConfigService,
 	authMiddleware *middleware.AuthMiddleware,
+	planMiddleware *middleware.PlanMiddleware,
 	metrics *telemetry.Metrics,
 	pg *database.PostgresDB,
 	rdb *database.RedisDB,
@@ -199,33 +200,36 @@ func NewRouter(
 	// Fraud check (API key auth)
 	mux.Handle("POST /api/v1/fraud/check", authMiddleware.APIKeyAuth(http.HandlerFunc(fraudHandler.Check)))
 
-	// Member portal routes (account/member auth + rate limited)
-	// Order: JWTAuth first (sets accountID), then rate limiter (reads accountID)
-	mux.Handle("GET /api/v1/member/dashboard", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(memberHandler.GetDashboard))))
-	mux.Handle("GET /api/v1/member/devices", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(memberHandler.GetDevices))))
-	mux.Handle("PUT /api/v1/member/devices/{id}", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(memberHandler.UpdateDevice))))
-	mux.Handle("DELETE /api/v1/member/devices/{id}", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(memberHandler.DeleteDevice))))
-	mux.Handle("GET /api/v1/member/messages", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(memberHandler.GetMessages))))
-	mux.Handle("GET /api/v1/member/analytics", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(memberHandler.GetAnalytics))))
-	mux.Handle("GET /api/v1/member/stats", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(memberHandler.GetStats))))
+	// Member portal routes (JWTAuth → plan check → rate limit → handler)
+	// PlanMiddleware blocks suspended accounts and canceled subscriptions.
+	memberChain := func(next http.Handler) http.Handler {
+		return planMiddleware.MemberPlanCheck(memberRateLimiter.Limit(next))
+	}
+	mux.Handle("GET /api/v1/member/dashboard", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.GetDashboard))))
+	mux.Handle("GET /api/v1/member/devices", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.GetDevices))))
+	mux.Handle("PUT /api/v1/member/devices/{id}", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.UpdateDevice))))
+	mux.Handle("DELETE /api/v1/member/devices/{id}", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.DeleteDevice))))
+	mux.Handle("GET /api/v1/member/messages", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.GetMessages))))
+	mux.Handle("GET /api/v1/member/analytics", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.GetAnalytics))))
+	mux.Handle("GET /api/v1/member/stats", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.GetStats))))
 
 	// QR pairing route (member portal generates QR code for device pairing)
-	mux.Handle("POST /api/v1/member/devices/qr-code", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(qrPairingHandler.GenerateQRCode))))
+	mux.Handle("POST /api/v1/member/devices/qr-code", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(qrPairingHandler.GenerateQRCode))))
 
-	// Member template routes (scoped to the member's account + rate limited)
-	mux.Handle("GET /api/v1/member/templates", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(memberHandler.ListTemplates))))
-	mux.Handle("POST /api/v1/member/templates", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(memberHandler.CreateTemplate))))
-	mux.Handle("GET /api/v1/member/templates/{id}", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(memberHandler.GetTemplate))))
-	mux.Handle("PUT /api/v1/member/templates/{id}", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(memberHandler.UpdateTemplate))))
-	mux.Handle("DELETE /api/v1/member/templates/{id}", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(memberHandler.DeleteTemplate))))
+	// Member template routes (scoped to the member's account + plan checked)
+	mux.Handle("GET /api/v1/member/templates", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.ListTemplates))))
+	mux.Handle("POST /api/v1/member/templates", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.CreateTemplate))))
+	mux.Handle("GET /api/v1/member/templates/{id}", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.GetTemplate))))
+	mux.Handle("PUT /api/v1/member/templates/{id}", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.UpdateTemplate))))
+	mux.Handle("DELETE /api/v1/member/templates/{id}", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.DeleteTemplate))))
 
-	// Member webhook routes (scoped to the member's account + rate limited)
-	mux.Handle("GET /api/v1/member/webhooks", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(memberHandler.ListWebhooks))))
-	mux.Handle("POST /api/v1/member/webhooks", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(memberHandler.CreateWebhook))))
-	mux.Handle("GET /api/v1/member/webhooks/{id}", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(memberHandler.GetWebhook))))
-	mux.Handle("PUT /api/v1/member/webhooks/{id}", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(memberHandler.UpdateWebhook))))
-	mux.Handle("DELETE /api/v1/member/webhooks/{id}", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(memberHandler.DeleteWebhook))))
-	mux.Handle("POST /api/v1/member/webhooks/{id}/rotate-secret", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(memberHandler.RotateWebhookSecret))))
+	// Member webhook routes (scoped to the member's account + plan checked)
+	mux.Handle("GET /api/v1/member/webhooks", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.ListWebhooks))))
+	mux.Handle("POST /api/v1/member/webhooks", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.CreateWebhook))))
+	mux.Handle("GET /api/v1/member/webhooks/{id}", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.GetWebhook))))
+	mux.Handle("PUT /api/v1/member/webhooks/{id}", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.UpdateWebhook))))
+	mux.Handle("DELETE /api/v1/member/webhooks/{id}", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.DeleteWebhook))))
+	mux.Handle("POST /api/v1/member/webhooks/{id}/rotate-secret", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.RotateWebhookSecret))))
 
 	// Admin routes
 	mux.Handle("GET /api/v1/admin/stats", authMiddleware.AdminAuth(http.HandlerFunc(adminHandler.GetStats)))
@@ -269,21 +273,21 @@ func NewRouter(
 	mux.Handle("GET /api/v1/admin/payment-requests/{id}", authMiddleware.AdminAuth(http.HandlerFunc(paymentRequestHandler.GetByID)))
 	mux.Handle("POST /api/v1/admin/payment-requests/{id}/approve", authMiddleware.AdminAuth(http.HandlerFunc(paymentRequestHandler.Approve)))
 	mux.Handle("POST /api/v1/admin/payment-requests/{id}/reject", authMiddleware.AdminAuth(http.HandlerFunc(paymentRequestHandler.Reject)))
-	mux.Handle("POST /api/v1/member/payment-requests", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(paymentRequestHandler.Create))))
-	mux.Handle("GET /api/v1/member/payment-requests", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(paymentRequestHandler.ListByAccount))))
+	mux.Handle("POST /api/v1/member/payment-requests", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(paymentRequestHandler.Create))))
+	mux.Handle("GET /api/v1/member/payment-requests", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(paymentRequestHandler.ListByAccount))))
 
 	// Subscription request routes (member upgrade, admin approve/reject)
 	mux.Handle("GET /api/v1/admin/subscription-requests", authMiddleware.AdminAuth(http.HandlerFunc(subscriptionRequestHandler.List)))
 	mux.Handle("POST /api/v1/admin/subscription-requests/{id}/approve", authMiddleware.AdminAuth(http.HandlerFunc(subscriptionRequestHandler.Approve)))
 	mux.Handle("POST /api/v1/admin/subscription-requests/{id}/reject", authMiddleware.AdminAuth(http.HandlerFunc(subscriptionRequestHandler.Reject)))
-	mux.Handle("POST /api/v1/member/subscription-requests", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(subscriptionRequestHandler.Create))))
-	mux.Handle("GET /api/v1/member/subscription-requests", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(subscriptionRequestHandler.ListByAccount))))
+	mux.Handle("POST /api/v1/member/subscription-requests", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(subscriptionRequestHandler.Create))))
+	mux.Handle("GET /api/v1/member/subscription-requests", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(subscriptionRequestHandler.ListByAccount))))
 
-	// Member preferences routes (rate limited)
-	mux.Handle("GET /api/v1/member/preferences", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(memberHandler.GetPreferences))))
-	mux.Handle("PUT /api/v1/member/preferences", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(memberHandler.UpdatePreferences))))
-	mux.Handle("POST /api/v1/member/kyc", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(memberHandler.SubmitKYC))))
-	mux.Handle("GET /api/v1/member/kyc", authMiddleware.JWTAuth(memberRateLimiter.Limit(http.HandlerFunc(memberHandler.GetKYC))))
+	// Member preferences routes (plan checked + rate limited)
+	mux.Handle("GET /api/v1/member/preferences", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.GetPreferences))))
+	mux.Handle("PUT /api/v1/member/preferences", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.UpdatePreferences))))
+	mux.Handle("POST /api/v1/member/kyc", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.SubmitKYC))))
+	mux.Handle("GET /api/v1/member/kyc", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.GetKYC))))
 
 	// Session management routes
 	mux.Handle("GET /api/v1/auth/sessions", authMiddleware.JWTAuth(http.HandlerFunc(sessionHandler.ListSessions)))

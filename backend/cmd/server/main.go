@@ -228,6 +228,7 @@ func main() {
 	metrics.WorkersActive.Set(float64(workerCount))
 
 	authMiddleware := middleware.NewAuthMiddleware(svc.APIKeys, svc.Accounts, cfg.JWT.Secret)
+	planMiddleware := middleware.NewPlanMiddleware(svc.Accounts)
 
 	authHandler := handlers.NewAuthHandler(svc.Accounts, svc.Admin, userService, authMiddleware, twoFAService, sessionService)
 	twoFAHandler := handlers.NewTwoFAHandler(twoFAService)
@@ -262,7 +263,7 @@ func main() {
 	router := api.NewRouter(authHandler, messageHandler, deviceHandler, accountHandler,
 		adminHandler, userHandler, templateHandler, webhookHandler, otpHandler, billingHandler,
 		fraudHandler, memberHandler, twoFAHandler, paymentConfigHandler, paymentRequestHandler,
-		subscriptionRequestHandler, planChangeRequestHandler, sessionHandler, kycAdminHandler, qrPairingHandler, releaseHandler, firebaseConfigHandler, svc.Billing, svc.PaymentConfigs, authMiddleware, metrics, postgres, redisDB, mqttClient, cfg, sseHandler)
+		subscriptionRequestHandler, planChangeRequestHandler, sessionHandler, kycAdminHandler, qrPairingHandler, releaseHandler, firebaseConfigHandler, svc.Billing, svc.PaymentConfigs, authMiddleware, planMiddleware, metrics, postgres, redisDB, mqttClient, cfg, sseHandler)
 
 	promMux := http.NewServeMux()
 	promMux.Handle("/metrics", promhttp.Handler())
