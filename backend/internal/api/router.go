@@ -89,7 +89,6 @@ func NewRouter(
       deepLinking: true,
       presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.SwaggerUIStandalonePreset],
       layout: 'BaseLayout',
-      configUrl: false,
     });
   </script>
 </body>
