@@ -96,6 +96,15 @@ func main() {
 
 	metrics := telemetry.NewMetrics()
 
+	// SSE handler for real-time device status updates
+	sseHandler := handlers.NewSSEHandler(svc)
+	// Perform initial device status sync for any already-connected SSE clients
+	if devices, err := svc.Devices.ListAll(context.Background()); err == nil {
+		for _, d := range devices {
+			sseHandler.BroadcastDeviceStatus(d.ID, string(d.Status))
+		}
+	}
+
 	simHealthEngine := simhealth.NewEngine(cfg.SIMHealth)
 	deliveryEngine := deliveryconf.NewEngine(cfg.Delivery)
 	routingSelector := routing.NewSelector(models.RoutingStrategyHighestReliability)
@@ -134,6 +143,10 @@ func main() {
 					if err := svc.Devices.UpdatePong(context.Background(), statusReport.DeviceID); err != nil {
 						logger.Error("mqtt status: update pong failed", "device_id", statusReport.DeviceID, "error", err)
 					}
+					if sseHandler != nil {
+						sseHandler.BroadcastMessageStatus(statusReport.MessageID, statusReport.DeviceID, statusReport.Status, statusReport.DeliveryStatus, 1.0)
+						sseHandler.BroadcastDeviceStatus(statusReport.DeviceID, "ONLINE")
+					}
 				}
 			case "FAILED":
 				reason := "device reported failure"
@@ -146,6 +159,10 @@ func main() {
 				if statusReport.DeviceID != "" {
 					if err := svc.Devices.UpdateStatus(context.Background(), statusReport.DeviceID, models.DeviceStatusOffline); err != nil {
 						logger.Error("mqtt status: update status failed", "device_id", statusReport.DeviceID, "error", err)
+					}
+					if sseHandler != nil {
+						sseHandler.BroadcastMessageStatus(statusReport.MessageID, statusReport.DeviceID, statusReport.Status, "FAILED", 0.0)
+						sseHandler.BroadcastDeviceStatus(statusReport.DeviceID, "OFFLINE")
 					}
 				}
 			}
@@ -239,7 +256,7 @@ func main() {
 	router := api.NewRouter(authHandler, messageHandler, deviceHandler, accountHandler,
 		adminHandler, userHandler, templateHandler, webhookHandler, otpHandler, billingHandler,
 		fraudHandler, memberHandler, twoFAHandler, paymentConfigHandler, paymentRequestHandler,
-		subscriptionRequestHandler, planChangeRequestHandler, sessionHandler, kycAdminHandler, svc.Billing, svc.PaymentConfigs, authMiddleware, metrics, postgres, redisDB, mqttClient, cfg)
+		subscriptionRequestHandler, planChangeRequestHandler, sessionHandler, kycAdminHandler, svc.Billing, svc.PaymentConfigs, authMiddleware, metrics, postgres, redisDB, mqttClient, cfg, sseHandler)
 
 	promMux := http.NewServeMux()
 	promMux.Handle("/metrics", promhttp.Handler())

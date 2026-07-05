@@ -7,7 +7,7 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:868199089803:android:b31b9de9b797713f76f68e",
+        "mobilesdk_app_id": "1:868199089803:android:PLACEHOLDER_ANDROID_APP_ID",
         "android_client_info": {
           "package_name": "com.textbee.client"
         }

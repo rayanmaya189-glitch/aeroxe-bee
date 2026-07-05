@@ -2,26 +2,58 @@ package middleware
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strconv"
 )
 
+const (
+	// CurrentAPIVersion is the latest supported API version.
+	CurrentAPIVersion = 1
+	// MinAPIVersion is the oldest supported API version.
+	MinAPIVersion = 1
+)
+
 type apiVersionKey struct{}
 
-// APIVersionHeader reads the X-API-Version request header and stores it
-// in the request context. This enables future API versioning without
-// breaking existing clients.
+// APIVersionHeader reads the X-API-Version request header, validates it,
+// and stores it in the request context. If the version is unsupported,
+// it returns 400 Bad Request.
 // If no header is present, version defaults to 1.
 func APIVersionHeader(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		version := 1
 		if v := r.Header.Get("X-API-Version"); v != "" {
-			if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
-				version = parsed
+			parsed, err := strconv.Atoi(v)
+			if err != nil || parsed < 1 {
+				writeVersionError(w, "invalid X-API-Version header: must be a positive integer")
+				return
 			}
+			if parsed < MinAPIVersion || parsed > CurrentAPIVersion {
+				w.Header().Set("X-API-Min-Version", strconv.Itoa(MinAPIVersion))
+				w.Header().Set("X-API-Max-Version", strconv.Itoa(CurrentAPIVersion))
+				writeVersionError(w, "unsupported API version "+v+
+					": supported range is "+strconv.Itoa(MinAPIVersion)+
+						" to "+strconv.Itoa(CurrentAPIVersion))
+				return
+			}
+			version = parsed
 		}
 		ctx := context.WithValue(r.Context(), apiVersionKey{}, version)
 		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// writeVersionError sends a 400 response with version info headers.
+func writeVersionError(w http.ResponseWriter, msg string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-API-Min-Version", strconv.Itoa(MinAPIVersion))
+	w.Header().Set("X-API-Max-Version", strconv.Itoa(CurrentAPIVersion))
+	w.WriteHeader(http.StatusBadRequest)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"error": msg,
+		"min_version": MinAPIVersion,
+		"max_version": CurrentAPIVersion,
 	})
 }
 
