@@ -15,6 +15,7 @@ import com.textbee.client.data.remote.model.StatusUpdateRequest
 import com.textbee.client.data.repository.SMSTaskRepository
 import com.textbee.client.domain.model.SMSTask
 import com.textbee.client.sms.SMSEngine
+import com.textbee.client.util.DeviceStateClassifier
 import com.textbee.client.util.TokenManager
 import com.google.gson.Gson
 import dagger.hilt.android.AndroidEntryPoint
@@ -28,6 +29,7 @@ class MqttService : Service() {
     @Inject lateinit var tokenManager: TokenManager
     @Inject lateinit var smsEngine: SMSEngine
     @Inject lateinit var smsRepository: SMSTaskRepository
+    @Inject lateinit var deviceStateClassifier: DeviceStateClassifier
 
     private val gson = Gson()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -86,8 +88,6 @@ class MqttService : Service() {
                     isReconnecting = true
                     updateNotification("Reconnecting...")
                     android.util.Log.w(TAG, "MQTT disconnected, waiting for auto-reconnect...")
-                    // MqttManager handles reconnection via scheduleReconnect
-                    // Just update the notification and wait
                 } else if (connected) {
                     isReconnecting = false
                     updateNotification("Connected to broker")
@@ -121,13 +121,23 @@ class MqttService : Service() {
         super.onDestroy()
     }
 
+    /**
+     * Heartbeat now includes device_state classification (ACTIVE, DOZE_RISK, OEM_KILL_RISK)
+     * so the backend can track device health and background execution risk.
+     */
     private fun startHeartbeat() {
         heartbeatJob = scope.launch {
             while (isActive) {
-                mqttManager.publish(
-                    "devices/$deviceId/ping",
-                    """{"device_id":"$deviceId","action":"ping","timestamp":${System.currentTimeMillis()}}"""
+                val deviceState = deviceStateClassifier.classify()
+                val payload = gson.toJson(
+                    mapOf(
+                        "device_id" to deviceId,
+                        "action" to "ping",
+                        "timestamp" to System.currentTimeMillis(),
+                        "device_state" to deviceState,
+                    )
                 )
+                mqttManager.publish("devices/$deviceId/ping", payload)
                 delay(HEARTBEAT_INTERVAL_MS)
             }
         }
@@ -159,7 +169,6 @@ class MqttService : Service() {
                         val result = smsEngine.send(task)
                         val isSuccess = result == SMSTask.Status.SENT || result == SMSTask.Status.DELIVERED
                         if (!isSuccess) {
-                            // Task stays in Room DB as PENDING/FAILED for retry
                             android.util.Log.w(TAG, "SMS send failed for ${cmd.id}, will retry from queue")
                         }
                         mqttManager.publish(
@@ -196,22 +205,18 @@ class MqttService : Service() {
 
     /**
      * Periodically retry failed/pending SMS tasks from the Room DB queue.
-     * This handles the case where SMS was queued but the device had no cellular
-     * signal at the time. Tasks are retried up to maxRetries (3) then marked DEAD_LETTER.
      */
     private fun startRetryProcessor() {
         retryJob = scope.launch {
             while (isActive) {
                 delay(RETRY_INTERVAL_MS)
                 try {
-                    // Pick up FAILED tasks (not DEAD_LETTER) that haven't exceeded max retries
                     val failedTasks = smsRepository.getRetryableTasks()
                     for (task in failedTasks) {
                         android.util.Log.i(TAG, "Retrying failed SMS: ${task.id} (attempt ${task.retryCount + 1}/${task.maxRetries})")
                         val result = smsEngine.send(task)
                         val isSuccess = result == SMSTask.Status.SENT || result == SMSTask.Status.DELIVERED
                         if (isSuccess) {
-                            // Report success via MQTT if connected
                             if (mqttManager.isConnected() && deviceId.isNotBlank()) {
                                 mqttManager.publish(
                                     "devices/$deviceId/status",

@@ -15,8 +15,11 @@ import com.textbee.client.data.remote.api.TextBeeApi
 import com.textbee.client.data.remote.model.*
 import com.textbee.client.domain.model.DeviceInfo
 import com.textbee.client.domain.model.SimSlotInfo
+import com.textbee.client.util.DeviceStateClassifier
 import com.textbee.client.util.TokenManager
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -25,10 +28,12 @@ class DeviceRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val api: TextBeeApi,
     private val tokenManager: TokenManager,
+    private val deviceStateClassifier: DeviceStateClassifier,
 ) {
     /**
      * Login to the server with email+password and register/authenticate this device.
      * Stores all credentials (token, MQTT details, device info) in TokenManager on success.
+     * After login, reports device info to backend via POST /api/v1/devices/info.
      */
     suspend fun loginDevice(email: String, password: String, simSlot: Int = 0): Result<Unit> = runCatching {
         val androidId = Settings.Secure.getString(
@@ -71,9 +76,58 @@ class DeviceRepository @Inject constructor(
 
             // Mark as registered
             tokenManager.saveRegistered(true)
+
+            // Report device info to backend (best-effort, non-blocking)
+            reportDeviceInfoToBackend(deviceId)
         } else {
             throw Exception(body?.error ?: "Login failed")
         }
+    }
+
+    /**
+     * Report physical device metadata to the backend after login.
+     * Includes model, OS version, battery, network, and device state classification.
+     * This is best-effort: failures are logged but don't block login.
+     */
+    suspend fun reportDeviceInfoToBackend(physicalDeviceId: String) {
+        withContext(Dispatchers.IO) {
+            try {
+                val batteryLevel = getBatteryLevel()
+                val isCharging = isCharging()
+                val networkType = getNetworkType(
+                    context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+                )
+                val deviceState = deviceStateClassifier.classify()
+
+                val request = DeviceInfoReportRequest(
+                    physicalDeviceId = physicalDeviceId,
+                    model = Build.MODEL,
+                    manufacturer = Build.MANUFACTURER,
+                    osVersion = "${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})",
+                    sdkLevel = Build.VERSION.SDK_INT,
+                    appVersion = getAppVersion(),
+                    batteryLevel = batteryLevel.toDouble(),
+                    isCharging = isCharging,
+                    networkType = networkType,
+                    deviceState = deviceState,
+                )
+                val response = api.reportDeviceInfo(request)
+                if (response.isSuccessful) {
+                    android.util.Log.i("DeviceRepository", "Device info reported successfully: state=$deviceState")
+                } else {
+                    android.util.Log.w("DeviceRepository", "Device info report failed: ${response.code()}")
+                }
+            } catch (e: Exception) {
+                android.util.Log.w("DeviceRepository", "Device info report failed: ${e.message}")
+            }
+        }
+    }
+
+    private fun getAppVersion(): String {
+        return try {
+            val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            pInfo.versionName ?: "1.0.0"
+        } catch (_: Exception) { "1.0.0" }
     }
 
     suspend fun deregisterDevice(): Result<Unit> = runCatching {

@@ -3,6 +3,7 @@ package com.textbee.client.ui.screens.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.textbee.client.data.repository.DeviceRepository
+import com.textbee.client.fcm.FCMRegistrar
 import com.textbee.client.util.TokenManager
 import com.textbee.client.worker.MqttService
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -28,6 +29,7 @@ class SettingsViewModel @Inject constructor(
     @ApplicationContext private val appContext: android.content.Context,
     private val tokenManager: TokenManager,
     private val deviceRepository: DeviceRepository,
+    private val fcmRegistrar: FCMRegistrar,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsState())
@@ -56,6 +58,7 @@ class SettingsViewModel @Inject constructor(
                     simSlot = tokenManager.getSimSlot(),
                 )
                 MqttService.start(appContext)
+                fcmRegistrar.registerToken()
                 _state.update { it.copy(isLoading = false, saved = true) }
             } catch (e: Exception) {
                 _state.update { it.copy(isLoading = false, saved = false) }

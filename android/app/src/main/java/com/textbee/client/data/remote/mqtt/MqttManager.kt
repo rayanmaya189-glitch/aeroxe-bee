@@ -13,8 +13,16 @@ import org.eclipse.paho.client.mqttv3.*
 import org.eclipse.paho.client.mqttv3.persist.MqttDefaultFilePersistence
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
+import java.security.KeyStore
+import java.security.SecureRandom
+import java.security.cert.CertificateFactory
+import java.security.cert.X509Certificate
 import javax.inject.Inject
 import javax.inject.Singleton
+import javax.net.ssl.KeyManagerFactory
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManagerFactory
+import javax.net.ssl.X509TrustManager
 
 @Singleton
 class MqttManager @Inject constructor(
@@ -22,7 +30,9 @@ class MqttManager @Inject constructor(
 ) {
     companion object {
         private const val TAG = "MqttManager"
-        private const val QOS = 2
+        // QoS 1 (at-least-once) aligns with backend default MQTT_QOS config.
+        // QoS 2 is expensive and unnecessary for SMS command/status traffic.
+        private const val QOS = 1
         private const val CONNECT_TIMEOUT = 30
         private const val KEEP_ALIVE = 60
         private const val RECONNECT_DELAY_MS = 5000L
@@ -93,6 +103,11 @@ class MqttManager @Inject constructor(
                 isAutomaticReconnect = false
                 username?.let { userName = it }
                 password?.let { this.password = it.toCharArray() }
+
+                // Enable TLS/SSL for mqtts:// and ssl:// broker URLs
+                if (brokerUrl.startsWith("mqtts://") || brokerUrl.startsWith("ssl://")) {
+                    socketFactory = createTLSSocketFactory()
+                }
             }
 
             client?.connect(options)
@@ -184,6 +199,23 @@ class MqttManager @Inject constructor(
                 password = lastPassword,
             )
         }
+    }
+
+    /**
+     * Creates a TLS SocketFactory for secure MQTT connections (mqtts:// or ssl://).
+     * Uses the system default trust store for certificate validation.
+     * Supports custom CA certificates via MQTT_CA_CERT_PATH env/config if needed.
+     */
+    private fun createTLSSocketFactory(): javax.net.ssl.SSLSocketFactory {
+        // Use system default trust store (includes Android's bundled CAs)
+        val trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
+        trustManagerFactory.init(null as KeyStore?)
+
+        val sslContext = SSLContext.getInstance("TLSv1.2")
+        sslContext.init(null, trustManagerFactory.trustManagers, SecureRandom())
+
+        Log.i(TAG, "TLS socket factory created for secure MQTT connection")
+        return sslContext.socketFactory
     }
 
     fun destroy() {

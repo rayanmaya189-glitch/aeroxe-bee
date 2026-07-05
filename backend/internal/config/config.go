@@ -23,6 +23,7 @@ type Config struct {
 	OTP      OTPConfig
 	Telemetry TelemetryConfig
 	App      AppConfig
+	FCM      FCMConfig
 }
 
 type ServerConfig struct {
@@ -168,6 +169,12 @@ type AppConfig struct {
 	MaxRetryDevices      int
 }
 
+type FCMConfig struct {
+	ProjectID         string
+	ServiceAccountPath string
+	Enabled           bool
+}
+
 func Load() *Config {
 	return &Config{
 		Server: ServerConfig{
@@ -297,6 +304,11 @@ func Load() *Config {
 			PingTimeout:          getEnvDuration("PING_TIMEOUT", 3*time.Second),
 			HeartbeatWindow:      getEnvDuration("HEARTBEAT_WINDOW", 45*time.Second),
 			MaxRetryDevices:      getEnvInt("MAX_RETRY_DEVICES", 3),
+		},
+		FCM: FCMConfig{
+			ProjectID:          getEnv("FCM_PROJECT_ID", ""),
+			ServiceAccountPath: getEnv("FCM_SERVICE_ACCOUNT_PATH", ""),
+			Enabled:            getEnvBool("FCM_ENABLED", false),
 		},
 	}
 }

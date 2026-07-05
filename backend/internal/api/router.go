@@ -143,6 +143,7 @@ func NewRouter(
 	mux.Handle("POST /api/v1/devices", authMiddleware.JWTAuth(http.HandlerFunc(deviceHandler.RegisterDeprecated)))
 	mux.Handle("GET /api/v1/devices", authMiddleware.JWTAuth(http.HandlerFunc(deviceHandler.List)))
 	mux.Handle("GET /api/v1/devices/{id}", authMiddleware.JWTAuth(http.HandlerFunc(deviceHandler.Get)))
+	mux.Handle("POST /api/v1/devices/info", authMiddleware.JWTAuth(http.HandlerFunc(deviceHandler.HandleDeviceInfo)))
 
 	// Account routes
 	mux.Handle("GET /api/v1/account/profile", authMiddleware.JWTAuth(http.HandlerFunc(accountHandler.GetProfile)))
@@ -294,6 +295,10 @@ func NewRouter(
 	// BI dashboard routes
 	biHandler := handlers.NewBIHandler(pg.Pool)
 	mux.Handle("GET /api/v1/admin/bi", authMiddleware.AdminAuth(http.HandlerFunc(biHandler.GetBIDashboard)))
+
+	// FCM token registration (device push notifications)
+	fcmHandler := handlers.NewFCMTokenHandler(pg.Pool)
+	mux.Handle("POST /api/v1/auth/fcm-token", authMiddleware.JWTAuth(http.HandlerFunc(fcmHandler.RegisterFCMToken)))
 
 	// Feature catalog routes
 	featureCatalogHandler := handlers.NewFeatureCatalogHandler(pg.Pool)

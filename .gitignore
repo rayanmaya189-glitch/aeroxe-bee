@@ -210,3 +210,6 @@ captures/
 # .cache/                # general cache
 
 # coverage.html          # coverage UI
+
+
+firebase.json          # Firebase config (if sensitive)

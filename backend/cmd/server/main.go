@@ -32,6 +32,7 @@ import (
 	"github.com/textbee/backend/internal/simhealth"
 	"github.com/textbee/backend/internal/telemetry"
 	"github.com/textbee/backend/internal/webhook"
+	"github.com/textbee/backend/internal/fcm"
 	"github.com/textbee/backend/internal/worker"
 	"crypto/rand"
 	"encoding/hex"
@@ -223,7 +224,9 @@ func main() {
 	otpHandler := handlers.NewOTPHandler(svc.OTP, metrics)
 	billingHandler := handlers.NewBillingHandler(svc.Billing, svc.Subscriptions)
 	fraudHandler := handlers.NewFraudHandler(fraudDetector)
-	memberHandler := handlers.NewMemberHandler(svc.Accounts, svc.Devices, svc.Messages, svc.Billing, svc.Subscriptions, svc.Templates, svc.Webhooks)
+	preferencesService := services.NewUserPreferencesService(postgres.Pool)
+	kycService := services.NewKycService(postgres.Pool)
+	memberHandler := handlers.NewMemberHandler(svc.Accounts, svc.Devices, svc.Messages, svc.Billing, svc.Subscriptions, svc.Templates, svc.Webhooks, preferencesService, kycService)
 
 	sessionHandler := handlers.NewSessionHandler(sessionService)
 	kycAdminHandler := handlers.NewKycAdminHandler(postgres.Pool)
@@ -268,7 +271,21 @@ func main() {
 		}
 	}()
 
-	go startBackgroundJobs(context.Background(), svc, simHealthEngine, cbManager, queue, metrics, logger)
+	fcmHandler := handlers.NewFCMTokenHandler(postgres.Pool)
+
+	// Initialize FCM sender if configured (requires Firebase service account)
+	var fcmSender *fcm.Sender
+	if cfg.FCM.Enabled && cfg.FCM.ProjectID != "" {
+		var err error
+		fcmSender, err = fcm.NewSender(cfg.FCM.ProjectID, cfg.FCM.ServiceAccountPath)
+		if err != nil {
+			logger.Warn("FCM sender not available", "error", err)
+		} else {
+			logger.Info("FCM sender ready", "project_id", cfg.FCM.ProjectID)
+		}
+	}
+
+	go startBackgroundJobs(context.Background(), svc, simHealthEngine, cbManager, queue, fcmHandler, fcmSender, metrics, logger)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -537,9 +554,20 @@ func startBackgroundJobs(
 	simHealth *simhealth.Engine,
 	cbManager *circuitbreaker.StateManager,
 	queue *worker.Queue,
+	fcmHandler *handlers.FCMTokenHandler,
+	fcmSender *fcm.Sender,
 	metrics *telemetry.Metrics,
 	logger *telemetry.Logger,
 ) {
+	// Build the token invalidator closure for automatic invalidation
+	// when FCM returns UNREGISTERED or INVALID_ARGUMENT errors.
+	invalidator := fcmHandler.InvalidateToken
+
+	// Track last revival attempt per device to avoid spamming.
+	// Cooldown: only send one revival per device per 15 minutes.
+	revivalCooldown := 15 * time.Minute
+	lastRevivalAttempt := make(map[string]time.Time)
+
 	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
 
@@ -597,6 +625,57 @@ func startBackgroundJobs(
 
 			if err := svc.Messages.DeleteOld(ctx); err != nil {
 				logger.Error("failed to cleanup old messages", "error", err)
+			}
+
+			// Prune stale FCM tokens (inactive >30 days or marked invalid).
+			// Per Firebase docs: stale registrations are associated with inactive
+			// devices that have not connected to FCM for over a month.
+			if pruned, err := fcmHandler.PruneStaleTokens(ctx); err != nil {
+				logger.Error("failed to prune stale FCM tokens", "error", err)
+			} else if pruned > 0 {
+				logger.Info("pruned stale FCM tokens", "count", pruned)
+			}
+
+			// Send FCM revival notifications to offline devices (with cooldown).
+			// When a device disconnects from MQTT, send a push notification
+			// to wake it up. If FCM returns UNREGISTERED/INVALID_ARGUMENT,
+			// the token is automatically marked invalid.
+			if fcmSender != nil {
+				devices, err := svc.Devices.ListAll(ctx)
+				if err == nil {
+					now := time.Now()
+					for _, d := range devices {
+						if d.Status != models.DeviceStatusOffline {
+							continue
+						}
+						// Respect cooldown per device
+						if last, ok := lastRevivalAttempt[d.PhysicalDeviceID]; ok && now.Sub(last) < revivalCooldown {
+							continue
+						}
+						lastRevivalAttempt[d.PhysicalDeviceID] = now
+
+						// Look up valid FCM token for this device
+						var fcmToken string
+						err := fcmHandler.DB().QueryRow(ctx,
+							`SELECT fcm_token FROM device_fcm_tokens WHERE device_id = $1 AND is_valid = TRUE`,
+							d.PhysicalDeviceID,
+						).Scan(&fcmToken)
+						if err != nil || fcmToken == "" {
+							continue
+						}
+
+						dt := fcm.DeviceToken{DeviceID: d.PhysicalDeviceID, FCMToken: fcmToken}
+						data := map[string]string{"action": "revive"}
+						if err := fcmSender.SendToDevice(ctx, dt, data, invalidator); err != nil {
+							logger.Error("FCM revival send failed",
+								"device_id", d.PhysicalDeviceID,
+								"error", err,
+							)
+						} else {
+							logger.Info("FCM revival sent", "device_id", d.PhysicalDeviceID)
+						}
+					}
+				}
 			}
 		}
 	}

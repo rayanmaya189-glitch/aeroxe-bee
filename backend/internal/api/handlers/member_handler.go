@@ -22,6 +22,8 @@ type MemberHandler struct {
 	subscriptionService  *services.SubscriptionService
 	templateService      *services.TemplateService
 	webhookService       *services.WebhookService
+	preferencesService   *services.UserPreferencesService
+	kycService           *services.KycService
 }
 
 func NewMemberHandler(
@@ -32,6 +34,8 @@ func NewMemberHandler(
 	subscriptionService *services.SubscriptionService,
 	templateService *services.TemplateService,
 	webhookService *services.WebhookService,
+	preferencesService *services.UserPreferencesService,
+	kycService *services.KycService,
 ) *MemberHandler {
 	return &MemberHandler{
 		accountService:       accountService,
@@ -41,6 +45,8 @@ func NewMemberHandler(
 		subscriptionService:  subscriptionService,
 		templateService:      templateService,
 		webhookService:       webhookService,
+		preferencesService:   preferencesService,
+		kycService:           kycService,
 	}
 }
 
@@ -84,24 +90,20 @@ func (h *MemberHandler) GetDashboard(w http.ResponseWriter, r *http.Request) {
 	// Get subscription
 	sub, _ := h.subscriptionService.GetByAccountID(r.Context(), accountID)
 
-	// Get messages count by status
-	msgs, err := h.messageService.ListByAccount(r.Context(), accountID, 0, 1000)
+	// Use SQL aggregate query instead of fetching all messages
+	var totalSent, totalDelivered, totalFailed int64
+	err = h.messageService.DB().QueryRow(r.Context(),
+		`SELECT
+		    COUNT(*) as total_sent,
+		    COUNT(*) FILTER (WHERE delivery_status IN ('CARRIER_ACCEPTED','PROBABLE_DELIVERED')) as total_delivered,
+		    COUNT(*) FILTER (WHERE delivery_status = 'FAILED') as total_failed
+		 FROM messages m
+		 JOIN api_keys ak ON m.api_key_id = ak.id
+		 WHERE ak.account_id = $1`, accountID,
+	).Scan(&totalSent, &totalDelivered, &totalFailed)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to get messages"})
-		return
-	}
-
-	totalSent := 0
-	totalDelivered := 0
-	totalFailed := 0
-	for _, m := range msgs {
-		totalSent++
-		if m.DeliveryStatus == models.DeliveryStatusCarrierAccepted || m.DeliveryStatus == models.DeliveryStatusProbableDelivered {
-			totalDelivered++
-		}
-		if m.DeliveryStatus == models.DeliveryStatusFailed {
-			totalFailed++
-		}
+		// Fallback: if query fails (e.g. no api_keys yet), return zeros
+		totalSent, totalDelivered, totalFailed = 0, 0, 0
 	}
 
 	deliveryRate := 0.0
@@ -641,20 +643,45 @@ func (h *MemberHandler) DeleteWebhook(w http.ResponseWriter, r *http.Request) {
 // ─── Member Preferences & KYC ───────────────────────────────────────
 
 func (h *MemberHandler) GetPreferences(w http.ResponseWriter, r *http.Request) {
+	accountID := middleware.GetAccountID(r.Context())
+
+	prefs, err := h.preferencesService.GetByAccountID(r.Context(), accountID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to load preferences"})
+		return
+	}
+	if prefs == nil {
+		// Return defaults if no preferences exist yet
+		writeJSON(w, http.StatusOK, APIResponse{
+			Success: true,
+			Data: map[string]interface{}{
+				"email_notifications":   true,
+				"sms_notifications":     true,
+				"webhook_notifications": true,
+				"billing_alerts":        true,
+				"security_alerts":       true,
+				"two_fa_enabled":        false,
+			},
+		})
+		return
+	}
+
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
 		Data: map[string]interface{}{
-			"email_notifications":   true,
-			"sms_notifications":     true,
-			"webhook_notifications": true,
-			"billing_alerts":        true,
-			"security_alerts":       true,
-			"two_fa_enabled":        false,
+			"email_notifications":   prefs.EmailNotifications,
+			"sms_notifications":     prefs.SmsNotifications,
+			"webhook_notifications": prefs.WebhookNotifications,
+			"billing_alerts":        prefs.BillingAlerts,
+			"security_alerts":       prefs.SecurityAlerts,
+			"two_fa_enabled":        prefs.TwoFAEnabled,
 		},
 	})
 }
 
 func (h *MemberHandler) UpdatePreferences(w http.ResponseWriter, r *http.Request) {
+	accountID := middleware.GetAccountID(r.Context())
+
 	var req struct {
 		EmailNotifications   bool `json:"email_notifications"`
 		SmsNotifications     bool `json:"sms_notifications"`
@@ -666,10 +693,25 @@ func (h *MemberHandler) UpdatePreferences(w http.ResponseWriter, r *http.Request
 		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid request"})
 		return
 	}
+
+	prefs := &models.UserPreferences{
+		AccountID:           &accountID,
+		EmailNotifications:  req.EmailNotifications,
+		SmsNotifications:    req.SmsNotifications,
+		WebhookNotifications: req.WebhookNotifications,
+		BillingAlerts:       req.BillingAlerts,
+		SecurityAlerts:      req.SecurityAlerts,
+	}
+	if err := h.preferencesService.Upsert(r.Context(), prefs); err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to update preferences"})
+		return
+	}
 	writeJSON(w, http.StatusOK, APIResponse{Success: true})
 }
 
 func (h *MemberHandler) SubmitKYC(w http.ResponseWriter, r *http.Request) {
+	accountID := middleware.GetAccountID(r.Context())
+
 	var req struct {
 		FullName       string `json:"full_name"`
 		DocumentType   string `json:"document_type"`
@@ -684,14 +726,45 @@ func (h *MemberHandler) SubmitKYC(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "full_name and document_type are required"})
 		return
 	}
+
+	record := &models.KycRecord{
+		AccountID:      accountID,
+		FullName:       req.FullName,
+		DocumentType:   req.DocumentType,
+		DocumentNumber: req.DocumentNumber,
+		DocumentURL:    req.DocumentURL,
+	}
+	if err := h.kycService.Create(r.Context(), record); err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to submit KYC"})
+		return
+	}
 	writeJSON(w, http.StatusCreated, APIResponse{Success: true, Data: map[string]string{"status": "pending"}})
 }
 
 func (h *MemberHandler) GetKYC(w http.ResponseWriter, r *http.Request) {
+	accountID := middleware.GetAccountID(r.Context())
+
+	record, err := h.kycService.GetByAccountID(r.Context(), accountID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to load KYC status"})
+		return
+	}
+	if record == nil {
+		writeJSON(w, http.StatusOK, APIResponse{
+			Success: true,
+			Data: map[string]interface{}{
+				"status": "not_submitted",
+			},
+		})
+		return
+	}
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
 		Data: map[string]interface{}{
-			"status": "not_submitted",
+			"status":        record.Status,
+			"full_name":     record.FullName,
+			"document_type": record.DocumentType,
+			"created_at":    record.CreatedAt,
 		},
 	})
 }

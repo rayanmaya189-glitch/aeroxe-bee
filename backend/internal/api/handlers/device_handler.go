@@ -526,6 +526,52 @@ func detectCountryFromPhone(phone string) (string, string) {
 	return "", ""
 }
 
+// DeviceInfoRequest is sent by Android to report physical device metadata
+// after login. Enables the backend to populate the physical_devices table
+// with model, OS version, battery, network, and device state.
+type DeviceInfoRequest struct {
+	PhysicalDeviceID string  `json:"physical_device_id"`
+	Model            string  `json:"model"`
+	Manufacturer     string  `json:"manufacturer"`
+	OSVersion        string  `json:"os_version"`
+	SDKLevel         int     `json:"sdk_level"`
+	AppVersion       string  `json:"app_version"`
+	BatteryLevel     float64 `json:"battery_level"`
+	IsCharging       bool    `json:"is_charging"`
+	NetworkType      string  `json:"network_type"`
+	DeviceState      string  `json:"device_state"` // ACTIVE, DOZE_RISK, OEM_KILL_RISK
+}
 
+// HandleDeviceInfo handles POST /api/v1/devices/info
+// Called by Android after login to report physical device metadata.
+// Upserts into physical_devices and updates device state on the logical device.
+func (h *DeviceHandler) HandleDeviceInfo(w http.ResponseWriter, r *http.Request) {
+	accountID := middleware.GetAccountID(r.Context())
 
+	var req DeviceInfoRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid request body"})
+		return
+	}
+
+	if req.PhysicalDeviceID == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "physical_device_id is required"})
+		return
+	}
+
+	// Upsert physical_devices table
+	_, err := h.deviceService.DB().Exec(r.Context(),
+		`INSERT INTO physical_devices (id, account_id, model, os_version, app_version, battery_level, network_type, device_state, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+		 ON CONFLICT (id) DO UPDATE SET
+		   model=$3, os_version=$4, app_version=$5, battery_level=$6, network_type=$7, device_state=$8, updated_at=NOW()`,
+		req.PhysicalDeviceID, accountID, req.Model, req.OSVersion, req.AppVersion,
+		req.BatteryLevel, req.NetworkType, req.DeviceState)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to update device info"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{Success: true})
+}
 

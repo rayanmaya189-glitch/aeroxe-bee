@@ -19,4 +19,10 @@ interface TextBeeApi {
 
     @POST("devices/deregister")
     suspend fun deregisterDevice(@Body request: DeregisterRequest): Response<ApiResponse<Map<String, Any>>>
+
+    @POST("devices/info")
+    suspend fun reportDeviceInfo(@Body request: DeviceInfoReportRequest): Response<ApiResponse<Unit>>
+
+    @POST("auth/fcm-token")
+    suspend fun registerFCMToken(@Body request: FCMTokenRequest): Response<ApiResponse<Unit>>
 }

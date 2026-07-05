@@ -34,6 +34,8 @@ const BillingSettingsPage = lazy(() => import('@/features/billing/pages/BillingS
 const AdminSubscriptionsPage = lazy(() => import('@/features/billing/pages/AdminSubscriptionsPage').then((m) => ({ default: m.AdminSubscriptionsPage })))
 const KycReviewPage = lazy(() => import('@/features/accounts/pages/KycReviewPage').then((m) => ({ default: m.KycReviewPage })))
 const MemberUpgradePage = lazy(() => import('@/features/member/pages/MemberUpgradePage').then((m) => ({ default: m.MemberUpgradePage })))
+const MemberPaymentRequestsPage = lazy(() => import('@/features/member/pages/MemberPaymentRequestsPage').then((m) => ({ default: m.MemberPaymentRequestsPage })))
+const MemberSubscriptionRequestsPage = lazy(() => import('@/features/member/pages/MemberSubscriptionRequestsPage').then((m) => ({ default: m.MemberSubscriptionRequestsPage })))
 const LandingPage = lazy(() => import('@/landing/pages/LandingPage').then((m) => ({ default: m.LandingPage })))
 const ContactSalesPage = lazy(() => import('@/landing/pages/ContactSalesPage').then((m) => ({ default: m.ContactSalesPage })))
 
@@ -169,6 +171,8 @@ const routes: RouteObject[] = [
           { path: 'member/templates', element: <LazyLoader><MemberTemplatesPage /></LazyLoader> },
           { path: 'member/webhooks', element: <LazyLoader><MemberWebhooksPage /></LazyLoader> },
           { path: 'member/upgrade', element: <LazyLoader><MemberUpgradePage /></LazyLoader> },
+          { path: 'member/payment-requests', element: <LazyLoader><MemberPaymentRequestsPage /></LazyLoader> },
+          { path: 'member/subscription-requests', element: <LazyLoader><MemberSubscriptionRequestsPage /></LazyLoader> },
         ],
       },
     ],

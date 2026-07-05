@@ -258,6 +258,11 @@ func (s *DeviceService) UpdateCircuitBreakerState(ctx context.Context, id string
 	return err
 }
 
+// DB returns the underlying database querier for raw queries
+func (s *DeviceService) DB() DatabaseQuerier {
+	return s.db
+}
+
 type DeviceFilterOptions struct {
 	AccountID          string
 	Status             string

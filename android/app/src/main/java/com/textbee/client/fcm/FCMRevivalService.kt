@@ -11,11 +11,44 @@ import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.textbee.client.TextBeeApplication
 import com.textbee.client.worker.SMSSendingService
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
+/**
+ * FCM service that handles token refresh and incoming push messages.
+ *
+ * When FCM rotates the token (app reinstall, data clear, or periodic refresh),
+ * onNewToken() is called. Per Firebase best practices, the new token must be
+ * sent to the backend immediately so stale tokens don't accumulate.
+ *
+ * Tokens older than 1 month are considered stale by FCM; tokens inactive for
+ * 270 days are garbage collected and will return UNREGISTERED errors.
+ */
+@AndroidEntryPoint
 class FCMRevivalService : FirebaseMessagingService() {
 
+    @Inject lateinit var fcmRegistrar: FCMRegistrar
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /**
+     * Called when a new FCM token is generated or the existing token is rotated.
+     * Per Firebase docs: "The onRegistered() callback is invoked regularly on
+     * routine syncs during app startup, as well as when FID changes occur."
+     *
+     * We send the new token to the backend immediately to maintain registration
+     * freshness and prevent stale token accumulation.
+     */
     override fun onNewToken(token: String) {
-        Log.d(TAG, "New FCM token: $token")
+        Log.i(TAG, "FCM token refreshed — sending to backend")
+        // Register the new token with the backend (best-effort, non-blocking)
+        scope.launch {
+            fcmRegistrar.registerToken()
+        }
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
