@@ -57,7 +57,20 @@ func SecurityHeaders(env string) func(http.Handler) http.Handler {
 			w.Header().Set("X-XSS-Protection", "0")
 			w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 			w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()")
-			w.Header().Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+			// Swagger UI needs external resources (CSS, JS from unpkg.com) + inline scripts.
+			// All other endpoints get the strict CSP.
+			if strings.HasPrefix(r.URL.Path, "/api/v1/docs") {
+				w.Header().Set("Content-Security-Policy",
+					"default-src 'none'; "+
+					"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; "+
+					"style-src 'self' 'unsafe-inline' https://unpkg.com; "+
+					"img-src 'self' data:; "+
+					"font-src 'self' https://unpkg.com; "+
+					"connect-src 'self'; "+
+					"frame-ancestors 'none'")
+			} else {
+				w.Header().Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+			}
 
 			// HSTS only in production (OWASP A02: Cryptographic Failures)
 			if env == "production" {
