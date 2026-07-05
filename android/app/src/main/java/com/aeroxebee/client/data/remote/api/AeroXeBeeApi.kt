@@ -170,6 +170,10 @@ interface AeroXeBeeApi {
     @GET("version-check")
     suspend fun checkForUpdate(@Query("version_code") versionCode: Int): Response<ApiResponse<VersionCheckResponse>>
 
+    // ─── Firebase Config (public, no auth) ──────────────────
+    @GET("firebase-config")
+    suspend fun getFirebaseConfig(): Response<ApiResponse<Map<String, Any>>>
+
     // ─── OTP ────────────────────────────────────────────────
     @POST("otp/send")
     suspend fun sendOtp(@Body request: OtpSendRequest): Response<ApiResponse<OtpSendResponse>>
