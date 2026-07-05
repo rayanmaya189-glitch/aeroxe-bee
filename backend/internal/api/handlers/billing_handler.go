@@ -27,10 +27,8 @@ func (h *BillingHandler) ListPlans(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	if middleware.GetIsAdmin(r.Context()) {
-		// Admin sees all plans
 		plans, err = h.billingService.ListPlansForAdmin(r.Context())
 	} else {
-		// Member sees public + custom plans they're subscribed to
 		accountID := middleware.GetAccountID(r.Context())
 		plans, err = h.billingService.ListPlansForMember(r.Context(), accountID)
 	}
@@ -39,7 +37,15 @@ func (h *BillingHandler) ListPlans(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to list plans"})
 		return
 	}
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: plans})
+
+	// Plans are a small reference table - return with standard envelope
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: map[string]interface{}{
+		"data":        plans,
+		"total":       len(plans),
+		"page":        1,
+		"page_size":   len(plans),
+		"total_pages": 1,
+	}})
 }
 
 func (h *BillingHandler) GetPlan(w http.ResponseWriter, r *http.Request) {

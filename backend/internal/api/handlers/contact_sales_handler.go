@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -100,30 +99,43 @@ type contactSubmissionResponse struct {
 
 // ListSubmissions returns all contact submissions for the admin panel.
 func (h *ContactSalesHandler) ListSubmissions(w http.ResponseWriter, r *http.Request) {
-	page := parseIntOrDefault(r.URL.Query().Get("page"), 1)
-	pageSize := parseIntOrDefault(r.URL.Query().Get("pageSize"), 20)
-	if pageSize > 100 {
-		pageSize = 100
-	}
-	offset := (page - 1) * pageSize
+	pg := ParsePagination(r, 20, 100)
 	statusFilter := r.URL.Query().Get("status")
+	dr := ParseDateRange(r)
 
-	var rows pgx.Rows
-	var err error
+	whereClauses := []string{}
+	args := []interface{}{}
+	argIdx := 1
 
 	if statusFilter != "" {
-		rows, err = h.db.Query(r.Context(),
-			`SELECT id, name, email, company, phone, plan_interest, message, status, notes, ip_address, created_at, updated_at
-			 FROM contact_submissions WHERE status = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
-			statusFilter, pageSize, offset,
-		)
-	} else {
-		rows, err = h.db.Query(r.Context(),
-			`SELECT id, name, email, company, phone, plan_interest, message, status, notes, ip_address, created_at, updated_at
-			 FROM contact_submissions ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
-			pageSize, offset,
-		)
+		whereClauses = append(whereClauses, `status = $`+itoa(argIdx))
+		args = append(args, statusFilter)
+		argIdx++
 	}
+	if dr.DateFrom != nil {
+		whereClauses = append(whereClauses, `created_at >= $`+itoa(argIdx))
+		args = append(args, *dr.DateFrom)
+		argIdx++
+	}
+	if dr.DateTo != nil {
+		whereClauses = append(whereClauses, `created_at <= $`+itoa(argIdx))
+		args = append(args, *dr.DateTo)
+		argIdx++
+	}
+
+	whereClause := ""
+	if len(whereClauses) > 0 {
+		whereClause = ` WHERE ` + whereClauses[0]
+		for _, wc := range whereClauses[1:] {
+			whereClause += ` AND ` + wc
+		}
+	}
+
+	rows, err := h.db.Query(r.Context(),
+		`SELECT id, name, email, company, phone, plan_interest, message, status, notes, ip_address, created_at, updated_at
+		 FROM contact_submissions`+whereClause+` ORDER BY created_at DESC LIMIT $`+itoa(argIdx)+` OFFSET $`+itoa(argIdx+1),
+		append(args, pg.PageSize, pg.Offset)...,
+	)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to list submissions"})
 		return
@@ -142,29 +154,14 @@ func (h *ContactSalesHandler) ListSubmissions(w http.ResponseWriter, r *http.Req
 		results = []contactSubmissionResponse{}
 	}
 
-	// Get total count
 	var total int64
-	countQuery := `SELECT COUNT(*) FROM contact_submissions`
-	if statusFilter != "" {
-		h.db.QueryRow(r.Context(), countQuery+` WHERE status = $1`, statusFilter).Scan(&total)
-	} else {
-		h.db.QueryRow(r.Context(), countQuery).Scan(&total)
-	}
-
-	totalPages := int(total) / pageSize
-	if int(total)%pageSize > 0 {
-		totalPages++
-	}
+	countQuery := `SELECT COUNT(*) FROM contact_submissions` + whereClause
+	countArgs := args[:len(args)-2]
+	_ = h.db.QueryRow(r.Context(), countQuery, countArgs...).Scan(&total)
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Data: map[string]interface{}{
-			"data":        results,
-			"total":       total,
-			"page":        page,
-			"page_size":   pageSize,
-			"total_pages": totalPages,
-		},
+		Data:    pg.ToResponse(results, total),
 	})
 }
 

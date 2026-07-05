@@ -429,6 +429,7 @@ func (h *DeviceHandler) Deregister(w http.ResponseWriter, r *http.Request) {
 // Legacy List handler - GET /api/v1/devices
 func (h *DeviceHandler) List(w http.ResponseWriter, r *http.Request) {
 	accountID := middleware.GetAccountID(r.Context())
+	pg := ParsePagination(r, 20, 100)
 
 	devices, err := h.deviceService.ListByAccount(r.Context(), accountID)
 	if err != nil {
@@ -455,7 +456,16 @@ func (h *DeviceHandler) List(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: result})
+	total := int64(len(result))
+	start := pg.Offset
+	if start > len(result) {
+		start = len(result)
+	}
+	end := start + pg.PageSize
+	if end > len(result) {
+		end = len(result)
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(result[start:end], total)})
 }
 
 // Legacy Get handler - GET /api/v1/devices/{id}

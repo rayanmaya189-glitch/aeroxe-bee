@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -25,19 +24,19 @@ type featureCatalogRequest struct {
 	Category string `json:"category"`
 }
 
-// List returns all catalog features. Public (used by PlansPage suggestions).
+// List returns catalog features with pagination. Public (used by PlansPage suggestions).
 func (h *FeatureCatalogHandler) List(w http.ResponseWriter, r *http.Request) {
 	activeOnly := r.URL.Query().Get("active_only") == "true"
+	pg := ParsePagination(r, 50, 200)
 
-	var rows pgx.Rows
-	var err error
+	whereClause := ""
 	if activeOnly {
-		rows, err = h.db.Query(r.Context(),
-			`SELECT id, name, category, sort_order, active, created_at, updated_at FROM feature_catalog WHERE active = true ORDER BY category, sort_order`)
-	} else {
-		rows, err = h.db.Query(r.Context(),
-			`SELECT id, name, category, sort_order, active, created_at, updated_at FROM feature_catalog ORDER BY category, sort_order`)
+		whereClause = ` WHERE active = true`
 	}
+
+	rows, err := h.db.Query(r.Context(),
+		`SELECT id, name, category, sort_order, active, created_at, updated_at FROM feature_catalog`+whereClause+` ORDER BY category, sort_order LIMIT $1 OFFSET $2`,
+		pg.PageSize, pg.Offset)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to list features"})
 		return
@@ -66,7 +65,14 @@ func (h *FeatureCatalogHandler) List(w http.ResponseWriter, r *http.Request) {
 		results = []item{}
 	}
 
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: results})
+	var total int64
+	countQuery := `SELECT COUNT(*) FROM feature_catalog` + whereClause
+	_ = h.db.QueryRow(r.Context(), countQuery).Scan(&total)
+	if total == 0 {
+		total = int64(len(results))
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(results, total)})
 }
 
 // Create adds a new feature to the catalog. Admin only.

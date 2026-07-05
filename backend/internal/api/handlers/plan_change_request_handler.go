@@ -54,22 +54,42 @@ func (h *PlanChangeRequestHandler) Submit(w http.ResponseWriter, r *http.Request
 
 // ListPending returns pending requests (admin only)
 func (h *PlanChangeRequestHandler) ListPending(w http.ResponseWriter, r *http.Request) {
+	pg := ParsePagination(r, 20, 100)
 	requests, err := h.service.ListPending(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to list pending requests"})
 		return
 	}
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: requests})
+	total := int64(len(requests))
+	start := pg.Offset
+	if start > len(requests) {
+		start = len(requests)
+	}
+	end := start + pg.PageSize
+	if end > len(requests) {
+		end = len(requests)
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(requests[start:end], total)})
 }
 
 // ListAll returns all requests (admin only)
 func (h *PlanChangeRequestHandler) ListAll(w http.ResponseWriter, r *http.Request) {
+	pg := ParsePagination(r, 20, 100)
 	requests, err := h.service.ListAll(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to list requests"})
 		return
 	}
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: requests})
+	total := int64(len(requests))
+	start := pg.Offset
+	if start > len(requests) {
+		start = len(requests)
+	}
+	end := start + pg.PageSize
+	if end > len(requests) {
+		end = len(requests)
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(requests[start:end], total)})
 }
 
 // Approve approves a request and applies the plan change (admin only)

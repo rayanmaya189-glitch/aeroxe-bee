@@ -64,12 +64,23 @@ func (h *WebhookHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 func (h *WebhookHandler) List(w http.ResponseWriter, r *http.Request) {
 	accountID := middleware.GetAccountID(r.Context())
+	pg := ParsePagination(r, 20, 100)
+
 	webhooks, err := h.webhookService.ListByAccount(r.Context(), accountID)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to list webhooks"})
 		return
 	}
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: webhooks})
+	total := int64(len(webhooks))
+	start := pg.Offset
+	if start > len(webhooks) {
+		start = len(webhooks)
+	}
+	end := start + pg.PageSize
+	if end > len(webhooks) {
+		end = len(webhooks)
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(webhooks[start:end], total)})
 }
 
 func (h *WebhookHandler) Get(w http.ResponseWriter, r *http.Request) {

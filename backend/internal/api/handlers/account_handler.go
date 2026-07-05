@@ -92,12 +92,23 @@ func (h *AccountHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 
 func (h *AccountHandler) ListAPIKeys(w http.ResponseWriter, r *http.Request) {
 	accountID := middleware.GetAccountID(r.Context())
+	pg := ParsePagination(r, 20, 100)
+
 	keys, err := h.apiKeyService.List(r.Context(), accountID)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "database error"})
 		return
 	}
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: keys})
+	total := int64(len(keys))
+	start := pg.Offset
+	if start > len(keys) {
+		start = len(keys)
+	}
+	end := start + pg.PageSize
+	if end > len(keys) {
+		end = len(keys)
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(keys[start:end], total)})
 }
 
 type CreateAPIKeyRequest struct {

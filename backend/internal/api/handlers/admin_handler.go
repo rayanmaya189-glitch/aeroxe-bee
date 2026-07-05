@@ -54,39 +54,24 @@ func (h *AdminHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AdminHandler) ListAccounts(w http.ResponseWriter, r *http.Request) {
-	page := parseIntOrDefault(r.URL.Query().Get("page"), 1)
-	pageSize := parseIntOrDefault(r.URL.Query().Get("pageSize"), 20)
-	if pageSize > 100 {
-		pageSize = 100
-	}
-	offset := (page - 1) * pageSize
+	pg := ParsePagination(r, 20, 100)
+	// TODO: pass date range to service layer for date_from/date_to filtering
+	_ = ParseDateRange(r)
 
-	accounts, err := h.adminService.ListAccounts(r.Context(), offset, pageSize)
+	accounts, err := h.adminService.ListAccounts(r.Context(), pg.Offset, pg.PageSize)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "database error"})
 		return
 	}
 
-	// Get total count
 	totalAccounts, err := h.adminService.GetTotalAccountCount(r.Context())
 	if err != nil {
 		totalAccounts = int64(len(accounts))
 	}
 
-	totalPages := int(totalAccounts) / pageSize
-	if int(totalAccounts)%pageSize > 0 {
-		totalPages++
-	}
-
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Data: map[string]interface{}{
-			"data":        accounts,
-			"total":       totalAccounts,
-			"page":        page,
-			"page_size":   pageSize,
-			"total_pages": totalPages,
-		},
+		Data:    pg.ToResponse(accounts, totalAccounts),
 	})
 }
 
@@ -222,84 +207,61 @@ func (h *AdminHandler) ResetCircuitBreaker(w http.ResponseWriter, r *http.Reques
 
 func (h *AdminHandler) ListAllTemplates(w http.ResponseWriter, r *http.Request) {
 	status := r.URL.Query().Get("status")
-	dateFrom := r.URL.Query().Get("date_from")
-	dateTo := r.URL.Query().Get("date_to")
-	page := parseIntOrDefault(r.URL.Query().Get("page"), 1)
-	pageSize := parseIntOrDefault(r.URL.Query().Get("pageSize"), 50)
-	if pageSize > 200 {
-		pageSize = 200
+	pg := ParsePagination(r, 50, 200)
+	dr := ParseDateRange(r)
+	var dateFrom, dateTo string
+	if dr.DateFrom != nil {
+		dateFrom = dr.DateFrom.Format("2006-01-02")
 	}
-	offset := (page - 1) * pageSize
+	if dr.DateTo != nil {
+		dateTo = dr.DateTo.Format("2006-01-02")
+	}
 
-	templates, total, err := h.adminService.ListAllTemplates(r.Context(), status, dateFrom, dateTo, offset, pageSize)
+	templates, total, err := h.adminService.ListAllTemplates(r.Context(), status, dateFrom, dateTo, pg.Offset, pg.PageSize)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to list templates"})
 		return
 	}
-	totalPages := int(total) / pageSize
-	if int(total)%pageSize > 0 {
-		totalPages++
-	}
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: map[string]interface{}{
-		"data": templates, "total": total, "page": page, "page_size": pageSize, "total_pages": totalPages,
-	}})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(templates, total)})
 }
 
 func (h *AdminHandler) ListAllWebhooks(w http.ResponseWriter, r *http.Request) {
-	dateFrom := r.URL.Query().Get("date_from")
-	dateTo := r.URL.Query().Get("date_to")
-	page := parseIntOrDefault(r.URL.Query().Get("page"), 1)
-	pageSize := parseIntOrDefault(r.URL.Query().Get("pageSize"), 50)
-	if pageSize > 200 {
-		pageSize = 200
+	pg := ParsePagination(r, 50, 200)
+	dr := ParseDateRange(r)
+	var dateFrom, dateTo string
+	if dr.DateFrom != nil {
+		dateFrom = dr.DateFrom.Format("2006-01-02")
 	}
-	offset := (page - 1) * pageSize
+	if dr.DateTo != nil {
+		dateTo = dr.DateTo.Format("2006-01-02")
+	}
 
-	webhooks, total, err := h.adminService.ListAllWebhooks(r.Context(), dateFrom, dateTo, offset, pageSize)
+	webhooks, total, err := h.adminService.ListAllWebhooks(r.Context(), dateFrom, dateTo, pg.Offset, pg.PageSize)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to list webhooks"})
 		return
 	}
-	totalPages := int(total) / pageSize
-	if int(total)%pageSize > 0 {
-		totalPages++
-	}
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: map[string]interface{}{
-		"data": webhooks, "total": total, "page": page, "page_size": pageSize, "total_pages": totalPages,
-	}})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(webhooks, total)})
 }
 
 func (h *AdminHandler) GetDeadLetters(w http.ResponseWriter, r *http.Request) {
-	page := parseIntOrDefault(r.URL.Query().Get("page"), 1)
-	pageSize := parseIntOrDefault(r.URL.Query().Get("pageSize"), 20)
-	if pageSize > 100 {
-		pageSize = 100
+	pg := ParsePagination(r, 20, 100)
+	dr := ParseDateRange(r)
+	var dateFrom, dateTo string
+	if dr.DateFrom != nil {
+		dateFrom = dr.DateFrom.Format("2006-01-02")
 	}
-	offset := (page - 1) * pageSize
-	dateFrom := r.URL.Query().Get("date_from")
-	dateTo := r.URL.Query().Get("date_to")
+	if dr.DateTo != nil {
+		dateTo = dr.DateTo.Format("2006-01-02")
+	}
 
-	letters, total, err := h.adminService.GetDeadLetters(r.Context(), offset, pageSize, dateFrom, dateTo)
+	letters, total, err := h.adminService.GetDeadLetters(r.Context(), pg.Offset, pg.PageSize, dateFrom, dateTo)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to get dead letters"})
 		return
 	}
 
-	totalPages := int(total) / pageSize
-	if int(total)%pageSize > 0 {
-		totalPages++
-	}
-
-	writeJSON(w, http.StatusOK, APIResponse{
-		Success: true,
-		Data: map[string]interface{}{
-			"data":        letters,
-			"total":       total,
-			"page":        page,
-			"page_size":   pageSize,
-			"total_pages": totalPages,
-		},
-	})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(letters, total)})
 }
 
 func (h *AdminHandler) RetryDeadLetter(w http.ResponseWriter, r *http.Request) {

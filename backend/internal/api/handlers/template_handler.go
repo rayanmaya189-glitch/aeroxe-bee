@@ -36,12 +36,23 @@ func (h *TemplateHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 func (h *TemplateHandler) List(w http.ResponseWriter, r *http.Request) {
 	accountID := middleware.GetAccountID(r.Context())
+	pg := ParsePagination(r, 20, 100)
+
 	templates, err := h.templateService.ListByAccount(r.Context(), accountID)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to list templates"})
 		return
 	}
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: templates})
+	total := int64(len(templates))
+	start := pg.Offset
+	if start > len(templates) {
+		start = len(templates)
+	}
+	end := start + pg.PageSize
+	if end > len(templates) {
+		end = len(templates)
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(templates[start:end], total)})
 }
 
 func (h *TemplateHandler) Get(w http.ResponseWriter, r *http.Request) {

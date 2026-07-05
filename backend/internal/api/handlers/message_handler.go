@@ -258,12 +258,17 @@ func (h *MessageHandler) GetMessage(w http.ResponseWriter, r *http.Request) {
 
 func (h *MessageHandler) ListMessages(w http.ResponseWriter, r *http.Request) {
 	accountID := middleware.GetAccountID(r.Context())
+	pg := ParsePagination(r, 20, 100)
+	statusFilter := r.URL.Query().Get("status")
+	msgTypeFilter := r.URL.Query().Get("message_type")
 
-	msgs, err := h.messageService.ListByAccount(r.Context(), accountID, 0, 50)
+	msgs, err := h.messageService.ListByAccountFiltered(r.Context(), accountID, pg.Offset, pg.PageSize, statusFilter, msgTypeFilter)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to list messages"})
 		return
 	}
+
+	total, _ := h.messageService.CountByAccountFiltered(r.Context(), accountID, statusFilter, msgTypeFilter)
 
 	result := make([]map[string]interface{}, 0, len(msgs))
 	for _, m := range msgs {
@@ -279,7 +284,7 @@ func (h *MessageHandler) ListMessages(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: result})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(result, int64(total))})
 }
 
 func (h *MessageHandler) GetConfidence(w http.ResponseWriter, r *http.Request) {

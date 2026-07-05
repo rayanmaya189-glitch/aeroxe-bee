@@ -24,8 +24,6 @@ func (h *PublicBillingHandler) ListPublicPlans(w http.ResponseWriter, r *http.Re
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to list plans"})
 		return
 	}
-
-	// Filter to public plans only
 	var public []models.Plan
 	for _, p := range plans {
 		if p.Visibility == models.PlanVisibilityPublic || p.Visibility == "" {
@@ -35,7 +33,7 @@ func (h *PublicBillingHandler) ListPublicPlans(w http.ResponseWriter, r *http.Re
 	if public == nil {
 		public = []models.Plan{}
 	}
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: public})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: map[string]interface{}{"data": public, "total": len(public), "page": 1, "page_size": len(public), "total_pages": 1}})
 }
 
 // ListPublicPaymentMethods returns enabled payment configs for the public pricing page.

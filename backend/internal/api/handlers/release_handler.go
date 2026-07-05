@@ -79,14 +79,26 @@ func (h *AppReleaseHandler) Create(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, APIResponse{Success: true, Data: release})
 }
 
-// List handles GET /api/v1/admin/releases — lists all releases
+// List handles GET /api/v1/admin/releases — lists all releases with pagination
 func (h *AppReleaseHandler) List(w http.ResponseWriter, r *http.Request) {
+	pg := ParsePagination(r, 20, 100)
+
 	releases, err := h.releaseService.ListAll(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to list releases"})
 		return
 	}
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: releases})
+
+	total := int64(len(releases))
+	start := pg.Offset
+	if start > len(releases) {
+		start = len(releases)
+	}
+	end := start + pg.PageSize
+	if end > len(releases) {
+		end = len(releases)
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(releases[start:end], total)})
 }
 
 // Get handles GET /api/v1/admin/releases/{id}

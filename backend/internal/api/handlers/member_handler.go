@@ -418,12 +418,23 @@ func (h *MemberHandler) CreateTemplate(w http.ResponseWriter, r *http.Request) {
 
 func (h *MemberHandler) ListTemplates(w http.ResponseWriter, r *http.Request) {
 	accountID := middleware.GetAccountID(r.Context())
+	pg := ParsePagination(r, 20, 100)
+
 	templates, err := h.templateService.ListByAccount(r.Context(), accountID)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to list templates"})
 		return
 	}
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: templates})
+	total := int64(len(templates))
+	start := pg.Offset
+	if start > len(templates) {
+		start = len(templates)
+	}
+	end := start + pg.PageSize
+	if end > len(templates) {
+		end = len(templates)
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(templates[start:end], total)})
 }
 
 func (h *MemberHandler) GetTemplate(w http.ResponseWriter, r *http.Request) {
@@ -557,12 +568,23 @@ func (h *MemberHandler) CreateWebhook(w http.ResponseWriter, r *http.Request) {
 
 func (h *MemberHandler) ListWebhooks(w http.ResponseWriter, r *http.Request) {
 	accountID := middleware.GetAccountID(r.Context())
+	pg := ParsePagination(r, 20, 100)
+
 	webhooks, err := h.webhookService.ListByAccount(r.Context(), accountID)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to list webhooks"})
 		return
 	}
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: webhooks})
+	total := int64(len(webhooks))
+	start := pg.Offset
+	if start > len(webhooks) {
+		start = len(webhooks)
+	}
+	end := start + pg.PageSize
+	if end > len(webhooks) {
+		end = len(webhooks)
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(webhooks[start:end], total)})
 }
 
 func (h *MemberHandler) GetWebhook(w http.ResponseWriter, r *http.Request) {

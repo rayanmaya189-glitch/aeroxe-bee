@@ -36,9 +36,19 @@ func (h *SessionHandler) ListSessions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	pg := ParsePagination(r, 20, 100)
+	total := int64(len(sessions))
+	start := pg.Offset
+	if start > len(sessions) {
+		start = len(sessions)
+	}
+	end := start + pg.PageSize
+	if end > len(sessions) {
+		end = len(sessions)
+	}
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Data:    sessions,
+		Data:    pg.ToResponse(sessions[start:end], total),
 	})
 }
 

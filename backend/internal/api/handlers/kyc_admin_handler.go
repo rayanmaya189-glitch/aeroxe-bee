@@ -22,8 +22,8 @@ func (h *KycAdminHandler) List(w http.ResponseWriter, r *http.Request) {
 	_ = middleware.GetAccountID(r.Context()) // verify auth
 
 	status := r.URL.Query().Get("status")
-	page := 1
-	pageSize := 20
+	pg := ParsePagination(r, 20, 100)
+	dateRange := ParseDateRange(r)
 
 	query := `SELECT k.id, k.user_id, COALESCE(u.email, a.email) AS user_email,
 		COALESCE(u.name, a.name) AS user_name, k.full_name, k.document_type,
@@ -31,16 +31,33 @@ func (h *KycAdminHandler) List(w http.ResponseWriter, r *http.Request) {
 		FROM kyc_records k
 		LEFT JOIN users u ON k.user_id = u.id::text
 		LEFT JOIN accounts a ON k.account_id = a.id`
+	whereClauses := []string{}
 	args := []interface{}{}
 	argIdx := 1
 
 	if status != "" {
-		query += ` WHERE k.status = $` + string(rune('0'+argIdx))
+		whereClauses = append(whereClauses, `k.status = $` + itoa(argIdx))
 		args = append(args, status)
 		argIdx++
 	}
-	query += ` ORDER BY k.created_at DESC LIMIT $` + string(rune('0'+argIdx)) + ` OFFSET $` + string(rune('0'+argIdx+1))
-	args = append(args, pageSize, (page-1)*pageSize)
+	if dateRange.DateFrom != nil {
+		whereClauses = append(whereClauses, `k.created_at >= $` + itoa(argIdx))
+		args = append(args, *dateRange.DateFrom)
+		argIdx++
+	}
+	if dateRange.DateTo != nil {
+		whereClauses = append(whereClauses, `k.created_at <= $` + itoa(argIdx))
+		args = append(args, *dateRange.DateTo)
+		argIdx++
+	}
+	if len(whereClauses) > 0 {
+		query += ` WHERE ` + whereClauses[0]
+		for _, wc := range whereClauses[1:] {
+			query += ` AND ` + wc
+		}
+	}
+	query += ` ORDER BY k.created_at DESC LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
+	args = append(args, pg.PageSize, pg.Offset)
 
 	rows, err := h.db.Query(r.Context(), query, args...)
 	if err != nil {
@@ -50,18 +67,18 @@ func (h *KycAdminHandler) List(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	type KycRow struct {
-		ID             string  `json:"id"`
-		UserID         string  `json:"user_id"`
-		UserEmail      string  `json:"user_email"`
-		UserName       string  `json:"user_name"`
-		FullName       string  `json:"full_name"`
-		DocumentType   string  `json:"document_type"`
-		DocumentNumber string  `json:"document_number"`
-		DocumentURL    string  `json:"document_url"`
-		Status         string  `json:"status"`
-		ReviewedBy     *string `json:"reviewed_by"`
+		ID             string     `json:"id"`
+		UserID         string     `json:"user_id"`
+		UserEmail      string     `json:"user_email"`
+		UserName       string     `json:"user_name"`
+		FullName       string     `json:"full_name"`
+		DocumentType   string     `json:"document_type"`
+		DocumentNumber string     `json:"document_number"`
+		DocumentURL    string     `json:"document_url"`
+		Status         string     `json:"status"`
+		ReviewedBy     *string    `json:"reviewed_by"`
 		ReviewedAt     *time.Time `json:"reviewed_at"`
-		CreatedAt      time.Time `json:"created_at"`
+		CreatedAt      time.Time  `json:"created_at"`
 	}
 
 	var results []KycRow
@@ -75,15 +92,21 @@ func (h *KycAdminHandler) List(w http.ResponseWriter, r *http.Request) {
 		results = append(results, row)
 	}
 
+	// Count total
+	var total int64
+	countQuery := `SELECT COUNT(*) FROM kyc_records k LEFT JOIN users u ON k.user_id = u.id::text LEFT JOIN accounts a ON k.account_id = a.id`
+	if len(whereClauses) > 0 {
+		countQuery += ` WHERE ` + whereClauses[0]
+		for _, wc := range whereClauses[1:] {
+			countQuery += ` AND ` + wc
+		}
+	}
+	countArgs := args[:len(args)-2] // exclude LIMIT/OFFSET args
+	_ = h.db.QueryRow(r.Context(), countQuery, countArgs...).Scan(&total)
+
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Data: map[string]interface{}{
-			"data":       results,
-			"total":      len(results),
-			"page":       page,
-			"page_size":  pageSize,
-			"total_pages": 1,
-		},
+		Data:    pg.ToResponse(results, total),
 	})
 }
 

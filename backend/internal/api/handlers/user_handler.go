@@ -25,22 +25,15 @@ func NewUserHandler(userService *services.UserService, authMiddleware *middlewar
 
 // List handles GET /admin/users with server-side pagination and filtering
 func (h *UserHandler) List(w http.ResponseWriter, r *http.Request) {
+	pg := ParsePagination(r, 20, 100)
 	opts := services.UserFilterOptions{
 		Search:    r.URL.Query().Get("search"),
 		Role:      r.URL.Query().Get("role"),
 		Status:    r.URL.Query().Get("status"),
 		SortBy:    r.URL.Query().Get("sortBy"),
 		SortOrder: r.URL.Query().Get("sortOrder"),
-		Page:      1,
-		PageSize:  20,
-	}
-
-	// Parse page and pageSize from query params
-	if p := r.URL.Query().Get("page"); p != "" {
-		opts.Page = parseIntOrDefault(p, 1)
-	}
-	if ps := r.URL.Query().Get("pageSize"); ps != "" {
-		opts.PageSize = parseIntOrDefault(ps, 20)
+		Page:      pg.Page,
+		PageSize:  pg.PageSize,
 	}
 
 	result, err := h.userService.ListUsers(r.Context(), opts)
@@ -278,34 +271,15 @@ func (h *UserHandler) BulkUpdate(w http.ResponseWriter, r *http.Request) {
 
 // GetActivityLog handles GET /admin/activity
 func (h *UserHandler) GetActivityLog(w http.ResponseWriter, r *http.Request) {
-	page := parseIntOrDefault(r.URL.Query().Get("page"), 1)
-	pageSize := parseIntOrDefault(r.URL.Query().Get("pageSize"), 20)
-	if pageSize > 100 {
-		pageSize = 100
-	}
-	offset := (page - 1) * pageSize
+	pg := ParsePagination(r, 20, 100)
 
-	activities, total, err := h.userService.ListActivityLog(r.Context(), offset, pageSize)
+	activities, total, err := h.userService.ListActivityLog(r.Context(), pg.Offset, pg.PageSize)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to get activity log"})
 		return
 	}
 
-	totalPages := total / pageSize
-	if total%pageSize > 0 {
-		totalPages++
-	}
-
-	writeJSON(w, http.StatusOK, APIResponse{
-		Success: true,
-		Data: map[string]interface{}{
-			"data":        activities,
-			"total":       total,
-			"page":        page,
-			"page_size":   pageSize,
-			"total_pages": totalPages,
-		},
-	})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(activities, int64(total))})
 }
 
 // logActivity writes an entry to the activity_log table (best effort)
@@ -316,20 +290,4 @@ func logActivity(ctx context.Context, svc *services.UserService, userID, action,
 	_ = svc.LogActivity(ctx, userID, action, resourceType, resourceID, description)
 }
 
-func parseIntOrDefault(s string, defaultVal int) int {
-	if s == "" {
-		return defaultVal
-	}
-	val := 0
-	for _, c := range s {
-		if c >= '0' && c <= '9' {
-			val = val*10 + int(c-'0')
-		} else {
-			return defaultVal
-		}
-	}
-	if val == 0 {
-		return defaultVal
-	}
-	return val
-}
+
