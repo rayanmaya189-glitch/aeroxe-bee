@@ -333,8 +333,7 @@ func (s *AdminService) RecordAnalyticsDaily(ctx context.Context) error {
 	today := time.Now().Format("2006-01-02")
 	_, err := s.db.Exec(ctx,
 		`INSERT INTO analytics_daily (date, total_sent, total_delivered, total_failed, avg_confidence,
-		 otp_sent, transactional_sent, marketing_sent)
-		 SELECT $1,
+		 otp_sent, transactional_sent, marketing_sent)	SELECT $1::date,
 		        COUNT(*),
 		        COUNT(*) FILTER (WHERE delivery_status IN ('CARRIER_ACCEPTED', 'PROBABLE_DELIVERED')),
 		        COUNT(*) FILTER (WHERE delivery_status = 'FAILED'),
