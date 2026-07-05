@@ -35,6 +35,11 @@ type Metrics struct {
 	SIMHealthStatus     *prometheus.GaugeVec
 	WorkersActive       prometheus.Gauge
 	QueueProcessed      *prometheus.CounterVec
+
+	// FCM token lifecycle metrics
+	FCMTokensPruned     prometheus.Counter
+	FCMTokensInvalidated prometheus.Counter
+	FCMSendsTotal       *prometheus.CounterVec
 }
 
 func NewMetrics() *Metrics {
@@ -103,6 +108,20 @@ func NewMetrics() *Metrics {
 			Name: "textbee_queue_processed_total",
 			Help: "Messages processed from queue by lane",
 		}, []string{"lane", "status"}),
+
+		// FCM token lifecycle metrics
+		FCMTokensPruned: promauto.NewCounter(prometheus.CounterOpts{
+			Name: "textbee_fcm_tokens_pruned_total",
+			Help: "Total FCM tokens pruned (>30 days inactive or marked invalid)",
+		}),
+		FCMTokensInvalidated: promauto.NewCounter(prometheus.CounterOpts{
+			Name: "textbee_fcm_tokens_invalidated_total",
+			Help: "Total FCM tokens invalidated by FCM UNREGISTERED/INVALID_ARGUMENT errors",
+		}),
+		FCMSendsTotal: promauto.NewCounterVec(prometheus.CounterOpts{
+			Name: "textbee_fcm_sends_total",
+			Help: "Total FCM push notification attempts",
+		}, []string{"status"}), // status: success, invalid_token, error
 	}
 }
 
@@ -241,6 +260,18 @@ func (t *Tracer) Shutdown(ctx context.Context) error {
 		return t.provider.Shutdown(ctx)
 	}
 	return nil
+}
+
+func (m *Metrics) ObserveFCMTokensPruned(count int64) {
+	m.FCMTokensPruned.Add(float64(count))
+}
+
+func (m *Metrics) ObserveFCMTokenInvalidated() {
+	m.FCMTokensInvalidated.Inc()
+}
+
+func (m *Metrics) ObserveFCMSend(status string) {
+	m.FCMSendsTotal.WithLabelValues(status).Inc()
 }
 
 func FormatDuration(d time.Duration) string {

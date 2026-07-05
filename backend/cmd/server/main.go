@@ -271,7 +271,7 @@ func main() {
 		}
 	}()
 
-	fcmHandler := handlers.NewFCMTokenHandler(postgres.Pool)
+	fcmHandler := handlers.NewFCMTokenHandler(postgres.Pool, metrics)
 
 	// Initialize FCM sender if configured (requires Firebase service account)
 	var fcmSender *fcm.Sender
@@ -636,6 +636,16 @@ func startBackgroundJobs(
 				logger.Info("pruned stale FCM tokens", "count", pruned)
 			}
 
+			// Cleanup stale entries from revival cooldown map (older than 1 hour)
+			if len(lastRevivalAttempt) > 0 {
+				now := time.Now()
+				for id, t := range lastRevivalAttempt {
+					if now.Sub(t) > 1*time.Hour {
+						delete(lastRevivalAttempt, id)
+					}
+				}
+			}
+
 			// Send FCM revival notifications to offline devices (with cooldown).
 			// When a device disconnects from MQTT, send a push notification
 			// to wake it up. If FCM returns UNREGISTERED/INVALID_ARGUMENT,
@@ -667,11 +677,20 @@ func startBackgroundJobs(
 						dt := fcm.DeviceToken{DeviceID: d.PhysicalDeviceID, FCMToken: fcmToken}
 						data := map[string]string{"action": "revive"}
 						if err := fcmSender.SendToDevice(ctx, dt, data, invalidator); err != nil {
+							// Determine metric status: invalid_token if FCM marked it invalid, else error
+							var fcmErr *fcm.FCMError
+							status := "error"
+							if errors.As(err, &fcmErr) && fcmErr.Invalid {
+								status = "invalid_token"
+							}
+							metrics.ObserveFCMSend(status)
 							logger.Error("FCM revival send failed",
 								"device_id", d.PhysicalDeviceID,
+								"status", status,
 								"error", err,
 							)
 						} else {
+							metrics.ObserveFCMSend("success")
 							logger.Info("FCM revival sent", "device_id", d.PhysicalDeviceID)
 						}
 					}

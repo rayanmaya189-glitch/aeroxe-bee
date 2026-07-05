@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.os.Build
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import com.textbee.client.fcm.FCMTokenRefreshWorker
 import com.textbee.client.worker.JobSchedulerFallback
 import com.textbee.client.worker.WatchdogScheduler
 import dagger.hilt.android.HiltAndroidApp
@@ -27,6 +28,7 @@ class TextBeeApplication : Application(), Configuration.Provider {
         createNotificationChannels()
         startWatchdog()
         startJobSchedulerFallback()
+        scheduleFCMTokenRefresh()
     }
 
     private fun createNotificationChannels() {
@@ -66,6 +68,10 @@ class TextBeeApplication : Application(), Configuration.Provider {
 
     private fun startJobSchedulerFallback() {
         JobSchedulerFallback.schedule(this)
+    }
+
+    private fun scheduleFCMTokenRefresh() {
+        FCMTokenRefreshWorker.schedule(this)
     }
 
     companion object {

@@ -297,7 +297,7 @@ func NewRouter(
 	mux.Handle("GET /api/v1/admin/bi", authMiddleware.AdminAuth(http.HandlerFunc(biHandler.GetBIDashboard)))
 
 	// FCM token registration (device push notifications)
-	fcmHandler := handlers.NewFCMTokenHandler(pg.Pool)
+	fcmHandler := handlers.NewFCMTokenHandler(pg.Pool, metrics)
 	mux.Handle("POST /api/v1/auth/fcm-token", authMiddleware.JWTAuth(http.HandlerFunc(fcmHandler.RegisterFCMToken)))
 
 	// Feature catalog routes

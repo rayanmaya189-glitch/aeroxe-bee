@@ -7,15 +7,17 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/textbee/backend/internal/api/middleware"
+	"github.com/textbee/backend/internal/telemetry"
 )
 
 // FCMTokenHandler handles FCM token registration from Android devices
 type FCMTokenHandler struct {
-	db *pgxpool.Pool
+	db      *pgxpool.Pool
+	metrics *telemetry.Metrics
 }
 
-func NewFCMTokenHandler(db *pgxpool.Pool) *FCMTokenHandler {
-	return &FCMTokenHandler{db: db}
+func NewFCMTokenHandler(db *pgxpool.Pool, metrics *telemetry.Metrics) *FCMTokenHandler {
+	return &FCMTokenHandler{db: db, metrics: metrics}
 }
 
 type FCMTokenRequest struct {
@@ -71,6 +73,9 @@ func (h *FCMTokenHandler) InvalidateToken(ctx context.Context, deviceID string) 
 	_, err := h.db.Exec(ctx,
 		`UPDATE device_fcm_tokens SET is_valid = FALSE, updated_at = NOW() WHERE device_id = $1`,
 		deviceID)
+	if err == nil && h.metrics != nil {
+		h.metrics.ObserveFCMTokenInvalidated()
+	}
 	return err
 }
 
@@ -86,7 +91,11 @@ func (h *FCMTokenHandler) PruneStaleTokens(ctx context.Context) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return result.RowsAffected(), nil
+	count := result.RowsAffected()
+	if count > 0 && h.metrics != nil {
+		h.metrics.ObserveFCMTokensPruned(count)
+	}
+	return count, nil
 }
 
 // DB returns the underlying database pool for raw queries

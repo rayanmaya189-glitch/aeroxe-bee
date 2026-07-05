@@ -213,3 +213,4 @@ captures/
 
 
 firebase.json          # Firebase config (if sensitive)
+android/app/google-services.json  # Firebase Android config (contains API keys)

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/oauth2/google"
@@ -37,7 +38,9 @@ type DeviceToken struct {
 }
 
 // oauth2TokenCache caches the Google OAuth2 access token for FCM API auth.
+// Protected by mutex for concurrent access from multiple goroutines.
 type oauth2TokenCache struct {
+	mu        sync.Mutex
 	token     string
 	expiresAt time.Time
 }
@@ -180,11 +183,16 @@ func (e *FCMError) Error() string {
 
 // getAccessToken returns a valid Google OAuth2 access token for FCM API.
 // Uses the service account JSON to generate tokens, caching until expiry.
+// Thread-safe: protected by mutex for concurrent FCM sends.
 func (s *Sender) getAccessToken(ctx context.Context) (string, error) {
-	// Check cache
+	// Check cache (fast path, no lock)
+	s.tokenCache.mu.Lock()
 	if s.tokenCache.token != "" && time.Now().Before(s.tokenCache.expiresAt) {
-		return s.tokenCache.token, nil
+		token := s.tokenCache.token
+		s.tokenCache.mu.Unlock()
+		return token, nil
 	}
+	s.tokenCache.mu.Unlock()
 
 	if s.serviceAcct == "" {
 		return "", fmt.Errorf("FCM service account not configured (set FCM_SERVICE_ACCOUNT_PATH)")
@@ -208,8 +216,10 @@ func (s *Sender) getAccessToken(ctx context.Context) (string, error) {
 	}
 
 	// Cache with 5-minute buffer before expiry
+	s.tokenCache.mu.Lock()
 	s.tokenCache.token = token.AccessToken
 	s.tokenCache.expiresAt = token.Expiry.Add(-5 * time.Minute)
+	s.tokenCache.mu.Unlock()
 
 	return token.AccessToken, nil
 }
