@@ -117,6 +117,9 @@ func NewRouter(
 	// Per-account rate limiting for member endpoints
 	memberRateLimiter := middleware.NewJWTRateLimiter(rdb.Client, 120)
 
+	// Per-IP rate limiting for public endpoints (version-check, firebase-config)
+	ipRateLimiter := middleware.NewIPRateLimiter(rdb.Client, 30) // 30 req/min per IP
+
 	// Auth routes — protected against brute force
 	mux.Handle("POST /api/v1/auth/register", bfProtector.Protect("register")(http.HandlerFunc(authHandler.Register)))
 	mux.Handle("POST /api/v1/auth/login", bfProtector.Protect("login")(http.HandlerFunc(authHandler.Login)))
@@ -330,7 +333,7 @@ func NewRouter(
 	mux.Handle("POST /api/v1/admin/releases/{id}/release", authMiddleware.AdminAuth(http.HandlerFunc(releaseHandler.Release)))
 	mux.Handle("DELETE /api/v1/admin/releases/{id}", authMiddleware.AdminAuth(http.HandlerFunc(releaseHandler.Delete)))
 	mux.Handle("POST /api/v1/admin/releases/{id}/upload", authMiddleware.JWTAuth(http.HandlerFunc(releaseHandler.UploadAPK)))
-	mux.HandleFunc("GET /api/v1/version-check", releaseHandler.VersionCheck)
+	mux.Handle("GET /api/v1/version-check", ipRateLimiter.Limit(http.HandlerFunc(releaseHandler.VersionCheck)))
 
 	// Firebase config management routes
 	mux.Handle("GET /api/v1/admin/firebase-config", authMiddleware.JWTAuth(http.HandlerFunc(firebaseConfigHandler.List)))
