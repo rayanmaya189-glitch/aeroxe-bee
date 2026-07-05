@@ -26,10 +26,16 @@ export function WebhooksPage() {
   const [events, setEvents] = useState('')
   const [error, setError] = useState('')
 
-  const { data: webhooks = [], isLoading } = useQuery({
-    queryKey: ['admin-webhooks'],
-    queryFn: getWebhooks,
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 30
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin-webhooks', page, PAGE_SIZE],
+    queryFn: () => getWebhooks({ page, pageSize: PAGE_SIZE }),
+    staleTime: 60_000,
   })
+  const webhooks = data?.data ?? []
+  const totalPages = data?.total_pages ?? 1
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -205,6 +211,15 @@ export function WebhooksPage() {
             {isAllSelected ? <CheckSquare className="h-3.5 w-3.5 text-blue-400" /> : <Square className="h-3.5 w-3.5" />}
             {isAllSelected ? 'Deselect all' : 'Select all'}
           </button>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2">
+          <Button size="xs" variant="ghost" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>Prev</Button>
+          <span className="text-xs text-gray-400">Page {page} of {totalPages}</span>
+          <Button size="xs" variant="ghost" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next</Button>
         </div>
       )}
 

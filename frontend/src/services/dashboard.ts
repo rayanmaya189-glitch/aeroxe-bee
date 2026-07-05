@@ -65,10 +65,11 @@ export async function getAnalytics(params?: { start?: string; end?: string }): P
 }
 
 // Webhooks (admin)
-export async function getWebhooks(): Promise<Webhook[]> {
-  const res = await api.get<ApiResponse<Webhook[]>>('/admin/webhooks')
+export async function getWebhooks(params: { page?: number; pageSize?: number } = {}): Promise<PaginatedResponse<Webhook>> {
+  const res = await api.get<ApiResponse<PaginatedResponse<Webhook>>>('/admin/webhooks', { params: { page: params.page ?? 1, pageSize: params.pageSize ?? 50 } })
   if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load webhooks')
-  return res.data.data
+  const d = res.data.data
+  return { data: Array.isArray(d.data) ? d.data : [], total: d.total ?? 0, page: d.page ?? 1, page_size: d.page_size ?? 50, total_pages: d.total_pages ?? 0 }
 }
 
 export async function createWebhook(data: { url: string; events: string[] }): Promise<Webhook> {
@@ -94,10 +95,11 @@ export async function bulkDeleteWebhooks(ids: string[]): Promise<void> {
 }
 
 // Templates (admin)
-export async function getTemplates(): Promise<Template[]> {
-  const res = await api.get<ApiResponse<Template[]>>('/admin/templates')
+export async function getTemplates(params: { page?: number; pageSize?: number; status?: string } = {}): Promise<PaginatedResponse<Template>> {
+  const res = await api.get<ApiResponse<PaginatedResponse<Template>>>('/admin/templates', { params: { page: params.page ?? 1, pageSize: params.pageSize ?? 50, ...params.status ? { status: params.status } : {} } })
   if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load templates')
-  return res.data.data
+  const d = res.data.data
+  return { data: Array.isArray(d.data) ? d.data : [], total: d.total ?? 0, page: d.page ?? 1, page_size: d.page_size ?? 50, total_pages: d.total_pages ?? 0 }
 }
 
 export async function createTemplate(data: { name: string; body: string; variables: string[] }): Promise<Template> {

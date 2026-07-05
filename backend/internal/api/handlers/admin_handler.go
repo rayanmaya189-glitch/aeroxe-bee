@@ -224,25 +224,49 @@ func (h *AdminHandler) ListAllTemplates(w http.ResponseWriter, r *http.Request) 
 	status := r.URL.Query().Get("status")
 	dateFrom := r.URL.Query().Get("date_from")
 	dateTo := r.URL.Query().Get("date_to")
+	page := parseIntOrDefault(r.URL.Query().Get("page"), 1)
+	pageSize := parseIntOrDefault(r.URL.Query().Get("pageSize"), 50)
+	if pageSize > 200 {
+		pageSize = 200
+	}
+	offset := (page - 1) * pageSize
 
-	templates, err := h.adminService.ListAllTemplates(r.Context(), status, dateFrom, dateTo)
+	templates, total, err := h.adminService.ListAllTemplates(r.Context(), status, dateFrom, dateTo, offset, pageSize)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to list templates"})
 		return
 	}
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: templates})
+	totalPages := int(total) / pageSize
+	if int(total)%pageSize > 0 {
+		totalPages++
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: map[string]interface{}{
+		"data": templates, "total": total, "page": page, "page_size": pageSize, "total_pages": totalPages,
+	}})
 }
 
 func (h *AdminHandler) ListAllWebhooks(w http.ResponseWriter, r *http.Request) {
 	dateFrom := r.URL.Query().Get("date_from")
 	dateTo := r.URL.Query().Get("date_to")
+	page := parseIntOrDefault(r.URL.Query().Get("page"), 1)
+	pageSize := parseIntOrDefault(r.URL.Query().Get("pageSize"), 50)
+	if pageSize > 200 {
+		pageSize = 200
+	}
+	offset := (page - 1) * pageSize
 
-	webhooks, err := h.adminService.ListAllWebhooks(r.Context(), dateFrom, dateTo)
+	webhooks, total, err := h.adminService.ListAllWebhooks(r.Context(), dateFrom, dateTo, offset, pageSize)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to list webhooks"})
 		return
 	}
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: webhooks})
+	totalPages := int(total) / pageSize
+	if int(total)%pageSize > 0 {
+		totalPages++
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: map[string]interface{}{
+		"data": webhooks, "total": total, "page": page, "page_size": pageSize, "total_pages": totalPages,
+	}})
 }
 
 func (h *AdminHandler) GetDeadLetters(w http.ResponseWriter, r *http.Request) {

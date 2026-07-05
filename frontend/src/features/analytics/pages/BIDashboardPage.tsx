@@ -248,7 +248,193 @@ export function BIDashboardPage() {
           </div>
         </Card>
       </motion.div>
+
+      {/* Business Improvement Forecasting */}
+      <BusinessForecastSection growthData={growthData} revenueData={revenueData} deliveryRate={deliveryRate} data={data} />
     </motion.div>
     </PageTransition>
+  )
+}
+
+function linearRegression(points: { x: number; y: number }[]) {
+  const n = points.length
+  if (n < 2) return { slope: 0, intercept: points[0]?.y ?? 0 }
+  let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0
+  for (const p of points) {
+    sumX += p.x; sumY += p.y; sumXY += p.x * p.y; sumXX += p.x * p.x
+  }
+  const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX)
+  const intercept = (sumY - slope * sumX) / n
+  return { slope, intercept }
+}
+
+function BusinessForecastSection({
+  growthData, revenueData, deliveryRate, data,
+}: {
+  growthData: { date: string; accounts: number }[]
+  revenueData: { name: string; revenue: number; subscribers: number }[]
+  deliveryRate: number
+  data: BIDashboard
+}) {
+  // Account growth forecast
+  const growthPoints = growthData.map((g, i) => ({ x: i, y: g.accounts }))
+  const growthRegression = linearRegression(growthPoints)
+  const forecastDays = 7
+  const growthForecast = Array.from({ length: forecastDays }, (_, i) => {
+    const idx = growthData.length + i
+    const futureDate = new Date()
+    futureDate.setDate(futureDate.getDate() + i + 1)
+    return {
+      date: formatShortDate(futureDate.toISOString()),
+      accounts: Math.max(0, Math.round(growthRegression.intercept + growthRegression.slope * idx)),
+      forecast: true,
+    }
+  })
+
+  // Delivery rate trend
+  const deliveryPoints = (data.delivery_trend ?? []).map((d, i) => ({ x: i, y: d.count }))
+  const deliveryRegression = linearRegression(deliveryPoints)
+  const deliveryForecast = Array.from({ length: forecastDays }, (_, i) => {
+    const idx = (data.delivery_trend ?? []).length + i
+    const futureDate = new Date()
+    futureDate.setDate(futureDate.getDate() + i + 1)
+    return {
+      date: formatShortDate(futureDate.toISOString()),
+      count: Math.max(0, Math.round(deliveryRegression.intercept + deliveryRegression.slope * idx)),
+      forecast: true,
+    }
+  })
+
+  // Revenue forecast
+  const totalRevenue = revenueData.reduce((s, r) => s + r.revenue, 0)
+  const avgRevenuePerPlan = revenueData.length > 0 ? totalRevenue / revenueData.length : 0
+  const projectedMonthly = totalRevenue * 1.1 // Simple 10% growth assumption
+  const growthRate = growthPoints.length >= 2 ? (growthRegression.slope / Math.max(growthPoints[growthPoints.length - 1].y, 1)) * 100 : 0
+
+  // Combine actual + forecast for chart
+  const combinedGrowth = [
+    ...growthData.map((g) => ({ date: formatShortDate(g.date), accounts: g.accounts, forecast: false })),
+    ...growthForecast,
+  ]
+
+  const combinedDelivery = [
+    ...(data.delivery_trend ?? []).map((d) => ({ date: formatShortDate(d.date), count: d.count, forecast: false })),
+    ...deliveryForecast,
+  ]
+
+  return (
+    <div className="space-y-6">
+      <motion.div variants={fadeInUp}>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 shadow-lg shadow-violet-500/25">
+            <Target className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold tracking-tight text-gray-100">Business Improvement Forecasting</h2>
+            <p className="text-xs text-gray-400">Predictive analytics based on historical trends</p>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Forecast stat cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <motion.div variants={itemVariants}>
+          <Card hover glow="bg-violet-500/20">
+            <div className="flex items-start justify-between">
+              <div className="space-y-1.5">
+                <p className="text-sm font-medium text-gray-400">Projected accounts (+7d)</p>
+                <p className="text-2xl font-bold tracking-tight text-gray-100">{formatNumber(growthForecast[growthForecast.length - 1]?.accounts ?? 0)}</p>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-500/10 ring-1 ring-white/[0.06]"><Users className="h-5 w-5 text-violet-400" /></div>
+            </div>
+            <p className="mt-2 text-xs text-gray-500">{growthRate > 0 ? '+' : ''}{growthRate.toFixed(1)}% growth rate</p>
+          </Card>
+        </motion.div>
+        <motion.div variants={itemVariants}>
+          <Card hover glow="bg-fuchsia-500/20">
+            <div className="flex items-start justify-between">
+              <div className="space-y-1.5">
+                <p className="text-sm font-medium text-gray-400">Projected revenue (monthly)</p>
+                <p className="text-2xl font-bold tracking-tight text-gray-100">${formatNumber(projectedMonthly)}</p>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-fuchsia-500/10 ring-1 ring-white/[0.06]"><DollarSign className="h-5 w-5 text-fuchsia-400" /></div>
+            </div>
+            <p className="mt-2 text-xs text-gray-500">Based on {revenueData.length} active plans</p>
+          </Card>
+        </motion.div>
+        <motion.div variants={itemVariants}>
+          <Card hover glow="bg-emerald-500/20">
+            <div className="flex items-start justify-between">
+              <div className="space-y-1.5">
+                <p className="text-sm font-medium text-gray-400">Delivery rate trend</p>
+                <p className="text-2xl font-bold tracking-tight text-gray-100">{deliveryRate.toFixed(1)}%</p>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 ring-1 ring-white/[0.06]"><Send className="h-5 w-5 text-emerald-400" /></div>
+            </div>
+            <p className="mt-2 text-xs text-gray-500">{deliveryRegression.slope > 0 ? '↗ Improving' : deliveryRegression.slope < 0 ? '↘ Declining' : '→ Stable'} trend</p>
+          </Card>
+        </motion.div>
+        <motion.div variants={itemVariants}>
+          <Card hover glow="bg-cyan-500/20">
+            <div className="flex items-start justify-between">
+              <div className="space-y-1.5">
+                <p className="text-sm font-medium text-gray-400">Avg revenue/plan</p>
+                <p className="text-2xl font-bold tracking-tight text-gray-100">${formatNumber(avgRevenuePerPlan)}</p>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-500/10 ring-1 ring-white/[0.06]"><DollarSign className="h-5 w-5 text-cyan-400" /></div>
+            </div>
+            <p className="mt-2 text-xs text-gray-500">Across {revenueData.length} plan types</p>
+          </Card>
+        </motion.div>
+      </div>
+
+      {/* Forecast charts */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <motion.div variants={fadeInUp}>
+          <Card className="h-full">
+            <CardHeader className="mb-4">
+              <CardTitle><TrendingUp className="mr-2 inline h-4 w-4" />Account growth forecast</CardTitle>
+            </CardHeader>
+            {combinedGrowth.length > 0 ? (
+              <div className="h-64"><ResponsiveContainer width="100%" height="100%">
+                <BarChart data={combinedGrowth}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} interval={3} />
+                  <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} width={40} />
+                  <Tooltip content={<ChartTooltip />} />
+                  <Bar dataKey="accounts" radius={[4, 4, 0, 0]}>
+                    {combinedGrowth.map((entry, i) => (
+                      <Cell key={i} fill={entry.forecast ? '#a78bfa' : '#3b82f6'} fillOpacity={entry.forecast ? 0.6 : 1} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer></div>
+            ) : <EmptyState title="No data" description="Insufficient data for forecasting." />}
+          </Card>
+        </motion.div>
+        <motion.div variants={fadeInUp}>
+          <Card className="h-full">
+            <CardHeader className="mb-4">
+              <CardTitle><Send className="mr-2 inline h-4 w-4" />Delivery trend forecast</CardTitle>
+            </CardHeader>
+            {combinedDelivery.length > 0 ? (
+              <div className="h-64"><ResponsiveContainer width="100%" height="100%">
+                <BarChart data={combinedDelivery}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} interval={3} />
+                  <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} width={40} />
+                  <Tooltip content={<ChartTooltip />} />
+                  <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                    {combinedDelivery.map((entry, i) => (
+                      <Cell key={i} fill={entry.forecast ? '#34d399' : '#10b981'} fillOpacity={entry.forecast ? 0.6 : 1} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer></div>
+            ) : <EmptyState title="No data" description="Insufficient data for forecasting." />}
+          </Card>
+        </motion.div>
+      </div>
+    </div>
   )
 }

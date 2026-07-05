@@ -30,10 +30,16 @@ export function TemplatesPage() {
   const [body, setBody] = useState('')
   const [error, setError] = useState('')
 
-  const { data: templates = [], isLoading } = useQuery({
-    queryKey: ['admin-templates'],
-    queryFn: getTemplates,
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 30
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin-templates', page, PAGE_SIZE],
+    queryFn: () => getTemplates({ page, pageSize: PAGE_SIZE }),
+    staleTime: 60_000,
   })
+  const templates = data?.data ?? []
+  const totalPages = data?.total_pages ?? 1
 
   const filteredTemplates = activeTab === 'all'
     ? templates
@@ -278,6 +284,15 @@ export function TemplatesPage() {
             {isAllSelected ? <CheckSquare className="h-3.5 w-3.5 text-blue-400" /> : <Square className="h-3.5 w-3.5" />}
             {isAllSelected ? 'Deselect all' : 'Select all'}
           </button>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2">
+          <Button size="xs" variant="ghost" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>Prev</Button>
+          <span className="text-xs text-gray-400">Page {page} of {totalPages}</span>
+          <Button size="xs" variant="ghost" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next</Button>
         </div>
       )}
 

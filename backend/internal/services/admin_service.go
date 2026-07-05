@@ -191,8 +191,8 @@ func (s *AdminService) GetPendingTemplateApprovals(ctx context.Context) ([]model
 	return templates, nil
 }
 
-// ListAllTemplates returns all templates with account names (admin only)
-func (s *AdminService) ListAllTemplates(ctx context.Context, status string, dateFrom, dateTo string) ([]models.TemplateWithAccount, error) {
+// ListAllTemplates returns templates with account names, with optional pagination
+func (s *AdminService) ListAllTemplates(ctx context.Context, status string, dateFrom, dateTo string, offset, limit int) ([]models.TemplateWithAccount, int64, error) {
 	conditions := []string{"1=1"}
 	args := []interface{}{}
 	argIdx := 1
@@ -213,17 +213,26 @@ func (s *AdminService) ListAllTemplates(ctx context.Context, status string, date
 		argIdx++
 	}
 
+	whereClause := strings.Join(conditions, " AND ")
+
+	var total int64
+	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM templates t WHERE %s`, whereClause)
+	if err := s.db.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
 	query := fmt.Sprintf(
 		`SELECT t.id, t.account_id, COALESCE(a.name, '') as account_name,
 		        t.name, t.body, t.variables, t.approval_status, t.approved_at, t.created_at
 	 FROM templates t
 	 LEFT JOIN accounts a ON t.account_id = a.id
 	 WHERE %s
-	 ORDER BY t.created_at DESC`, strings.Join(conditions, " AND "))
+	 ORDER BY t.created_at DESC LIMIT $%d OFFSET $%d`, whereClause, argIdx, argIdx+1)
+	args = append(args, limit, offset)
 
 	rows, err := s.db.Query(ctx, query, args...)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
@@ -232,11 +241,11 @@ func (s *AdminService) ListAllTemplates(ctx context.Context, status string, date
 		var t models.TemplateWithAccount
 		if err := rows.Scan(&t.ID, &t.AccountID, &t.AccountName, &t.Name, &t.Body, &t.Variables,
 			&t.ApprovalStatus, &t.ApprovedAt, &t.CreatedAt); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		templates = append(templates, t)
 	}
-	return templates, nil
+	return templates, total, nil
 }
 
 func (s *AdminService) GetDeadLetters(ctx context.Context, offset, limit int, dateFrom, dateTo string) ([]models.QueueDeadLetter, int64, error) {
@@ -286,8 +295,8 @@ func (s *AdminService) GetDeadLetters(ctx context.Context, offset, limit int, da
 	return letters, total, nil
 }
 
-// ListAllWebhooks returns all webhooks with account names (admin only)
-func (s *AdminService) ListAllWebhooks(ctx context.Context, dateFrom, dateTo string) ([]models.WebhookWithAccount, error) {
+// ListAllWebhooks returns webhooks with account names, with optional pagination
+func (s *AdminService) ListAllWebhooks(ctx context.Context, dateFrom, dateTo string, offset, limit int) ([]models.WebhookWithAccount, int64, error) {
 	conditions := []string{"1=1"}
 	args := []interface{}{}
 	argIdx := 1
@@ -303,17 +312,26 @@ func (s *AdminService) ListAllWebhooks(ctx context.Context, dateFrom, dateTo str
 		argIdx++
 	}
 
+	whereClause := strings.Join(conditions, " AND ")
+
+	var total int64
+	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM webhooks w WHERE %s`, whereClause)
+	if err := s.db.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
 	query := fmt.Sprintf(
 		`SELECT w.id, w.account_id, COALESCE(a.name, '') as account_name,
 		        w.url, w.events, w.secret, w.active, w.last_rotated_at, w.created_at
 	 FROM webhooks w
 	 LEFT JOIN accounts a ON w.account_id = a.id
 	 WHERE %s
-	 ORDER BY w.created_at DESC`, strings.Join(conditions, " AND "))
+	 ORDER BY w.created_at DESC LIMIT $%d OFFSET $%d`, whereClause, argIdx, argIdx+1)
+	args = append(args, limit, offset)
 
 	rows, err := s.db.Query(ctx, query, args...)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
@@ -322,11 +340,11 @@ func (s *AdminService) ListAllWebhooks(ctx context.Context, dateFrom, dateTo str
 		var w models.WebhookWithAccount
 		if err := rows.Scan(&w.ID, &w.AccountID, &w.AccountName, &w.URL, &w.Events, &w.Secret,
 			&w.Active, &w.LastRotatedAt, &w.CreatedAt); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		webhooks = append(webhooks, w)
 	}
-	return webhooks, nil
+	return webhooks, total, nil
 }
 
 func (s *AdminService) RecordAnalyticsDaily(ctx context.Context) error {
