@@ -385,6 +385,79 @@ func (h *MemberHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// GetPlan returns the current subscription plan details and remaining quota
+func (h *MemberHandler) GetPlan(w http.ResponseWriter, r *http.Request) {
+	accountID := middleware.GetAccountID(r.Context())
+
+	// Get account
+	account, err := h.accountService.GetByID(r.Context(), accountID)
+	if err != nil || account == nil {
+		writeJSON(w, http.StatusNotFound, APIResponse{Error: "account not found"})
+		return
+	}
+
+	// Get subscription
+	sub, _ := h.subscriptionService.GetByAccountID(r.Context(), accountID)
+
+	// Get plan details from billing service
+	var plan *models.Plan
+	if sub != nil {
+		plan, _ = h.billingService.GetPlan(r.Context(), string(sub.PlanType))
+	}
+
+	// Get usage counts
+	today := time.Now().Format("2006-01-02")
+	dailyUsage, _ := h.billingService.GetUsage(r.Context(), accountID, today)
+	monthlyUsage, _ := h.billingService.GetMonthlyUsage(r.Context(), accountID, time.Now().Year(), int(time.Now().Month()))
+
+	// Build plan info
+	planInfo := map[string]interface{}{
+		"id":             account.PlanID,
+		"status":         account.Status,
+		"daily_used":     0,
+		"monthly_used":   0,
+		"daily_remaining": 0,
+		"monthly_remaining": 0,
+	}
+
+	if dailyUsage != nil {
+		planInfo["daily_used"] = dailyUsage.Count
+	} else {
+		planInfo["daily_used"] = 0
+	}
+	planInfo["monthly_used"] = monthlyUsage
+
+	if plan != nil {
+		planInfo["name"] = plan.Name
+		planInfo["daily_quota"] = plan.DailyQuota
+		planInfo["monthly_quota"] = plan.MonthlyQuota
+		planInfo["max_devices"] = plan.MaxDevices
+		planInfo["price_per_sms"] = plan.PricePerSMS
+		planInfo["monthly_price"] = plan.MonthlyPrice
+		planInfo["features"] = plan.Features
+		planInfo["routing_strategy"] = plan.DefaultRoutingStrategy
+
+		// Calculate remaining
+		if dailyUsage != nil {
+			planInfo["daily_remaining"] = plan.DailyQuota - dailyUsage.Count
+		} else {
+			planInfo["daily_remaining"] = plan.DailyQuota
+		}
+		planInfo["monthly_remaining"] = plan.MonthlyQuota - monthlyUsage
+	}
+
+	if sub != nil {
+		planInfo["subscription_status"] = sub.Status
+		planInfo["billing_cycle"] = sub.BillingCycle
+		planInfo["renewal_date"] = sub.RenewalDate
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Data:    planInfo,
+	})
+}
+
 // ─── Member Template CRUD ────────────────────────────────────────────────
 
 func (h *MemberHandler) CreateTemplate(w http.ResponseWriter, r *http.Request) {

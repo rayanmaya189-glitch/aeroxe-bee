@@ -217,6 +217,9 @@ func NewRouter(
 	mux.Handle("GET /api/v1/member/analytics", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.GetAnalytics))))
 	mux.Handle("GET /api/v1/member/stats", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.GetStats))))
 
+	// Member plan info route
+	mux.Handle("GET /api/v1/member/plan", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.GetPlan))))
+
 	// QR pairing route (member portal generates QR code for device pairing)
 	mux.Handle("POST /api/v1/member/devices/qr-code", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(qrPairingHandler.GenerateQRCode))))
 
