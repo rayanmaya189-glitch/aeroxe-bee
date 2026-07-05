@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/aeroxe-bee/backend/internal/api/middleware"
@@ -89,19 +88,19 @@ func (h *DeviceHandler) Register(w http.ResponseWriter, r *http.Request) {
 	deviceID := fmt.Sprintf("%s-sim%d", req.PhysicalDeviceID, req.SIMSlot)
 
 	device := models.Device{
-		ID:                deviceID,
-		PhysicalDeviceID:  req.PhysicalDeviceID,
-		AccountID:         accountID,
-		SIMSlot:           req.SIMSlot,
-		Carrier:           req.Carrier,
-		Status:            models.DeviceStatusOnline,
-		SIMHealthStatus:   models.SIMHealthHealthy,
-		ReliabilityScore:  0.5,
-		ReputationScore:   0.5,
-		CountryCode:       countryCode,
-		Region:            region,
-		MaxPerMinute:      10,
-		MaxPerHour:        100,
+		ID:                  deviceID,
+		PhysicalDeviceID:    req.PhysicalDeviceID,
+		AccountID:           accountID,
+		SIMSlot:             req.SIMSlot,
+		Carrier:             req.Carrier,
+		Status:              models.DeviceStatusOnline,
+		SIMHealthStatus:     models.SIMHealthHealthy,
+		ReliabilityScore:    0.5,
+		ReputationScore:     0.5,
+		CountryCode:         countryCode,
+		Region:              region,
+		MaxPerMinute:        10,
+		MaxPerHour:          100,
 		CircuitBreakerState: models.CBStateClosed,
 	}
 
@@ -135,6 +134,7 @@ func (h *DeviceHandler) Register(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 }
+
 // DeviceLoginRequest is the request body for the device login API
 // Used by Android app to authenticate and get MQTT credentials
 type DeviceLoginRequest struct {
@@ -203,17 +203,17 @@ func (h *DeviceHandler) DeviceLogin(w http.ResponseWriter, r *http.Request) {
 	if device == nil {
 		// New device — register it
 		device = &models.Device{
-			ID:                deviceID,
-			PhysicalDeviceID:  req.DeviceID,
-			AccountID:         account.ID,
-			SIMSlot:           1,
-			Name:              req.DeviceID,
-			Status:            models.DeviceStatusOnline,
-			SIMHealthStatus:   models.SIMHealthHealthy,
-			ReliabilityScore:  0.5,
-			ReputationScore:   0.5,
-			MaxPerMinute:      10,
-			MaxPerHour:        100,
+			ID:                  deviceID,
+			PhysicalDeviceID:    req.DeviceID,
+			AccountID:           account.ID,
+			SIMSlot:             1,
+			Name:                req.DeviceID,
+			Status:              models.DeviceStatusOnline,
+			SIMHealthStatus:     models.SIMHealthHealthy,
+			ReliabilityScore:    0.5,
+			ReputationScore:     0.5,
+			MaxPerMinute:        10,
+			MaxPerHour:          100,
 			CircuitBreakerState: models.CBStateClosed,
 		}
 		if err := h.deviceService.Create(r.Context(), device); err != nil {
@@ -258,11 +258,11 @@ func (h *DeviceHandler) DeviceLogin(w http.ResponseWriter, r *http.Request) {
 				"password":   getEnvOrDefault("MQTT_DEVICE_PASSWORD", "dev-device-password"),
 			},
 			"device": map[string]interface{}{
-				"id":        device.ID,
-				"name":      device.Name,
-				"sim_slot":  device.SIMSlot,
-				"status":    device.Status,
-				"carrier":   device.Carrier,
+				"id":       device.ID,
+				"name":     device.Name,
+				"sim_slot": device.SIMSlot,
+				"status":   device.Status,
+				"carrier":  device.Carrier,
 			},
 			"account": map[string]interface{}{
 				"id":    account.ID,
@@ -275,14 +275,14 @@ func (h *DeviceHandler) DeviceLogin(w http.ResponseWriter, r *http.Request) {
 
 // StatusUpdateRequest matches the Android StatusUpdateRequest model
 type StatusUpdateRequest struct {
-	MessageID      string  `json:"message_id"`
-	DeviceID       string  `json:"device_id"`
-	Status         string  `json:"status"`
-	DeliveryStatus string  `json:"delivery_status"`
+	MessageID       string  `json:"message_id"`
+	DeviceID        string  `json:"device_id"`
+	Status          string  `json:"status"`
+	DeliveryStatus  string  `json:"delivery_status"`
 	ConfidenceScore float64 `json:"confidence_score"`
-	Error          *string `json:"error"`
-	SIMSlot        int     `json:"sim_slot"`
-	Timestamp      int64   `json:"timestamp"`
+	Error           *string `json:"error"`
+	SIMSlot         int     `json:"sim_slot"`
+	Timestamp       int64   `json:"timestamp"`
 }
 
 // HandleStatusUpdate handles POST /api/v1/devices/status
@@ -357,19 +357,19 @@ func (h *DeviceHandler) RegisterDeprecated(w http.ResponseWriter, r *http.Reques
 	deviceID := fmt.Sprintf("%s-sim%d", req.PhysicalDeviceID, req.SIMSlot)
 
 	device := models.Device{
-		ID:                deviceID,
-		PhysicalDeviceID:  req.PhysicalDeviceID,
-		AccountID:         accountID,
-		SIMSlot:           req.SIMSlot,
-		Carrier:           req.Carrier,
-		Status:            models.DeviceStatusOnline,
-		SIMHealthStatus:   models.SIMHealthHealthy,
-		ReliabilityScore:  0.5,
-		ReputationScore:   0.5,
-		CountryCode:       req.CountryCode,
-		Region:            req.Region,
-		MaxPerMinute:      10,
-		MaxPerHour:        100,
+		ID:                  deviceID,
+		PhysicalDeviceID:    req.PhysicalDeviceID,
+		AccountID:           accountID,
+		SIMSlot:             req.SIMSlot,
+		Carrier:             req.Carrier,
+		Status:              models.DeviceStatusOnline,
+		SIMHealthStatus:     models.SIMHealthHealthy,
+		ReliabilityScore:    0.5,
+		ReputationScore:     0.5,
+		CountryCode:         req.CountryCode,
+		Region:              req.Region,
+		MaxPerMinute:        10,
+		MaxPerHour:          100,
 		CircuitBreakerState: models.CBStateClosed,
 	}
 
@@ -439,19 +439,19 @@ func (h *DeviceHandler) List(w http.ResponseWriter, r *http.Request) {
 	var result []map[string]interface{}
 	for _, d := range devices {
 		result = append(result, map[string]interface{}{
-			"id":                  d.ID,
-			"physical_device_id":  d.PhysicalDeviceID,
-			"sim_slot":            d.SIMSlot,
-			"carrier":             d.Carrier,
-			"status":              d.Status,
-			"sim_health_status":   d.SIMHealthStatus,
-			"health_trend_slope":  d.HealthTrendSlope,
-			"reliability_score":   d.ReliabilityScore,
-			"reputation_score":    d.ReputationScore,
-			"country_code":        d.CountryCode,
-			"region":              d.Region,
-			"online":              d.Status == models.DeviceStatusOnline,
-			"last_seen":           d.LastSeen,
+			"id":                 d.ID,
+			"physical_device_id": d.PhysicalDeviceID,
+			"sim_slot":           d.SIMSlot,
+			"carrier":            d.Carrier,
+			"status":             d.Status,
+			"sim_health_status":  d.SIMHealthStatus,
+			"health_trend_slope": d.HealthTrendSlope,
+			"reliability_score":  d.ReliabilityScore,
+			"reputation_score":   d.ReputationScore,
+			"country_code":       d.CountryCode,
+			"region":             d.Region,
+			"online":             d.Status == models.DeviceStatusOnline,
+			"last_seen":          d.LastSeen,
 		})
 	}
 
@@ -470,61 +470,29 @@ func (h *DeviceHandler) Get(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
 		Data: map[string]interface{}{
-			"id":                   device.ID,
-			"physical_device_id":   device.PhysicalDeviceID,
-			"sim_slot":             device.SIMSlot,
-			"carrier":              device.Carrier,
-			"status":               device.Status,
-			"sim_health_status":    device.SIMHealthStatus,
-			"health_trend_slope":   device.HealthTrendSlope,
-			"reliability_score":    device.ReliabilityScore,
-			"reputation_score":     device.ReputationScore,
-			"success_rate_24h":     device.SuccessRate24h,
-			"uptime_ratio_24h":     device.UptimeRatio24h,
-			"avg_latency_ms":       device.AvgLatencyMs,
+			"id":                    device.ID,
+			"physical_device_id":    device.PhysicalDeviceID,
+			"sim_slot":              device.SIMSlot,
+			"carrier":               device.Carrier,
+			"status":                device.Status,
+			"sim_health_status":     device.SIMHealthStatus,
+			"health_trend_slope":    device.HealthTrendSlope,
+			"reliability_score":     device.ReliabilityScore,
+			"reputation_score":      device.ReputationScore,
+			"success_rate_24h":      device.SuccessRate24h,
+			"uptime_ratio_24h":      device.UptimeRatio24h,
+			"avg_latency_ms":        device.AvgLatencyMs,
 			"circuit_breaker_state": device.CircuitBreakerState,
-			"messages_sent_count":  device.MessagesSentCount,
-			"country_code":         device.CountryCode,
-			"region":               device.Region,
-			"last_seen":            device.LastSeen,
-			"last_pong_at":         device.LastPongAt,
+			"messages_sent_count":   device.MessagesSentCount,
+			"country_code":          device.CountryCode,
+			"region":                device.Region,
+			"last_seen":             device.LastSeen,
+			"last_pong_at":          device.LastPongAt,
 		},
 	})
 }
 
-func getEnvOrDefault(key, fallback string) string {
-	if val := os.Getenv(key); val != "" {
-		return val
-	}
-	return fallback
-}
-
-func detectCountryFromPhone(phone string) (string, string) {
-	if len(phone) < 3 {
-		return "", ""
-	}
-	if phone[0] == '+' {
-		phone = phone[1:]
-	}
-	prefixes := map[string]string{
-		"1":   "US", "44": "GB", "91": "IN", "86": "CN", "81": "JP",
-		"82": "KR", "49": "DE", "33": "FR", "39": "IT", "34": "ES",
-		"61": "AU", "55": "BR", "7": "RU", "52": "MX", "971": "AE",
-		"855": "KH",
-	}
-	regionMap := map[string]string{
-		"US": "NA", "GB": "EU", "IN": "APAC", "CN": "APAC", "JP": "APAC",
-		"KR": "APAC", "DE": "EU", "FR": "EU", "IT": "EU", "ES": "EU",
-		"AU": "APAC", "BR": "LATAM", "RU": "EU", "MX": "LATAM",
-		"AE": "APAC", "KH": "APAC",
-	}
-	for prefix, country := range prefixes {
-		if len(phone) >= len(prefix) && phone[:len(prefix)] == prefix {
-			return country, regionMap[country]
-		}
-	}
-	return "", ""
-}
+// getEnvOrDefault and detectCountryFromPhone are defined in helpers.go
 
 // DeviceInfoRequest is sent by Android to report physical device metadata
 // after login. Enables the backend to populate the physical_devices table
@@ -574,4 +542,3 @@ func (h *DeviceHandler) HandleDeviceInfo(w http.ResponseWriter, r *http.Request)
 
 	writeJSON(w, http.StatusOK, APIResponse{Success: true})
 }
-

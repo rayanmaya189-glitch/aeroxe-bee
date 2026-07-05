@@ -43,7 +43,7 @@ function SortIcon({ direction }: { direction?: 'asc' | 'desc' }) {
 }
 
 export function DataTable<T extends object>({
-  data, columns, loading = false, totalItems = 0, page = 1, pageSize = 10,
+  data = [] as T[], columns, loading = false, totalItems = 0, page = 1, pageSize = 10,
   onPageChange, sortBy, sortOrder, onSort, emptyTitle = 'No data',
   emptyDescription, emptyAction, onRowClick, selectedIds = [], onSelectionChange,
   getRowId, className,

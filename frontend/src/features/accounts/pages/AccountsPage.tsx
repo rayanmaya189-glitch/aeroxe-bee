@@ -44,9 +44,9 @@ export function AccountsPage() {
       setLoading(true)
       setError('')
       const result = await getAccounts({ page, pageSize, search: debouncedSearch, status: statusFilter })
-      setAccounts(result.data)
-      setTotal(result.total)
-      setTotalPages(result.total_pages)
+      setAccounts(Array.isArray(result.data) ? result.data : [])
+      setTotal(result.total ?? 0)
+      setTotalPages(result.total_pages ?? 0)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load accounts')
     } finally {

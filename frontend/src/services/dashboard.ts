@@ -32,7 +32,14 @@ export async function getAccounts(params: {
 }): Promise<PaginatedResponse<Account>> {
   const res = await api.get<ApiResponse<PaginatedResponse<Account>>>('/admin/accounts', { params })
   if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load accounts')
-  return res.data.data
+  const d = res.data.data
+  return {
+    data: Array.isArray(d.data) ? d.data : [],
+    total: d.total ?? 0,
+    page: d.page ?? params.page ?? 1,
+    page_size: d.page_size ?? params.pageSize ?? 20,
+    total_pages: d.total_pages ?? 0,
+  }
 }
 
 export async function suspendAccount(id: string): Promise<void> {
