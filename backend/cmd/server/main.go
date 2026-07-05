@@ -289,8 +289,7 @@ func main() {
 	}()
 
 	go func() {
-		logger.Info("api server listening", "addr", apiServer.Addr)
-		logger.Info("swagger docs", "json", fmt.Sprintf("http://%s/api/v1/docs", apiServer.Addr), "ui", fmt.Sprintf("http://%s/api/v1/docs/ui", apiServer.Addr))
+		printBanner(apiServer.Addr, cfg)
 		if err := apiServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("api server error", "error", err)
 		}
@@ -791,6 +790,31 @@ func getEnvOrDefault(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// printBanner prints a styled startup banner with API version, environment, and Swagger URL.
+// Uses ASCII-safe box-drawing characters for cross-platform terminal compatibility.
+func printBanner(addr string, cfg *config.Config) {
+	banner := fmt.Sprintf(`
++--------------------------------------------------------------+
+|                  AeroXe Bee - SMS Platform                   |
++--------------------------------------------------------------+
+|  Version:  %-49s |
+|  Env:      %-49s |
+|  API:      %-49s |
+|  Swagger:  %-49s |
+|  Docs:     %-49s |
++--------------------------------------------------------------+
+|  (c) Aeroxe Enterprises Pvt. Ltd., Jalgaon, Maharashtra, IN |
++--------------------------------------------------------------+
+`,
+		"1.0.0",
+		cfg.App.Environment,
+		fmt.Sprintf("http://%s/api/v1", addr),
+		fmt.Sprintf("http://%s/api/v1/docs/ui", addr),
+		fmt.Sprintf("http://%s/api/v1/docs", addr),
+	)
+	fmt.Println(banner)
 }
 
 // securityPipeline chains all security middleware: panic recovery → security headers
