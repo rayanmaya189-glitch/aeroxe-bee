@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 import android.content.Context
+import com.aeroxebee.client.analytics.AnalyticsHelper
 import com.aeroxebee.client.performance.PerformanceTracer
 import org.eclipse.paho.client.mqttv3.*
 import org.eclipse.paho.client.mqttv3.persist.MqttDefaultFilePersistence
@@ -29,6 +30,7 @@ import javax.net.ssl.X509TrustManager
 class MqttManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val tracer: PerformanceTracer,
+    private val analytics: AnalyticsHelper,
 ) {
     companion object {
         private const val TAG = "MqttManager"
@@ -63,6 +65,7 @@ class MqttManager @Inject constructor(
         override fun connectionLost(cause: Throwable?) {
             Log.w(TAG, "Connection lost: ${cause?.message}")
             isConnected = false
+            analytics.logMqttDisconnected(cause?.message ?: "unknown")
             _connectionState.tryEmit(false)
             scheduleReconnect()
         }
@@ -118,6 +121,7 @@ class MqttManager @Inject constructor(
             reconnectDelay = RECONNECT_DELAY_MS
             _connectionState.tryEmit(true)
             Log.i(TAG, "MQTT connected to $brokerUrl")
+            analytics.logMqttConnected()
             tracer.stopTrace(trace, TAG)
 
             // Resubscribe to all previously subscribed topics
