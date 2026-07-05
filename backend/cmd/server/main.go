@@ -290,6 +290,7 @@ func main() {
 
 	go func() {
 		logger.Info("api server listening", "addr", apiServer.Addr)
+		logger.Info("swagger docs", "json", fmt.Sprintf("http://%s/api/v1/docs", apiServer.Addr), "ui", fmt.Sprintf("http://%s/api/v1/docs/ui", apiServer.Addr))
 		if err := apiServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("api server error", "error", err)
 		}
