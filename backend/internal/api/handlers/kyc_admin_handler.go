@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/aeroxe-bee/backend/internal/api/middleware"
@@ -36,17 +37,17 @@ func (h *KycAdminHandler) List(w http.ResponseWriter, r *http.Request) {
 	argIdx := 1
 
 	if status != "" {
-		whereClauses = append(whereClauses, `k.status = $` + itoa(argIdx))
+		whereClauses = append(whereClauses, `k.status = $` + strconv.Itoa(argIdx))
 		args = append(args, status)
 		argIdx++
 	}
 	if dateRange.DateFrom != nil {
-		whereClauses = append(whereClauses, `k.created_at >= $` + itoa(argIdx))
+		whereClauses = append(whereClauses, `k.created_at >= $` + strconv.Itoa(argIdx))
 		args = append(args, *dateRange.DateFrom)
 		argIdx++
 	}
 	if dateRange.DateTo != nil {
-		whereClauses = append(whereClauses, `k.created_at <= $` + itoa(argIdx))
+		whereClauses = append(whereClauses, `k.created_at <= $` + strconv.Itoa(argIdx))
 		args = append(args, *dateRange.DateTo)
 		argIdx++
 	}
@@ -56,7 +57,7 @@ func (h *KycAdminHandler) List(w http.ResponseWriter, r *http.Request) {
 			query += ` AND ` + wc
 		}
 	}
-	query += ` ORDER BY k.created_at DESC LIMIT $` + itoa(argIdx) + ` OFFSET $` + itoa(argIdx+1)
+	query += ` ORDER BY k.created_at DESC LIMIT $` + strconv.Itoa(argIdx) + ` OFFSET $` + strconv.Itoa(argIdx+1)
 	args = append(args, pg.PageSize, pg.Offset)
 
 	rows, err := h.db.Query(r.Context(), query, args...)

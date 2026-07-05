@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -108,17 +109,17 @@ func (h *ContactSalesHandler) ListSubmissions(w http.ResponseWriter, r *http.Req
 	argIdx := 1
 
 	if statusFilter != "" {
-		whereClauses = append(whereClauses, `status = $`+itoa(argIdx))
+		whereClauses = append(whereClauses, `status = $`+strconv.Itoa(argIdx))
 		args = append(args, statusFilter)
 		argIdx++
 	}
 	if dr.DateFrom != nil {
-		whereClauses = append(whereClauses, `created_at >= $`+itoa(argIdx))
+		whereClauses = append(whereClauses, `created_at >= $`+strconv.Itoa(argIdx))
 		args = append(args, *dr.DateFrom)
 		argIdx++
 	}
 	if dr.DateTo != nil {
-		whereClauses = append(whereClauses, `created_at <= $`+itoa(argIdx))
+		whereClauses = append(whereClauses, `created_at <= $`+strconv.Itoa(argIdx))
 		args = append(args, *dr.DateTo)
 		argIdx++
 	}
@@ -133,7 +134,7 @@ func (h *ContactSalesHandler) ListSubmissions(w http.ResponseWriter, r *http.Req
 
 	rows, err := h.db.Query(r.Context(),
 		`SELECT id, name, email, company, phone, plan_interest, message, status, notes, ip_address, created_at, updated_at
-		 FROM contact_submissions`+whereClause+` ORDER BY created_at DESC LIMIT $`+itoa(argIdx)+` OFFSET $`+itoa(argIdx+1),
+		 FROM contact_submissions`+whereClause+` ORDER BY created_at DESC LIMIT $`+strconv.Itoa(argIdx)+` OFFSET $`+strconv.Itoa(argIdx+1),
 		append(args, pg.PageSize, pg.Offset)...,
 	)
 	if err != nil {
