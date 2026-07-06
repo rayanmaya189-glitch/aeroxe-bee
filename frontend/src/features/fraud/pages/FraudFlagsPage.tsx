@@ -7,14 +7,22 @@ import { Button } from '@/components/ui/Button'
 import { PageSkeleton } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
+import { useToast } from '@/components/ui/Toast'
 import { CheckCircle, ShieldAlert } from 'lucide-react'
 
 export function FraudFlagsPage() {
   const queryClient = useQueryClient()
+  const { addToast } = useToast()
   const { data: flags = [], isLoading } = useQuery({ queryKey: ['fraud-flags'], queryFn: getFraudFlags })
   const reviewMutation = useMutation({
     mutationFn: reviewFraudFlag,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fraud-flags'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['fraud-flags'] })
+      addToast('Flag reviewed successfully', 'success')
+    },
+    onError: (err: Error) => {
+      addToast(err.message || 'Failed to review flag', 'error')
+    },
   })
 
   if (isLoading) return <PageTransition><PageSkeleton /></PageTransition>
