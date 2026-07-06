@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
 import { FileCheck, CheckCircle, XCircle, ExternalLink } from 'lucide-react'
+import { useToast } from '@/components/ui/Toast'
 import type { PaginatedResponse } from '@/types/api'
 
 const statusVariant: Record<string, 'success' | 'warning' | 'danger' | 'info'> = {
@@ -24,6 +25,7 @@ export function KycReviewPage() {
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState('pending')
+  const { addToast } = useToast()
   const [reviewTarget, setReviewTarget] = useState<KycSubmission | null>(null)
   const [reviewNotes, setReviewNotes] = useState('')
   const [reviewAction, setReviewAction] = useState<'approve' | 'reject'>('approve')
@@ -35,12 +37,12 @@ export function KycReviewPage() {
 
   const approveMutation = useMutation({
     mutationFn: ({ id, notes }: { id: string; notes: string }) => approveKyc(id, notes),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-kyc'] }); closeReview() },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-kyc'] }); closeReview(); addToast('KYC approved', 'success') },
   })
 
   const rejectMutation = useMutation({
     mutationFn: ({ id, notes }: { id: string; notes: string }) => rejectKyc(id, notes),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-kyc'] }); closeReview() },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-kyc'] }); closeReview(); addToast('KYC rejected', 'success') },
   })
 
   function openReview(action: 'approve' | 'reject', target: KycSubmission) {

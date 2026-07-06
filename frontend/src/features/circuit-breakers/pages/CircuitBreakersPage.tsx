@@ -8,13 +8,15 @@ import { PageSkeleton } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
 import { RotateCcw, BrainCircuit } from 'lucide-react'
+import { useToast } from '@/components/ui/Toast'
 
 export function CircuitBreakersPage() {
   const queryClient = useQueryClient()
+  const { addToast } = useToast()
   const { data: events = [], isLoading, error } = useQuery({ queryKey: ['circuit-breakers'], queryFn: getCircuitBreakers })
   const resetMutation = useMutation({
     mutationFn: ({ scope, id }: { scope: string; id: string }) => resetCircuitBreaker(scope, id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['circuit-breakers'] }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['circuit-breakers'] }); addToast('Circuit breaker reset', 'success') },
   })
 
   if (isLoading) return <PageTransition><PageSkeleton /></PageTransition>

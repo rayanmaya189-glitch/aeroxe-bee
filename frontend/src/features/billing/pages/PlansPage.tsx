@@ -15,12 +15,14 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { formatNumber } from '@/utils/format'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
 import { Plus, Receipt, Check, X, Tags } from 'lucide-react'
+import { useToast } from '@/components/ui/Toast'
 
 const containerVariants = staggerContainer
 const itemVariant = itemVariants
 
 export function PlansPage() {
   const queryClient = useQueryClient()
+  const { addToast } = useToast()
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Plan | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Plan | null>(null)
@@ -54,13 +56,13 @@ export function PlansPage() {
     mutationFn: async () => {	const payload: Plan = { id: planId, name, visibility, daily_quota: Number(dailyQuota) || 0, monthly_quota: Number(monthlyQuota) || 0, monthly_price: Number(monthlyPrice) || 0, price_per_sms: Number(pricePerSms) || 0, overage_buffer_pct: Number(overageBuffer) || 0, max_queue_depth: Number(maxQueueDepth) || 100, max_devices: Number(maxDevices) || 1, max_templates: Number(maxTemplates) || 10, dedicated_pool: dedicatedPool, default_routing_strategy: routingStrategy, is_popular: isPopular, cta_text: ctaText || 'Get Started', features: featuresList }
       return editing ? updatePlan(editing.id, payload) : createPlan(payload)
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-plans'] }); closeForm() },
-    onError: (err: Error) => setError(err.message),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-plans'] }); closeForm(); addToast(editing ? 'Plan updated' : 'Plan created', 'success') },
+    onError: (err: Error) => { addToast(err.message || 'Failed to save plan', 'error'); setError(err.message) },
   })
 
   const deleteMutation = useMutation({
     mutationFn: async () => { if (deleteTarget) await deletePlan(deleteTarget.id) },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-plans'] }); setDeleteTarget(null) },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-plans'] }); setDeleteTarget(null); addToast('Plan deleted', 'success') },
   })
 
   function openForm(plan?: Plan) {

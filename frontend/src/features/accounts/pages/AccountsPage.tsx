@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/Input'
 import { useDebounce } from '@/hooks/useDebounce'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
 import { Search, Users } from 'lucide-react'
+import { useToast } from '@/components/ui/Toast'
 
 const statusVariant: Record<string, 'success' | 'warning' | 'danger'> = {
   active: 'success',
@@ -25,6 +26,7 @@ const planVariant: Record<string, 'primary' | 'info' | 'success' | 'warning'> = 
 }
 
 export function AccountsPage() {
+  const { addToast } = useToast()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -57,15 +59,15 @@ export function AccountsPage() {
   useEffect(() => { load() }, [load])
 
   async function handleSuspend(id: string) {
-    try { await suspendAccount(id); load() } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed to suspend account') }
+    try { await suspendAccount(id); load(); addToast('Account suspended', 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to suspend account', 'error'); setError(err instanceof Error ? err.message : 'Failed to suspend account') }
   }
 
   async function handleActivate(id: string) {
-    try { await activateAccount(id); load() } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed to activate account') }
+    try { await activateAccount(id); load(); addToast('Account activated', 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to activate account', 'error'); setError(err instanceof Error ? err.message : 'Failed to activate account') }
   }
 
   async function handleDelete(id: string) {
-    try { await deleteAccount(id); load() } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed to delete account') }
+    try { await deleteAccount(id); load(); addToast('Account deleted', 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to delete account', 'error'); setError(err instanceof Error ? err.message : 'Failed to delete account') }
   }
 
   const columns: Column<Account>[] = [

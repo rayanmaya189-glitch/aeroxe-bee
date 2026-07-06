@@ -15,9 +15,11 @@ import { PageSkeleton } from '@/components/ui/Skeleton'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
 import { Plus, WebhookIcon, Trash2, CheckSquare, Square } from 'lucide-react'
+import { useToast } from '@/components/ui/Toast'
 
 export function WebhooksPage() {
   const queryClient = useQueryClient()
+  const { addToast } = useToast()
   const [showForm, setShowForm] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Webhook | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -44,16 +46,16 @@ export function WebhooksPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-webhooks'] })
-      setShowForm(false); setUrl(''); setEvents('')
+      setShowForm(false); setUrl(''); setEvents(''); addToast('Webhook created', 'success')
     },
-    onError: (err: Error) => setError(err.message),
+    onError: (err: Error) => { addToast(err.message || 'Failed to create webhook', 'error'); setError(err.message) },
   })
 
   const deleteMutation = useMutation({
     mutationFn: async () => { if (deleteTarget) await deleteWebhook(deleteTarget.id) },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-webhooks'] })
-      setDeleteTarget(null)
+      setDeleteTarget(null); addToast('Webhook deleted', 'success')
     },
   })
 
@@ -62,13 +64,13 @@ export function WebhooksPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-webhooks'] })
       setSelectedIds(new Set())
-      setShowBulkDelete(false)
+      setShowBulkDelete(false); addToast(`${selectedIds.size} webhooks deleted`, 'success')
     },
   })
 
   const rotateMutation = useMutation({
     mutationFn: rotateWebhookSecret,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-webhooks'] }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-webhooks'] }); addToast('Secret rotated', 'success') },
   })
 
   const toggleActiveMutation = useMutation({

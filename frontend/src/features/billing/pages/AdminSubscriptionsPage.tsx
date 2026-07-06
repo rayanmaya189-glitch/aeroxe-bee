@@ -10,11 +10,13 @@ import { Modal } from '@/components/ui/Modal'
 import type { PaginatedResponse } from '@/types/api'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
 import { Crown, ArrowRight } from 'lucide-react'
+import { useToast } from '@/components/ui/Toast'
 
 export function AdminSubscriptionsPage() {
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState('')
+  const { addToast } = useToast()
   const [reviewTarget, setReviewTarget] = useState<SubscriptionRequest | null>(null)
   const [reviewNotes, setReviewNotes] = useState('')
 
@@ -25,11 +27,11 @@ export function AdminSubscriptionsPage() {
 
   const approveMutation = useMutation({
     mutationFn: ({ id, notes }: { id: string; notes: string }) => approveSubscriptionRequest(id, notes),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-subscription-requests'] }); setReviewTarget(null); setReviewNotes('') },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-subscription-requests'] }); setReviewTarget(null); setReviewNotes(''); addToast('Request approved', 'success') },
   })
   const rejectMutation = useMutation({
     mutationFn: ({ id, notes }: { id: string; notes: string }) => rejectSubscriptionRequest(id, notes),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-subscription-requests'] }); setReviewTarget(null); setReviewNotes('') },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-subscription-requests'] }); setReviewTarget(null); setReviewNotes(''); addToast('Request rejected', 'success') },
   })
 
   const response = data as PaginatedResponse<SubscriptionRequest> | undefined

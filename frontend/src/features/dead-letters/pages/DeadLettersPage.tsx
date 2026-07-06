@@ -9,16 +9,18 @@ import { PageSkeleton } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
 import { RefreshCw, MessageSquareOff } from 'lucide-react'
+import { useToast } from '@/components/ui/Toast'
 
 export function DeadLettersPage() {
   const queryClient = useQueryClient()
+  const { addToast } = useToast()
   const [retryingId, setRetryingId] = useState<string | null>(null)
   const { data: letters = [], isLoading } = useQuery({ queryKey: ['dead-letters'], queryFn: getDeadLetters })
 
   const retryMutation = useMutation({
     mutationFn: async (id: string) => { setRetryingId(id); await retryDeadLetter(id) },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['dead-letters'] }); setRetryingId(null) },
-    onError: () => setRetryingId(null),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['dead-letters'] }); setRetryingId(null); addToast('Message requeued for retry', 'success') },
+    onError: () => { addToast('Retry failed', 'error'); setRetryingId(null) },
   })
 
   if (isLoading) return <PageTransition><PageSkeleton /></PageTransition>

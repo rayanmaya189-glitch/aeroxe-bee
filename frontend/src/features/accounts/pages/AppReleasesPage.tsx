@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { PageSkeleton } from '@/components/ui/Skeleton'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
 import { AppWindow, Upload, CheckCircle, XCircle, Clock, Send, Rocket, Trash2 } from 'lucide-react'
+import { useToast } from '@/components/ui/Toast'
 
 interface AppRelease {
   id: string
@@ -41,6 +42,7 @@ const statusConfig: Record<string, { label: string; variant: 'success' | 'warnin
 }
 
 export function AppReleasesPage() {
+  const { addToast } = useToast()
   const [releases, setReleases] = useState<AppRelease[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -87,34 +89,32 @@ export function AppReleasesPage() {
       })
       setShowCreate(false)
       setForm({ version_code: '', version_name: '', release_type: 'normal', title: '', release_notes: '', min_required_version: '1', apk_url: '' })
-      load()
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to create release')
-    }
+      load(); addToast('Release created', 'success')
+    } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to create release', 'error'); setError(err instanceof Error ? err.message : 'Failed to create release') }
   }
 
   async function handleSubmit(id: string) {
-    try { await api.post(`/admin/releases/${id}/submit`); load() } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed') }
+    try { await api.post(`/admin/releases/${id}/submit`); load(); addToast('Release submitted for approval', 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to submit', 'error'); setError(err instanceof Error ? err.message : 'Failed') }
   }
 
   async function handleApprove(id: string) {
-    try { await api.post(`/admin/releases/${id}/approve`); load() } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed') }
+    try { await api.post(`/admin/releases/${id}/approve`); load(); addToast('Release approved', 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to approve', 'error'); setError(err instanceof Error ? err.message : 'Failed') }
   }
 
   async function handleReject(id: string) {
     const reason = prompt('Rejection reason:')
     if (reason === null) return
-    try { await api.post(`/admin/releases/${id}/reject`, { reason }); load() } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed') }
+    try { await api.post(`/admin/releases/${id}/reject`, { reason }); load(); addToast('Release rejected', 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to reject', 'error'); setError(err instanceof Error ? err.message : 'Failed') }
   }
 
   async function handlePublish(id: string) {
     if (!confirm('Publish this release? This will make it the active version for all users.')) return
-    try { await api.post(`/admin/releases/${id}/release`); load() } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed') }
+    try { await api.post(`/admin/releases/${id}/release`); load(); addToast('Release published', 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to publish', 'error'); setError(err instanceof Error ? err.message : 'Failed') }
   }
 
   async function handleDelete(id: string) {
     if (!confirm('Delete this release?')) return
-    try { await api.delete(`/admin/releases/${id}`); load() } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed') }
+    try { await api.delete(`/admin/releases/${id}`); load(); addToast('Release deleted', 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to delete', 'error'); setError(err instanceof Error ? err.message : 'Failed') }
   }
 
   function formatBytes(bytes: number) {

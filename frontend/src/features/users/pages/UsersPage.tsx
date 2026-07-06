@@ -11,6 +11,7 @@ import { Modal } from '@/components/ui/Modal'
 import { useDebounce } from '@/hooks/useDebounce'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
 import { Search, Plus, Trash2, UserCog } from 'lucide-react'
+import { useToast } from '@/components/ui/Toast'
 
 const roleVariant: Record<string, 'primary' | 'info' | 'default'> = {
   admin: 'primary',
@@ -25,6 +26,7 @@ const statusVariant: Record<string, 'success' | 'warning' | 'danger'> = {
 }
 
 export function UsersPage() {
+  const { addToast } = useToast()
   const [users, setUsers] = useState<User[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -57,12 +59,12 @@ export function UsersPage() {
   useEffect(() => { loadUsers() }, [loadUsers])
 
   async function handleDelete(id: string) {
-    try { await deleteUser(id); loadUsers() } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed to delete user') }
+    try { await deleteUser(id); loadUsers(); addToast('User deleted', 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to delete user', 'error'); setError(err instanceof Error ? err.message : 'Failed to delete user') }
   }
 
   async function handleBulkDelete() {
     if (selectedIds.length === 0) return
-    try { await bulkDeleteUsers(selectedIds); setSelectedIds([]); loadUsers() } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed to delete users') }
+    try { await bulkDeleteUsers(selectedIds); setSelectedIds([]); loadUsers(); addToast(`${selectedIds.length} users deleted`, 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to delete users', 'error'); setError(err instanceof Error ? err.message : 'Failed to delete users') }
   }
 
   const columns: Column<User>[] = [
