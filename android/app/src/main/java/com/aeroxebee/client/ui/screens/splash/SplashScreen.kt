@@ -75,7 +75,7 @@ fun SplashScreen(onReady: () -> Unit) {
                 style = AppTypography.Hero,
                 fontWeight = FontWeight.ExtraBold,
                 color = AppColors.TextPrimary,
-                modifier = alpha(textAlpha.value).alpha(textAlpha.value),
+                modifier = Modifier.alpha(textAlpha.value),
             )
 
             Spacer(Modifier.height(AppSpacing.SM))

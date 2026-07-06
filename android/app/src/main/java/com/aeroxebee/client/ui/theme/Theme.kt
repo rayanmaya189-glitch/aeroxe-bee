@@ -39,6 +39,8 @@ object AppColors {
     val Success         = Color(0xFF10B981)
     val Warning         = Color(0xFFF59E0B)
     val Error           = Color(0xFFEF4444)
+    val Red             = Error
+    val Danger          = Error
 
     // Text
     val TextPrimary     = Color(0xFFFFFFFF)
@@ -57,6 +59,13 @@ object AppColors {
 
 // ─── Typography ───────────────────────────────────────────────
 object AppTypography {
+    val H3 = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Bold,
+        fontSize = 22.sp,
+        lineHeight = 28.sp,
+        letterSpacing = (-0.3).sp,
+    )
     val Hero = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.ExtraBold,

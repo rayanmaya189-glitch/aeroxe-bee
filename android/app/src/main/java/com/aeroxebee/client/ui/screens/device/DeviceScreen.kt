@@ -1,6 +1,7 @@
 package com.aeroxebee.client.ui.screens.device
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -25,7 +26,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aeroxebee.client.domain.model.DeviceState
-import com.aeroxebee.client.ui.components.*
+import com.aeroxebee.client.ui.components.AeroButton
+import com.aeroxebee.client.ui.components.DeviceSkeleton
+import com.aeroxebee.client.ui.components.GlassCard
+import com.aeroxebee.client.ui.components.GradientCard
+import com.aeroxebee.client.ui.components.InfoRow
+import com.aeroxebee.client.ui.components.SectionHeader
+import com.aeroxebee.client.ui.components.StatusBadge
 import com.aeroxebee.client.ui.theme.*
 
 @Composable
@@ -71,9 +78,9 @@ fun DeviceScreen(
                 GlassCard {
                     Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.SM)) {
                         InfoRow(Icons.Outlined.PhoneAndroid, "Model", state.deviceInfo.model)
-                        InfoRow(Icons.Outlined.Business, "Manufacturer", state.deviceInfo.manufacturer)
-                        InfoRow(Icons.Outlined.SystemUpdate, "OS Version", state.deviceInfo.osVersion)
-                        InfoRow(Icons.Outlined.Code, "SDK Level", state.deviceInfo.sdkLevel.toString())
+                    InfoRow(Icons.Outlined.Business, "Manufacturer", state.deviceInfo.manufacturer)
+                    InfoRow(Icons.Outlined.SystemUpdate, "OS Version", state.deviceInfo.osVersion)
+                    InfoRow(Icons.Outlined.Code, "SDK Level", state.deviceInfo.sdkLevel.toString())
                     }
                 }
 
@@ -179,7 +186,7 @@ fun DeviceScreen(
 }
 
 @Composable
-private fun DeviceHealthCard(state: DeviceScreenState) {
+private fun DeviceHealthCard(state: DeviceUiState) {
     val (label, color, icon) = when (state.deviceState) {
         DeviceState.ACTIVE -> Triple("Healthy", AppColors.Success, Icons.Filled.CheckCircle)
         DeviceState.DOZE_RISK -> Triple("Doze Risk", AppColors.Warning, Icons.Filled.Warning)

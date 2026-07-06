@@ -43,7 +43,7 @@ class MqttManager @Inject constructor(
         private const val MAX_RECONNECT_DELAY = 60000L
     }
 
-    private var client: MqttClient? = null
+    private var client: MqttAsyncClient? = null
     private var isConnected = false
     private val scope = CoroutineScope(Dispatchers.IO + Job())
     private var reconnectDelay = RECONNECT_DELAY_MS
@@ -95,7 +95,7 @@ class MqttManager @Inject constructor(
             val dataDir = File(context.filesDir, "mqtt-persistence")
             dataDir.mkdirs()
             val persistence = MqttDefaultFilePersistence(dataDir.absolutePath)
-            client = MqttClient(brokerUrl, clientId, persistence).also {
+            client = MqttAsyncClient(brokerUrl, clientId, persistence).also {
                 it.setCallback(callback)
             }
 
@@ -116,7 +116,8 @@ class MqttManager @Inject constructor(
                 }
             }
 
-            client?.connect(options)
+            val connectToken = client?.connect(options)
+            connectToken?.waitForCompletion(CONNECT_TIMEOUT * 1000L)
             isConnected = true
             reconnectDelay = RECONNECT_DELAY_MS
             _connectionState.tryEmit(true)
@@ -150,17 +151,18 @@ class MqttManager @Inject constructor(
             val message = MqttMessage(payload.toByteArray()).apply { qos = QOS }
             val token = client?.publish(topic, message)
             if (token != null) {
-                token.waitFor(timeoutMs)
+                token.waitForCompletion(timeoutMs)
                 if (!token.isComplete) {
                     trace.putAttribute("result", "timeout")
                     tracer.stopTrace(trace, TAG)
                     Log.w(TAG, "Publish timeout on $topic after ${timeoutMs}ms")
                     return false
                 }
-                if (token.exception != null) {
-                    trace.putAttribute("error", token.exception?.message?.take(100) ?: "unknown")
+                val ex = token.getException()
+                if (ex != null) {
+                    trace.putAttribute("error", ex.message?.take(100) ?: "unknown")
                     tracer.stopTrace(trace, TAG)
-                    Log.e(TAG, "Publish failed on $topic: ${token.exception?.message}")
+                    Log.e(TAG, "Publish failed on $topic: ${ex.message}")
                     return false
                 }
             }

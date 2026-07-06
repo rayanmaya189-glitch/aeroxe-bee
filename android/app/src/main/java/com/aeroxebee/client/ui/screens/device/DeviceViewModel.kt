@@ -25,6 +25,7 @@ data class DeviceUiState(
     val error: String? = null,
     val batteryGuide: OEMBatteryGuideEntry? = null,
     val canScheduleExactAlarms: Boolean = true,
+    val isBatteryOptimized: Boolean = false,
 )
 
 @HiltViewModel
@@ -57,6 +58,7 @@ class DeviceViewModel @Inject constructor(
                         error = null,
                         batteryGuide = batteryGuide,
                         canScheduleExactAlarms = canScheduleExactAlarms,
+                        isBatteryOptimized = deviceState == DeviceState.ACTIVE,
                     )
                 }
             } catch (e: Exception) {

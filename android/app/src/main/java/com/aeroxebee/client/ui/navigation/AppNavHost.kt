@@ -41,10 +41,11 @@ import com.aeroxebee.client.ui.screens.update.UpdateState
 import com.aeroxebee.client.ui.theme.*
 import com.aeroxebee.client.util.TokenManager
 import com.aeroxebee.client.analytics.AnalyticsHelper
+import com.aeroxebee.client.data.repository.SMSTaskRepository
 import androidx.hilt.navigation.compose.hiltViewModel
 import dagger.hilt.EntryPoint
-import dagger.hilt.EntryPointAccessors
 import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector, val selectedIcon: ImageVector) {

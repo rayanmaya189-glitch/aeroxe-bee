@@ -9,6 +9,7 @@ import android.os.PowerManager
 import android.os.SystemClock
 import android.provider.Settings
 import com.aeroxebee.client.worker.WatchdogReceiver
+import com.aeroxebee.client.domain.model.DeviceState
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -28,7 +29,17 @@ class DeviceStateClassifier @Inject constructor(
      * Classify the current device state based on manufacturer, OS version,
      * battery optimization status, and doze mode.
      */
-    fun classify(): String {
+    fun classify(): DeviceState {
+        return classifyString().let { str ->
+            when (str) {
+                "OEM_KILL_RISK" -> DeviceState.OEM_KILL_RISK
+                "DOZE_RISK" -> DeviceState.DOZE_RISK
+                else -> DeviceState.ACTIVE
+            }
+        }
+    }
+
+    private fun classifyString(): String {
         val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
 
         // Check if device ignores battery optimizations (whitelisted)
@@ -67,5 +78,21 @@ class DeviceStateClassifier @Inject constructor(
 
         // ACTIVE: whitelisted and not in doze
         return "ACTIVE"
+    }
+
+    fun openBatterySettings() {
+        val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        context.startActivity(intent)
+    }
+
+    fun openExactAlarmSettings() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(intent)
+        }
     }
 }

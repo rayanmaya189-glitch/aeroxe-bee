@@ -12,8 +12,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.aeroxebee.client.ui.theme.Slate800
-import com.aeroxebee.client.ui.theme.Slate700
+import com.aeroxebee.client.ui.theme.AppColors
 
 /**
  * A shimmer brush that animates a gradient highlight across its content.
@@ -22,9 +21,9 @@ import com.aeroxebee.client.ui.theme.Slate700
 @Composable
 fun shimmerBrush(
     shimmerColors: List<Color> = listOf(
-        Slate800.copy(alpha = 0.6f),
-        Slate700.copy(alpha = 0.3f),
-        Slate800.copy(alpha = 0.6f),
+        AppColors.SecondaryBg.copy(alpha = 0.6f),
+        AppColors.Glass.copy(alpha = 0.3f),
+        AppColors.SecondaryBg.copy(alpha = 0.6f),
     ),
     animationDuration: Int = 1200,
 ): Brush {

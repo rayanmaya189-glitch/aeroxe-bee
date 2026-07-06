@@ -97,7 +97,7 @@ class DeviceRepository @Inject constructor(
                 val networkType = getNetworkType(
                     context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
                 )
-                val deviceState = deviceStateClassifier.classify()
+                val deviceState = deviceStateClassifier.classify().name
 
                 val request = DeviceInfoReportRequest(
                     physicalDeviceId = physicalDeviceId,

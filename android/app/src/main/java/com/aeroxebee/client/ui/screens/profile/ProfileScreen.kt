@@ -104,7 +104,7 @@ fun ProfileScreen() {
 
         GlassCard {
             Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.MD)) {
-                InfoRow(icon = Icons.Outlined.Workspace, label = "Plan", value = "Free")
+                InfoRow(icon = Icons.Outlined.Work, label = "Plan", value = "Free")
                 HorizontalDivider(color = AppColors.Border)
                 InfoRow(icon = Icons.Outlined.Speed, label = "Daily Quota", value = "100 SMS")
                 HorizontalDivider(color = AppColors.Border)

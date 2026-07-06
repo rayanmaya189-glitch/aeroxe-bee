@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
@@ -22,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.material3.Text
 import com.aeroxebee.client.ui.components.*
 import com.aeroxebee.client.ui.theme.*
 
@@ -58,8 +60,8 @@ fun DashboardScreen(
             Column {
                 // ─── Connection Status Hero ─────────────────
                 ConnectionStatusCard(
-                    sentCount = state.stats.sent,
-                    totalMessages = state.stats.total,
+                    sentCount = state.stats.sent.toInt(),
+                    totalMessages = state.stats.total.toInt(),
                 )
 
                 Spacer(Modifier.height(AppSpacing.XXXL))
@@ -107,9 +109,9 @@ fun DashboardScreen(
 
                 // ─── Total Messages ─────────────────────────
                 TotalMessagesCard(
-                    total = state.stats.total,
-                    sent = state.stats.sent,
-                    failed = state.stats.failed,
+                    total = state.stats.total.toInt(),
+                    sent = state.stats.sent.toInt(),
+                    failed = state.stats.failed.toInt(),
                 )
             }
         }
