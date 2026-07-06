@@ -72,8 +72,8 @@ export async function getWebhooks(params: { page?: number; pageSize?: number } =
   return { data: Array.isArray(d.data) ? d.data : [], total: d.total ?? 0, page: d.page ?? 1, page_size: d.page_size ?? 50, total_pages: d.total_pages ?? 0 }
 }
 
-export async function createWebhook(data: { url: string; events: string[] }): Promise<Webhook> {
-  const res = await api.post<ApiResponse<Webhook>>('/webhooks', data)
+export async function createWebhook(data: { url: string; events: string[] }): Promise<Webhook & { secret?: string }> {
+  const res = await api.post<ApiResponse<Webhook & { secret?: string }>>('/webhooks', data)
   if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to create webhook')
   return res.data.data
 }
