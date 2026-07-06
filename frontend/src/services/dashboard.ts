@@ -146,9 +146,9 @@ export async function bulkRejectTemplates(ids: string[]): Promise<void> {
 
 // Plans (billing)
 export async function getPlans(): Promise<Plan[]> {
-  const res = await api.get<ApiResponse<Plan[]>>('/plans')
+  const res = await api.get<ApiResponse<PaginatedResponse<Plan>>>('/plans')
   if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load plans')
-  return res.data.data
+  return res.data.data.data || []
 }
 
 export async function createPlan(data: Plan): Promise<Plan> {
@@ -273,15 +273,15 @@ export interface PaymentConfig {
 }
 
 export async function getPaymentConfigs(): Promise<PaymentConfig[]> {
-  const res = await api.get<ApiResponse<PaymentConfig[]>>('/admin/payment-configs')
+  const res = await api.get<ApiResponse<PaginatedResponse<PaymentConfig>>>('/admin/payment-configs')
   if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load payment configs')
-  return res.data.data
+  return res.data.data.data || []
 }
 
 export async function getEnabledPaymentConfigs(): Promise<PaymentConfig[]> {
-  const res = await api.get<ApiResponse<PaymentConfig[]>>('/payment-configs')
+  const res = await api.get<ApiResponse<PaginatedResponse<PaymentConfig>>>('/payment-configs')
   if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load payment configs')
-  return res.data.data
+  return res.data.data.data || []
 }
 
 export async function upsertPaymentConfig(data: { method: string; label: string; details: Record<string, unknown>; enabled: boolean }): Promise<void> {
@@ -483,15 +483,15 @@ export async function disable2FA(code: string): Promise<void> {
 // ─── Feature Catalog (global) ─────────────────────────────────────
 
 export async function getFeatureCatalog(): Promise<FeatureCatalogItem[]> {
-  const res = await api.get<ApiResponse<FeatureCatalogItem[]>>('/feature-catalog')
+  const res = await api.get<ApiResponse<PaginatedResponse<FeatureCatalogItem>>>('/feature-catalog')
   if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load feature catalog')
-  return res.data.data
+  return res.data.data.data || []
 }
 
 export async function getActiveFeatureCatalog(): Promise<FeatureCatalogItem[]> {
-  const res = await api.get<ApiResponse<FeatureCatalogItem[]>>('/feature-catalog?active_only=true')
+  const res = await api.get<ApiResponse<PaginatedResponse<FeatureCatalogItem>>>('/feature-catalog?active_only=true')
   if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load feature catalog')
-  return res.data.data
+  return res.data.data.data || []
 }
 
 export async function createFeatureCatalogItem(data: { name: string; category: string }): Promise<FeatureCatalogItem> {
