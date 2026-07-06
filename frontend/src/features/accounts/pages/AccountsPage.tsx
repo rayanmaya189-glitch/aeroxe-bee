@@ -11,6 +11,7 @@ import { useDebounce } from '@/hooks/useDebounce'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
 import { Search, Users } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 const statusVariant: Record<string, 'success' | 'warning' | 'danger'> = {
   active: 'success',
@@ -41,6 +42,8 @@ export function AccountsPage() {
 
   const [error, setError] = useState('')
   const [actingId, setActingId] = useState<string | null>(null)
+  const [suspendTarget, setSuspendTarget] = useState<Account | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Account | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -61,7 +64,7 @@ export function AccountsPage() {
 
   async function handleSuspend(id: string) {
     setError(''); setActingId(id)
-    try { await suspendAccount(id); load(); addToast('Account suspended', 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to suspend account', 'error'); setError(err instanceof Error ? err.message : 'Failed to suspend account') } finally { setActingId(null) }
+    try { await suspendAccount(id); load(); addToast('Account suspended', 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to suspend account', 'error'); setError(err instanceof Error ? err.message : 'Failed to suspend account') } finally { setActingId(null); setSuspendTarget(null) }
   }
 
   async function handleActivate(id: string) {
@@ -71,7 +74,7 @@ export function AccountsPage() {
 
   async function handleDelete(id: string) {
     setError(''); setActingId(id)
-    try { await deleteAccount(id); load(); addToast('Account deleted', 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to delete account', 'error'); setError(err instanceof Error ? err.message : 'Failed to delete account') } finally { setActingId(null) }
+    try { await deleteAccount(id); load(); addToast('Account deleted', 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to delete account', 'error'); setError(err instanceof Error ? err.message : 'Failed to delete account') } finally { setActingId(null); setDeleteTarget(null) }
   }
 
   const columns: Column<Account>[] = [
@@ -101,11 +104,11 @@ export function AccountsPage() {
       render: (row) => (
         <div className="flex gap-1">
           {row.status === 'active' ? (
-            <Button variant="ghost" size="xs" onClick={() => handleSuspend(row.id)} loading={actingId === row.id}>Suspend</Button>
+            <Button variant="ghost" size="xs" onClick={() => setSuspendTarget(row)} loading={actingId === row.id && !suspendTarget}>Suspend</Button>
           ) : (
             <Button variant="ghost" size="xs" onClick={() => handleActivate(row.id)} loading={actingId === row.id}>Activate</Button>
           )}
-          <Button variant="ghost" size="xs" className="text-red-400" onClick={() => handleDelete(row.id)} loading={actingId === row.id}>Delete</Button>
+          <Button variant="ghost" size="xs" className="text-red-400" onClick={() => setDeleteTarget(row)} loading={actingId === row.id && !deleteTarget}>Delete</Button>
         </div>
       ),
     },
@@ -164,6 +167,10 @@ export function AccountsPage() {
           <option value="disabled">Disabled</option>
         </select>
       </motion.div>
+
+      <ConfirmDialog open={!!suspendTarget} onClose={() => setSuspendTarget(null)} onConfirm={() => { if (suspendTarget) handleSuspend(suspendTarget.id) }} title="Suspend account" description={`Are you sure you want to suspend "${suspendTarget?.name}"? They will be unable to send messages until their account is reactivated.`} confirmLabel="Suspend" loading={actingId === suspendTarget?.id} />
+
+      <ConfirmDialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={() => { if (deleteTarget) handleDelete(deleteTarget.id) }} title="Delete account" description={`Are you sure you want to delete "${deleteTarget?.name}"? This will permanently remove their account and all associated data.`} confirmLabel="Delete" loading={actingId === deleteTarget?.id} />
 
       <motion.div variants={itemVariants}>
         <DataTable
