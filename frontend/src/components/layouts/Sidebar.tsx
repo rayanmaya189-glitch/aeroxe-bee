@@ -84,6 +84,7 @@ const memberNav: NavItem[] = [
   { label: 'Dashboard', path: '/member', icon: <LayoutDashboard className="h-[18px] w-[18px]" /> },
   { label: 'Devices', path: '/member/devices', icon: <Zap className="h-[18px] w-[18px]" /> },
   { label: 'Messages', path: '/member/messages', icon: <MessageSquare className="h-[18px] w-[18px]" /> },
+  { label: 'Send SMS', path: '/member/send', icon: <Send className="h-[18px] w-[18px]" /> },
   { label: 'Analytics', path: '/member/analytics', icon: <BarChart3 className="h-[18px] w-[18px]" /> },
   { label: 'Templates', path: '/member/templates', icon: <FileText className="h-[18px] w-[18px]" /> },
   { label: 'Webhooks', path: '/member/webhooks', icon: <Webhook className="h-[18px] w-[18px]" /> },

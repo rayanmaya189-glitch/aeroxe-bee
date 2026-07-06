@@ -194,6 +194,19 @@ export async function retryDeadLetter(id: string): Promise<void> {
 }
 
 // Fraud flags (admin)
+// ─── Member Send SMS ──────────────────────────────────────────
+
+export async function sendSMS(data: {
+  recipient: string
+  message: string
+  sender?: string
+  message_type?: string
+}): Promise<{ message_id: string; status: string; created_at: string }> {
+  const res = await api.post<ApiResponse<{ message_id: string; status: string; created_at: string }>>('/member/send', data)
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Send failed')
+  return res.data.data
+}
+
 // ─── Bulk SMS & Scheduling ──────────────────────────────────────
 
 export interface BulkSendResult {

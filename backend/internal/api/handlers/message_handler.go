@@ -623,6 +623,167 @@ func (h *MessageHandler) ScheduleSend(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// MemberSend allows members to send SMS via the member portal using JWT auth
+// (auto-generates idempotency key and sets accountID from JWT context).
+func (h *MessageHandler) MemberSend(w http.ResponseWriter, r *http.Request) {
+	startTime := time.Now()
+	accountID := middleware.GetAccountID(r.Context())
+
+	var req SendSMSRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid request body"})
+		return
+	}
+
+	if req.Recipient == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "recipient is required"})
+		return
+	}
+	if req.Message == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "message is required"})
+		return
+	}
+	if len([]rune(req.Message)) > 160 {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "message exceeds 160 character SMS limit"})
+		return
+	}
+
+	if req.Sender == "" {
+		req.Sender = "AeroXe Bee"
+	} else {
+		sanitized, valid := fraud.SanitizeSender(req.Sender)
+		if !valid {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid sender name"})
+			return
+		}
+		req.Sender = sanitized
+	}
+	if req.MessageType == "" {
+		req.MessageType = models.MessageTypeTransactional
+	}
+	if req.RoutingStrategy == "" {
+		req.RoutingStrategy = models.RoutingStrategyHighestReliability
+		if req.MessageType == models.MessageTypeMarketing {
+			req.RoutingStrategy = models.RoutingStrategyLowestCost
+		}
+	}
+
+	// Auto-generate idempotency key and check for duplicates
+	req.IdempotencyKey = "member-" + uuidV4()
+	existing, isDuplicate, err := h.idempotency.CheckAndSet(r.Context(), req.IdempotencyKey, "")
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "idempotency check failed"})
+		return
+	}
+	if isDuplicate && existing != nil {
+		writeJSON(w, http.StatusOK, APIResponse{
+			Success: true,
+			Data: map[string]interface{}{
+				"message_id": existing.MessageID,
+				"status":     "duplicate",
+			},
+		})
+		return
+	}
+
+	quotaOk, err := h.accountService.CheckQuota(r.Context(), accountID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "quota check failed"})
+		return
+	}
+	if !quotaOk {
+		writeJSON(w, http.StatusTooManyRequests, APIResponse{Error: "quota exceeded"})
+		return
+	}
+
+	priorityLane := worker.LaneTransactional
+	maxAge := 15 * time.Minute
+
+	switch req.MessageType {
+	case models.MessageTypeOTP:
+		priorityLane = worker.LaneOTP
+		maxAge = 90 * time.Second
+	case models.MessageTypeMarketing:
+		priorityLane = worker.LaneMarketing
+	}
+
+	msgID := uuidV4()
+	now := time.Now()
+
+	var encryptedMsg string
+	if h.encryption != nil {
+		em, err := h.encryption.Encrypt([]byte(req.Message))
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "encryption failed"})
+			return
+		}
+		encryptedMsg = em
+	}
+
+	msg := models.Message{
+		ID:                  msgID,
+		APIKeyID:            "", // member portal sends without API key
+		Direction:           "outbound",
+		Recipient:           req.Recipient,
+		Sender:              req.Sender,
+		EncryptedMessage:    []byte(encryptedMsg),
+		MessageType:         req.MessageType,
+		PriorityLane:        models.PriorityLane(priorityLane),
+		Status:              "pending",
+		DeliveryStatus:      models.DeliveryStatusSent,
+		ConfidenceScore:     0.0,
+		CreatedAt:           now,
+		PurgeAfter:          now.Add(h.cfg.MessageRetention),
+		IdempotencyKey:      req.IdempotencyKey,
+		RoutingStrategyUsed: req.RoutingStrategy,
+	}
+
+	if req.TemplateID != "" {
+		msg.TemplateID = &req.TemplateID
+	}
+
+	if err := h.messageService.Create(r.Context(), &msg); err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to create message"})
+		return
+	}
+
+	_ = h.accountService.IncrementUsage(r.Context(), accountID)
+
+	queueMsg := worker.QueueMessage{
+		ID:              msgID,
+		AccountID:       accountID,
+		APIKeyID:        "",
+		Recipient:       req.Recipient,
+		Sender:          req.Sender,
+		Message:         req.Message,
+		MessageType:     req.MessageType,
+		Priority:        worker.PriorityLane(priorityLane),
+		IdempotencyKey:  req.IdempotencyKey,
+		CreatedAt:       now,
+		RoutingStrategy: req.RoutingStrategy,
+		MaxAge:          maxAge,
+	}
+
+	_, err = h.queue.Enqueue(r.Context(), priorityLane, queueMsg)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to enqueue message"})
+		return
+	}
+
+	h.metrics.ObserveMessageSent()
+
+	writeJSON(w, http.StatusAccepted, APIResponse{
+		Success: true,
+		Data: map[string]interface{}{
+			"message_id":      msgID,
+			"status":          "queued",
+			"queue":           priorityLane,
+			"created_at":      now,
+			"latency_ms":      time.Since(startTime).Milliseconds(),
+		},
+	})
+}
+
 func uuidV4() string {
 	b := make([]byte, 16)
 	rand.Read(b)
