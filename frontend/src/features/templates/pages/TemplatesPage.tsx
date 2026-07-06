@@ -66,16 +66,19 @@ export function TemplatesPage() {
       queryClient.invalidateQueries({ queryKey: ['admin-templates'] })
       setDeleteTarget(null); addToast('Template deleted', 'success')
     },
+    onError: (err: Error) => { addToast(err.message || 'Failed to delete template', 'error') },
   })
 
   const approveMutation = useMutation({
     mutationFn: approveTemplate,
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-templates'] }); addToast('Template approved', 'success') },
+    onError: (err: Error) => { addToast(err.message || 'Failed to approve template', 'error') },
   })
 
   const rejectMutation = useMutation({
     mutationFn: rejectTemplate,
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-templates'] }); addToast('Template rejected', 'success') },
+    onError: (err: Error) => { addToast(err.message || 'Failed to reject template', 'error') },
   })
 
   const bulkDeleteMutation = useMutation({
@@ -85,6 +88,7 @@ export function TemplatesPage() {
       setSelectedIds(new Set())
       setShowBulkDelete(false); addToast(`${selectedIds.size} templates deleted`, 'success')
     },
+    onError: (err: Error) => { addToast(err.message || 'Failed to bulk delete templates', 'error') },
   })
 
   const bulkApproveMutation = useMutation({
@@ -94,6 +98,7 @@ export function TemplatesPage() {
       setSelectedIds(new Set())
       setShowBulkApprove(false); addToast(`${selectedPendingCount} templates approved`, 'success')
     },
+    onError: (err: Error) => { addToast(err.message || 'Failed to bulk approve templates', 'error') },
   })
 
   const bulkRejectMutation = useMutation({
@@ -103,6 +108,7 @@ export function TemplatesPage() {
       setSelectedIds(new Set())
       setShowBulkReject(false); addToast(`${selectedPendingCount} templates rejected`, 'success')
     },
+    onError: (err: Error) => { addToast(err.message || 'Failed to bulk reject templates', 'error') },
   })
 
   const toggleSelect = (id: string) => {

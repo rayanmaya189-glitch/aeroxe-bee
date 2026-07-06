@@ -103,6 +103,7 @@ export function WebhooksPage() {
       return res.data
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-webhooks'] }),
+    onError: (err: Error) => { addToast(err.message || 'Failed to toggle webhook', 'error') },
   })
 
   const toggleSelect = (id: string) => {

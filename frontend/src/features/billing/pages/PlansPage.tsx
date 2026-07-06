@@ -63,6 +63,7 @@ export function PlansPage() {
   const deleteMutation = useMutation({
     mutationFn: async () => { if (deleteTarget) await deletePlan(deleteTarget.id) },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-plans'] }); setDeleteTarget(null); addToast('Plan deleted', 'success') },
+    onError: (err: Error) => { addToast(err.message || 'Failed to delete plan', 'error') },
   })
 
   function openForm(plan?: Plan) {

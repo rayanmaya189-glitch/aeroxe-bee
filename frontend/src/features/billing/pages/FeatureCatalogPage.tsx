@@ -57,6 +57,7 @@ export function FeatureCatalogPage() {
   const toggleMutation = useMutation({
     mutationFn: (item: FeatureCatalogItem) => toggleFeatureCatalogItem(item.id, !item.active),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['feature-catalog'] }); addToast('Feature toggled', 'success') },
+    onError: (err: Error) => { addToast(err.message || 'Failed to toggle feature', 'error') },
   })
 
   const deleteMutation = useMutation({
@@ -65,6 +66,7 @@ export function FeatureCatalogPage() {
       queryClient.invalidateQueries({ queryKey: ['feature-catalog'] })
       setDeleteTarget(null); addToast('Feature removed', 'success')
     },
+    onError: (err: Error) => { addToast(err.message || 'Failed to delete feature', 'error') },
   })
 
   const filtered = filterCategory === 'all' ? features : features.filter((f) => f.category === filterCategory)
