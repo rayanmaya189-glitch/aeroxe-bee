@@ -10,6 +10,7 @@ import (
 	"github.com/aeroxe-bee/backend/internal/api/middleware"
 	"github.com/aeroxe-bee/backend/internal/config"
 	"github.com/aeroxe-bee/backend/internal/encryption"
+	"github.com/aeroxe-bee/backend/internal/fraud"
 	"github.com/aeroxe-bee/backend/internal/idempotency"
 	"github.com/aeroxe-bee/backend/internal/models"
 	"github.com/aeroxe-bee/backend/internal/services"
@@ -86,6 +87,13 @@ func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
 
 	if req.Sender == "" {
 		req.Sender = "AeroXe Bee"
+	} else {
+		sanitized, valid := fraud.SanitizeSender(req.Sender)
+		if !valid {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid sender name"})
+			return
+		}
+		req.Sender = sanitized
 	}
 	if req.MessageType == "" {
 		req.MessageType = models.MessageTypeTransactional
