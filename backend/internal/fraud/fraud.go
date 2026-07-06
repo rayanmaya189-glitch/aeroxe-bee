@@ -156,6 +156,26 @@ func (d *Detector) GetAllFlags(ctx context.Context, contentOnly bool) []models.F
 	return filtered
 }
 
+// BulkReview marks multiple flags as reviewed.
+func (d *Detector) BulkReview(ctx context.Context, flagIDs []string) int {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	ids := make(map[string]struct{}, len(flagIDs))
+	for _, id := range flagIDs {
+		ids[id] = struct{}{}
+	}
+	count := 0
+	now := time.Now()
+	for i, f := range d.flags {
+		if _, ok := ids[f.ID]; ok && !f.Reviewed {
+			d.flags[i].Reviewed = true
+			d.flags[i].ReviewedAt = &now
+			count++
+		}
+	}
+	return count
+}
+
 func (d *Detector) MarkReviewed(ctx context.Context, flagID string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()

@@ -218,6 +218,11 @@ export async function getSmishingFlagsCount(): Promise<number> {
   return res.data.data.count
 }
 
+export async function bulkReviewSmishingFlags(ids: string[]): Promise<void> {
+  const res = await api.post('/admin/smishing-flags/bulk-review', { ids })
+  if (!res.data.success) throw new Error(res.data.error ?? 'Failed to bulk review')
+}
+
 export async function reviewSmishingFlag(id: string): Promise<void> {
   const res = await api.post(`/admin/fraud-flags/${id}/review`)
   if (!res.data.success) throw new Error(res.data.error ?? 'Failed to review smishing flag')
