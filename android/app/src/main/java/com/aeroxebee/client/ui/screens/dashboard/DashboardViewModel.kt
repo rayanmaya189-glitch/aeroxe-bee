@@ -16,6 +16,7 @@ data class DashboardState(
     val stats: Stats = Stats(),
     val pendingCount: Int = 0,
     val isLoading: Boolean = false,
+    val error: String? = null,
     val simSlots: List<Int> = listOf(0, 1),
 )
 
@@ -33,10 +34,14 @@ class DashboardViewModel @Inject constructor(
 
     fun loadStats() {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true) }
-            val pending = repository.countPending()
-            val stats = repository.getStats()
-            _state.update { it.copy(stats = stats, pendingCount = pending, isLoading = false) }
+            _state.update { it.copy(isLoading = true, error = null) }
+            try {
+                val pending = repository.countPending()
+                val stats = repository.getStats()
+                _state.update { it.copy(stats = stats, pendingCount = pending, isLoading = false) }
+            } catch (e: Exception) {
+                _state.update { it.copy(isLoading = false, error = e.message ?: "Failed to load stats") }
+            }
         }
     }
 }

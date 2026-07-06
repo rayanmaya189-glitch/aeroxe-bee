@@ -136,7 +136,11 @@ class DeviceRepository @Inject constructor(
     }
 
     suspend fun updateStatus(request: StatusUpdateRequest) {
-        try { api.updateStatus(request) } catch (_: Exception) {}
+        try {
+            api.updateStatus(request)
+        } catch (e: Exception) {
+            android.util.Log.w("DeviceRepository", "Failed to update status for message ${request.messageId}: ${e.message}")
+        }
     }
 
     @SuppressLint("MissingPermission", "NewApi")

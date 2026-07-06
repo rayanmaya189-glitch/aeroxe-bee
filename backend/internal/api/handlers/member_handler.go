@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -317,7 +316,7 @@ func (h *MemberHandler) GetAnalytics(w http.ResponseWriter, r *http.Request) {
 		 GROUP BY DATE(created_at)
 		 ORDER BY date DESC`, accountID)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: fmt.Sprintf("failed to get analytics: %s", err.Error())})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to get analytics"})
 		return
 	}
 	defer rows.Close()

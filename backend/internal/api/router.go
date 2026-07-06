@@ -385,7 +385,9 @@ func NewRouter(
 		mux.Handle("GET /api/v1/events", authMiddleware.JWTAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			accountID := middleware.GetAccountID(r.Context())
 			if accountID == "" {
-				http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte(`{"error":"unauthorized"}`))
 				return
 			}
 			sseHandler.Subscribe(w, r, accountID)

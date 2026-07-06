@@ -35,7 +35,10 @@ func (h *WebhookHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	secret := make([]byte, 32)
-	rand.Read(secret)
+	if _, err := rand.Read(secret); err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to generate secret"})
+		return
+	}
 
 	webhook := &models.Webhook{
 		AccountID: accountID,
@@ -129,7 +132,10 @@ func (h *WebhookHandler) Delete(w http.ResponseWriter, r *http.Request) {
 func (h *WebhookHandler) RotateSecret(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	secret := make([]byte, 32)
-	rand.Read(secret)
+	if _, err := rand.Read(secret); err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to generate secret"})
+		return
+	}
 	newSecret := hex.EncodeToString(secret)
 
 	if err := h.webhookService.RotateSecret(r.Context(), id, newSecret); err != nil {

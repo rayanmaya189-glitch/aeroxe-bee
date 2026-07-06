@@ -23,6 +23,7 @@ data class SettingsState(
     val isOnline: Boolean = false,
     val isLoading: Boolean = false,
     val saved: Boolean = false,
+    val error: String? = null,
 )
 
 @HiltViewModel
@@ -62,10 +63,10 @@ class SettingsViewModel @Inject constructor(
                 MqttService.start(appContext)
                 fcmRegistrar.registerToken()
                 analytics.logSettingsSaved()
-                _state.update { it.copy(isLoading = false, saved = true) }
+                _state.update { it.copy(isLoading = false, saved = true, error = null) }
             } catch (e: Exception) {
                 analytics.logLoginFailed("settings_reconnect", e.message ?: "unknown")
-                _state.update { it.copy(isLoading = false, saved = false) }
+                _state.update { it.copy(isLoading = false, saved = false, error = e.message ?: "Login failed") }
             }
         }
     }

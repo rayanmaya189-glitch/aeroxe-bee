@@ -19,6 +19,13 @@ func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	json.NewEncoder(w).Encode(data)
 }
 
+// writeError sends a JSON error response with the correct Content-Type.
+// Unlike http.Error() which returns text/plain, this ensures the frontend
+// Axios interceptor can parse the response body as JSON.
+func writeError(w http.ResponseWriter, status int, msg string) {
+	writeJSON(w, status, map[string]string{"error": msg})
+}
+
 type contextKey string
 
 const (
@@ -47,19 +54,19 @@ func (m *AuthMiddleware) APIKeyAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
-			http.Error(w, `{"error":"missing authorization header"}`, http.StatusUnauthorized)
+			writeError(w, http.StatusUnauthorized, "missing authorization header")
 			return
 		}
 
 		apiKey := strings.TrimPrefix(authHeader, "Bearer ")
 		if apiKey == authHeader {
-			http.Error(w, `{"error":"invalid authorization format"}`, http.StatusUnauthorized)
+			writeError(w, http.StatusUnauthorized, "invalid authorization format")
 			return
 		}
 
 		keyObj, err := m.apiKeyService.Validate(r.Context(), apiKey)
 		if err != nil || keyObj == nil {
-			http.Error(w, `{"error":"invalid or revoked API key"}`, http.StatusUnauthorized)
+			writeError(w, http.StatusUnauthorized, "invalid or revoked API key")
 			return
 		}
 
@@ -93,7 +100,7 @@ func (m *AuthMiddleware) AdminAuth(next http.Handler) http.Handler {
 		}
 
 		if tokenString == "" {
-			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+			writeError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
 
@@ -104,19 +111,19 @@ func (m *AuthMiddleware) AdminAuth(next http.Handler) http.Handler {
 			return []byte(m.jwtSecret), nil
 		})
 		if err != nil || !token.Valid {
-			http.Error(w, `{"error":"invalid session"}`, http.StatusUnauthorized)
+			writeError(w, http.StatusUnauthorized, "invalid session")
 			return
 		}
 
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
-			http.Error(w, `{"error":"invalid token claims"}`, http.StatusUnauthorized)
+			writeError(w, http.StatusUnauthorized, "invalid token claims")
 			return
 		}
 
 		accountID, ok := claims["sub"].(string)
 		if !ok {
-			http.Error(w, `{"error":"invalid token"}`, http.StatusUnauthorized)
+			writeError(w, http.StatusUnauthorized, "invalid token")
 			return
 		}
 
@@ -130,13 +137,13 @@ func (m *AuthMiddleware) JWTAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
-			http.Error(w, `{"error":"missing authorization header"}`, http.StatusUnauthorized)
+			writeError(w, http.StatusUnauthorized, "missing authorization header")
 			return
 		}
 
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 		if tokenString == authHeader {
-			http.Error(w, `{"error":"invalid authorization format"}`, http.StatusUnauthorized)
+			writeError(w, http.StatusUnauthorized, "invalid authorization format")
 			return
 		}
 
@@ -147,19 +154,19 @@ func (m *AuthMiddleware) JWTAuth(next http.Handler) http.Handler {
 			return []byte(m.jwtSecret), nil
 		})
 		if err != nil || !token.Valid {
-			http.Error(w, `{"error":"invalid token"}`, http.StatusUnauthorized)
+			writeError(w, http.StatusUnauthorized, "invalid token")
 			return
 		}
 
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
-			http.Error(w, `{"error":"invalid token claims"}`, http.StatusUnauthorized)
+			writeError(w, http.StatusUnauthorized, "invalid token claims")
 			return
 		}
 
 		accountID, ok := claims["sub"].(string)
 		if !ok {
-			http.Error(w, `{"error":"invalid token"}`, http.StatusUnauthorized)
+			writeError(w, http.StatusUnauthorized, "invalid token")
 			return
 		}
 

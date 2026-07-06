@@ -57,7 +57,7 @@ func (l *APIKeyRateLimiter) Limit(next http.Handler) http.Handler {
 		if int(count) > l.maxPerMin {
 			retryAfter := 60 - (time.Now().Unix() % 60)
 			w.Header().Set("Retry-After", strconv.FormatInt(retryAfter, 10))
-			http.Error(w, `{"error":"rate limit exceeded, try again later"}`, http.StatusTooManyRequests)
+			writeError(w, http.StatusTooManyRequests, "rate limit exceeded, try again later")
 			return
 		}
 

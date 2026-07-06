@@ -22,6 +22,7 @@ data class DeviceUiState(
     val deviceState: DeviceState = DeviceState.ACTIVE,
     val isOnline: Boolean = false,
     val isLoading: Boolean = false,
+    val error: String? = null,
     val batteryGuide: OEMBatteryGuideEntry? = null,
     val canScheduleExactAlarms: Boolean = true,
 )
@@ -42,19 +43,24 @@ class DeviceViewModel @Inject constructor(
 
     fun loadDeviceInfo() {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true) }
-            val info = deviceRepository.getDeviceInfo()
-            val deviceState = deviceStateClassifier.classify()
-            val batteryGuide = OEMBatteryGuide.find(info.manufacturer)
-            val canScheduleExactAlarms = exactAlarmHandler.canScheduleExactAlarms()
-            _state.update {
-                it.copy(
-                    deviceInfo = info,
-                    deviceState = deviceState,
-                    isLoading = false,
-                    batteryGuide = batteryGuide,
-                    canScheduleExactAlarms = canScheduleExactAlarms,
-                )
+            _state.update { it.copy(isLoading = true, error = null) }
+            try {
+                val info = deviceRepository.getDeviceInfo()
+                val deviceState = deviceStateClassifier.classify()
+                val batteryGuide = OEMBatteryGuide.find(info.manufacturer)
+                val canScheduleExactAlarms = exactAlarmHandler.canScheduleExactAlarms()
+                _state.update {
+                    it.copy(
+                        deviceInfo = info,
+                        deviceState = deviceState,
+                        isLoading = false,
+                        error = null,
+                        batteryGuide = batteryGuide,
+                        canScheduleExactAlarms = canScheduleExactAlarms,
+                    )
+                }
+            } catch (e: Exception) {
+                _state.update { it.copy(isLoading = false, error = e.message ?: "Failed to load device info") }
             }
         }
     }

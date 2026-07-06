@@ -47,16 +47,16 @@ func (m *PlanMiddleware) RequireActiveAccount(next http.Handler) http.Handler {
 			return
 		}
 		if account == nil {
-			http.Error(w, `{"error":"account not found"}`, http.StatusForbidden)
+			writeError(w, http.StatusForbidden, "account not found")
 			return
 		}
 
 		switch account.Status {
 		case "suspended":
-			http.Error(w, `{"error":"account suspended"}`, http.StatusForbidden)
+			writeError(w, http.StatusForbidden, "account suspended")
 			return
 		case "disabled":
-			http.Error(w, `{"error":"account disabled"}`, http.StatusForbidden)
+			writeError(w, http.StatusForbidden, "account disabled")
 			return
 		}
 
@@ -93,10 +93,10 @@ func (m *PlanMiddleware) RequireActiveSubscription(next http.Handler) http.Handl
 
 		switch sub.Status {
 		case "canceled":
-			http.Error(w, `{"error":"subscription canceled"}`, http.StatusForbidden)
+			writeError(w, http.StatusForbidden, "subscription canceled")
 			return
 		case "past_due":
-			http.Error(w, `{"error":"subscription past due"}`, http.StatusForbidden)
+			writeError(w, http.StatusForbidden, "subscription past due")
 			return
 		}
 
@@ -131,7 +131,7 @@ func (m *PlanMiddleware) EnforceQuota(next http.Handler) http.Handler {
 			return
 		}
 		if !ok {
-			http.Error(w, `{"error":"daily message quota exceeded"}`, http.StatusTooManyRequests)
+			writeError(w, http.StatusTooManyRequests, "daily message quota exceeded")
 			return
 		}
 
