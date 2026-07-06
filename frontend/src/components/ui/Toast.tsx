@@ -115,10 +115,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     _context = { addToast, removeToast }
   }, [addToast, removeToast])
 
-  // Cleanup timers on unmount
+  // Keep a ref to the latest toasts so unmount cleanup can clear all active timers
+  const toastsRef = useRef(toasts)
+  toastsRef.current = toasts
+
+  // Cleanup all timers on unmount
   useEffect(() => {
     return () => {
-      toasts.forEach((t) => clearTimeout(t.timerId))
+      toastsRef.current.forEach((t) => clearTimeout(t.timerId))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
