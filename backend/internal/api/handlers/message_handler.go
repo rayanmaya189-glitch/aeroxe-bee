@@ -58,6 +58,7 @@ type SendSMSRequest struct {
 	MessageType     models.MessageType      `json:"message_type"`
 	IdempotencyKey  string                  `json:"idempotency_key"`
 	TemplateID      string                  `json:"template_id,omitempty"`
+	DeviceID        string                  `json:"device_id,omitempty"`
 	RoutingStrategy models.RoutingStrategy  `json:"routing_strategy,omitempty"`
 }
 
@@ -106,6 +107,23 @@ func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
 		req.RoutingStrategy = models.RoutingStrategyHighestReliability
 		if req.MessageType == models.MessageTypeMarketing {
 			req.RoutingStrategy = models.RoutingStrategyLowestCost
+		}
+	}
+
+	// Validate device ownership and online status
+	if req.DeviceID != "" {
+		device, err := h.deviceService.GetByID(r.Context(), req.DeviceID)
+		if err != nil || device == nil {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Error: "device not found"})
+			return
+		}
+		if device.AccountID != accountID {
+			writeJSON(w, http.StatusForbidden, APIResponse{Error: "device does not belong to this account"})
+			return
+		}
+		if device.Status != models.DeviceStatusOnline {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Error: "device is offline. Only online devices can send SMS"})
+			return
 		}
 	}
 
@@ -161,6 +179,7 @@ func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
 
 	msg := models.Message{
 		ID:                  msgID,
+		DeviceID:            stringPtr(req.DeviceID),
 		APIKeyID:            apiKeyID,
 		Direction:           "outbound",
 		Recipient:           req.Recipient,
@@ -329,6 +348,7 @@ type BulkSendRequest struct {
 	Message         string                  `json:"message"`
 	MessageType     models.MessageType      `json:"message_type"`
 	TemplateID      string                  `json:"template_id,omitempty"`
+	DeviceID        string                  `json:"device_id,omitempty"`
 	RoutingStrategy models.RoutingStrategy  `json:"routing_strategy,omitempty"`
 }
 
@@ -340,6 +360,7 @@ type ScheduleSendRequest struct {
 	MessageType     models.MessageType      `json:"message_type"`
 	ScheduledAt     time.Time               `json:"scheduled_at"`
 	TemplateID      string                  `json:"template_id,omitempty"`
+	DeviceID        string                  `json:"device_id,omitempty"`
 	RoutingStrategy models.RoutingStrategy  `json:"routing_strategy,omitempty"`
 }
 
@@ -390,6 +411,23 @@ func (h *MessageHandler) BulkSend(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Validate device ownership and online status
+	if req.DeviceID != "" {
+		device, err := h.deviceService.GetByID(r.Context(), req.DeviceID)
+		if err != nil || device == nil {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Error: "device not found"})
+			return
+		}
+		if device.AccountID != accountID {
+			writeJSON(w, http.StatusForbidden, APIResponse{Error: "device does not belong to this account"})
+			return
+		}
+		if device.Status != models.DeviceStatusOnline {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Error: "device is offline. Only online devices can send SMS"})
+			return
+		}
+	}
+
 	// Validate quota first (rough check based on count)
 	quotaOk, err := h.accountService.CheckQuota(r.Context(), accountID)
 	if err != nil {
@@ -435,6 +473,7 @@ func (h *MessageHandler) BulkSend(w http.ResponseWriter, r *http.Request) {
 
 		msg := models.Message{
 			ID:                  msgID,
+			DeviceID:            stringPtr(req.DeviceID),
 			APIKeyID:            apiKeyID,
 			Direction:           "outbound",
 			Recipient:           recipient,
@@ -561,6 +600,23 @@ func (h *MessageHandler) ScheduleSend(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Validate device ownership and online status
+	if req.DeviceID != "" {
+		device, err := h.deviceService.GetByID(r.Context(), req.DeviceID)
+		if err != nil || device == nil {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Error: "device not found"})
+			return
+		}
+		if device.AccountID != accountID {
+			writeJSON(w, http.StatusForbidden, APIResponse{Error: "device does not belong to this account"})
+			return
+		}
+		if device.Status != models.DeviceStatusOnline {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Error: "device is offline. Only online devices can send SMS"})
+			return
+		}
+	}
+
 	// Check quota before scheduling
 	quotaOk, err := h.accountService.CheckQuota(r.Context(), accountID)
 	if err != nil {
@@ -587,6 +643,7 @@ func (h *MessageHandler) ScheduleSend(w http.ResponseWriter, r *http.Request) {
 
 	msg := models.Message{
 		ID:                  msgID,
+		DeviceID:            stringPtr(req.DeviceID),
 		APIKeyID:            apiKeyID,
 		Direction:           "outbound",
 		Recipient:           req.Recipient,
@@ -668,6 +725,40 @@ func (h *MessageHandler) MemberSend(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Validate device ownership and online status
+	if req.DeviceID == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "device_id is required"})
+		return
+	}
+	device, err := h.deviceService.GetByID(r.Context(), req.DeviceID)
+	if err != nil || device == nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "device not found"})
+		return
+	}
+	if device.AccountID != accountID {
+		writeJSON(w, http.StatusForbidden, APIResponse{Error: "device does not belong to your account"})
+		return
+	}
+	if device.Status != models.DeviceStatusOnline {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "device is offline. Only online devices can send SMS"})
+		return
+	}
+	// Set sender from device name
+	req.Sender = device.Name
+	if req.Sender == "" {
+		req.Sender = device.PhoneNumber
+	}
+	if req.Sender == "" {
+		req.Sender = "AeroXe Bee"
+	} else {
+		sanitized, valid := fraud.SanitizeSender(req.Sender)
+		if !valid {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid sender name"})
+			return
+		}
+		req.Sender = sanitized
+	}
+
 	// Auto-generate idempotency key and check for duplicates
 	req.IdempotencyKey = "member-" + uuidV4()
 	existing, isDuplicate, err := h.idempotency.CheckAndSet(r.Context(), req.IdempotencyKey, "")
@@ -722,6 +813,7 @@ func (h *MessageHandler) MemberSend(w http.ResponseWriter, r *http.Request) {
 
 	msg := models.Message{
 		ID:                  msgID,
+		DeviceID:            &req.DeviceID,
 		APIKeyID:            "", // member portal sends without API key
 		Direction:           "outbound",
 		Recipient:           req.Recipient,
@@ -748,6 +840,7 @@ func (h *MessageHandler) MemberSend(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_ = h.accountService.IncrementUsage(r.Context(), accountID)
+	_ = h.deviceService.RecordSent(r.Context(), req.DeviceID)
 
 	queueMsg := worker.QueueMessage{
 		ID:              msgID,
@@ -782,6 +875,13 @@ func (h *MessageHandler) MemberSend(w http.ResponseWriter, r *http.Request) {
 			"latency_ms":      time.Since(startTime).Milliseconds(),
 		},
 	})
+}
+
+func stringPtr(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }
 
 func uuidV4() string {

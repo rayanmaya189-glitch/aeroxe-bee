@@ -220,6 +220,7 @@ type Device struct {
 	AccountID       string         `db:"account_id" json:"account_id"`
 	SIMSlot         int            `db:"sim_slot" json:"sim_slot"`
 	Carrier         string         `db:"carrier" json:"carrier"`
+	PhoneNumber     string         `db:"phone_number" json:"phone_number"`
 	Status          DeviceStatus   `db:"status" json:"status"`
 	SIMHealthStatus SIMHealthStatus `db:"sim_health_status" json:"sim_health_status"`
 	HealthTrendSlope float64       `db:"health_trend_slope" json:"health_trend_slope"`

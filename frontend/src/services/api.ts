@@ -1,94 +1,58 @@
-import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios'
-import type { ApiError } from '@/types/api'
+import axios from 'axios'
+import { useAuthStore } from '@/store/authStore'
 
 const api = axios.create({
-  baseURL: '/api/v1',
-  timeout: 15000,
+  baseURL: import.meta.env.VITE_API_URL || window.location.origin,
   headers: { 'Content-Type': 'application/json' },
 })
 
-api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  const token = sessionStorage.getItem('auth_token')
-  if (token && config.headers) {
+// Request interceptor: attach JWT or API key
+api.interceptors.request.use((config) => {
+  // Check store first (for JWT auth)
+  const token = useAuthStore.getState().token
+  if (token) {
     config.headers.Authorization = `Bearer ${token}`
+  } else {
+    // Fallback to stored API key (for API key auth)
+    const apiKey = localStorage.getItem('api_key')
+    if (apiKey) {
+      config.headers.Authorization = `Bearer ${apiKey}`
+    }
   }
   return config
 })
 
-let isRefreshing = false
-let failedQueue: Array<{
-  resolve: (token: string) => void
-  reject: (err: unknown) => void
-}> = []
-
-function processQueue(error: unknown, token: string | null) {
-  failedQueue.forEach((p) => {
-    if (error) p.reject(error)
-    else if (token) p.resolve(token)
-  })
-  failedQueue = []
-}
-
+// Response interceptor: handle auth errors
 api.interceptors.response.use(
-  (response) => response,
-  async (error: AxiosError<ApiError>) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
-
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({
-            resolve: (token: string) => {
-              if (originalRequest.headers) {
-                originalRequest.headers.Authorization = `Bearer ${token}`
-              }
-              resolve(api(originalRequest))
-            },
-            reject,
-          })
-        })
-      }
-
-      originalRequest._retry = true
-      isRefreshing = true
-
-      try {
-        const storedRefreshToken = sessionStorage.getItem('refresh_token')
-
-        if (!storedRefreshToken) {
-          processQueue(null, null)
-          sessionStorage.removeItem('auth_token')
-          sessionStorage.removeItem('auth_user')
-          window.location.href = '/login'
-          return Promise.reject(new Error('No refresh token available'))
-        }
-
-        const { data } = await axios.post('/api/v1/auth/refresh', { refreshToken: storedRefreshToken })
-
-        const newToken = data.data?.token as string
-        if (!newToken) throw new Error('Invalid refresh response')
-
-        sessionStorage.setItem('auth_token', newToken)
-        processQueue(null, newToken)
-
-        if (originalRequest.headers) {
-          originalRequest.headers.Authorization = `Bearer ${newToken}`
-        }
-        return api(originalRequest)
-      } catch (refreshError) {
-        processQueue(refreshError, null)
-        sessionStorage.removeItem('auth_token')
-        sessionStorage.removeItem('auth_user')
-        sessionStorage.removeItem('refresh_token')
-        window.location.href = '/login'
-        return Promise.reject(refreshError)
-      } finally {
-        isRefreshing = false
+  (res) => res,
+  (err) => {
+    if (err.response?.status === 401) {
+      // Only clear auth for non-login requests
+      const isLogin = err.config?.url?.includes('/auth/login')
+      if (!isLogin) {
+        useAuthStore.getState().clearAuth()
+        // Don't redirect here; let the component handle it via store state
       }
     }
-
-    return Promise.reject(error)
-  },
+    return Promise.reject(err)
+  }
 )
 
 export default api
+
+// --- Device endpoints ---
+
+export interface OnlineDevice {
+  id: string
+  name: string
+  phone_number: string
+  carrier: string
+  sim_slot: number
+  status: string
+}
+
+export async function getOnlineDevices(): Promise<OnlineDevice[]> {
+  const res = await api.get('/member/devices?online_only=true')
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load devices')
+  return res.data.data
+}

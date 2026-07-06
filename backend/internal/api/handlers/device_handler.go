@@ -93,6 +93,7 @@ func (h *DeviceHandler) Register(w http.ResponseWriter, r *http.Request) {
 		AccountID:           accountID,
 		SIMSlot:             req.SIMSlot,
 		Carrier:             req.Carrier,
+		PhoneNumber:         req.PhoneNumber,
 		Status:              models.DeviceStatusOnline,
 		SIMHealthStatus:     models.SIMHealthHealthy,
 		ReliabilityScore:    0.5,
@@ -202,29 +203,29 @@ func (h *DeviceHandler) DeviceLogin(w http.ResponseWriter, r *http.Request) {
 
 	if device == nil {
 		// New device — register it
-		device = &models.Device{
-			ID:                  deviceID,
-			PhysicalDeviceID:    req.DeviceID,
-			AccountID:           account.ID,
-			SIMSlot:             1,
-			Name:                req.DeviceID,
-			Status:              models.DeviceStatusOnline,
-			SIMHealthStatus:     models.SIMHealthHealthy,
-			ReliabilityScore:    0.5,
-			ReputationScore:     0.5,
-			MaxPerMinute:        10,
-			MaxPerHour:          100,
-			CircuitBreakerState: models.CBStateClosed,
-		}
-		if err := h.deviceService.Create(r.Context(), device); err != nil {
-			writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to register device"})
-			return
-		}
-		isNewDevice = true
-	} else {
-		// Existing device — update to online
-		_ = h.deviceService.UpdateStatus(r.Context(), deviceID, models.DeviceStatusOnline)
+	device = &models.Device{
+		ID:                  deviceID,
+		PhysicalDeviceID:    req.DeviceID,
+		AccountID:           account.ID,
+		SIMSlot:             1,
+		Name:                req.DeviceID,
+		Status:              models.DeviceStatusOnline,
+		SIMHealthStatus:     models.SIMHealthHealthy,
+		ReliabilityScore:    0.5,
+		ReputationScore:     0.5,
+		MaxPerMinute:        10,
+		MaxPerHour:          100,
+		CircuitBreakerState: models.CBStateClosed,
 	}
+	if err := h.deviceService.Create(r.Context(), device); err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to register device"})
+		return
+	}
+	isNewDevice = true
+} else {
+	// Existing device — update to online
+	_ = h.deviceService.UpdateStatus(r.Context(), deviceID, models.DeviceStatusOnline)
+}
 
 	// Revoke any existing active MQTT credentials for this device
 	_ = h.mqttCredentialService.RevokeByDeviceID(r.Context(), deviceID)
