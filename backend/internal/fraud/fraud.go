@@ -161,9 +161,9 @@ func (d *Detector) Analyze(ctx context.Context, input DetectionInput) *Detection
 	return &DetectionResult{Flagged: false}
 }
 
-// CheckSensitiveContent scans the message body and sender for prohibited content.
+// CheckSensitiveContent scans the message body, sender, and recipient for prohibited content.
 func (d *Detector) CheckSensitiveContent(input DetectionInput) *DetectionResult {
-	blocked, violations := d.contentFilter.Scan(input.Message, input.Sender)
+	blocked, violations := d.contentFilter.Scan(input.Message, input.Sender, input.Recipient)
 	if !blocked || len(violations) == 0 {
 		return &DetectionResult{Flagged: false}
 	}
