@@ -156,18 +156,32 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               <motion.div
                 key={toast.id}
                 layout
+                drag="x"
+                dragSnapToOrigin
+                dragElastic={0.2}
                 initial={{ opacity: 0, y: 20, scale: 0.96 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 20, scale: 0.96 }}
                 transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                onDragEnd={(_, info) => {
+                  if (Math.abs(info.offset.x) > 100 || Math.abs(info.velocity.x) > 500) {
+                    removeToast(toast.id)
+                  }
+                }}
+                whileDrag={{
+                  opacity: 0.6,
+                  scale: 0.95,
+                  cursor: 'grabbing',
+                  transition: { duration: 0 },
+                }}
                 className={cn(
-                  'flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 text-sm font-medium shadow-xl backdrop-blur-xl',
+                  'flex cursor-grab active:cursor-grabbing items-center gap-3 rounded-lg border px-4 py-3 text-sm font-medium shadow-xl backdrop-blur-xl touch-none select-none',
                   variantStyles[toast.variant],
                 )}
                 onClick={() => removeToast(toast.id)}
               >
                 {icons[toast.variant]}
-                <span>{toast.message}</span>
+                <span className="flex-1">{toast.message}</span>
                 {toast.count > 1 && (
                   <span className={cn(
                     'flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11px] font-semibold',
@@ -181,7 +195,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 )}
                 <button
                   onClick={(e) => { e.stopPropagation(); removeToast(toast.id) }}
-                  className="ml-2 rounded p-0.5 hover:bg-white/10"
+                  className="rounded p-0.5 hover:bg-white/10"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
