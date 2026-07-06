@@ -37,6 +37,13 @@ func (h *FraudHandler) ListAbuseFlags(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(SlicePage(flags, pg), int64(len(flags)))})
 }
 
+// ListSmishingFlags returns only content-based fraud flags (smishing, phishing, scam, suspicious sender/recipient).
+func (h *FraudHandler) ListSmishingFlags(w http.ResponseWriter, r *http.Request) {
+	pg := ParsePagination(r, 20, 100)
+	flags := h.detector.GetAllFlags(r.Context(), true)
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(SlicePage(flags, pg), int64(len(flags)))})
+}
+
 func (h *FraudHandler) Check(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		AccountID string `json:"account_id"`

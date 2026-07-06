@@ -205,6 +205,18 @@ export async function reviewFraudFlag(id: string): Promise<void> {
   if (!res.data.success) throw new Error(res.data.error ?? 'Failed to review fraud flag')
 }
 
+// Smishing flags (admin) — content-based fraud flags (smishing, phishing, scam, suspicious sender/recipient)
+export async function getSmishingFlags(): Promise<FraudFlag[]> {
+  const res = await api.get<ApiResponse<PaginatedResponse<FraudFlag>>>('/admin/smishing-flags')
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load smishing flags')
+  return res.data.data.data || []
+}
+
+export async function reviewSmishingFlag(id: string): Promise<void> {
+  const res = await api.post(`/admin/fraud-flags/${id}/review`)
+  if (!res.data.success) throw new Error(res.data.error ?? 'Failed to review smishing flag')
+}
+
 // Abuse flags (admin)
 export async function getAbuseFlags(): Promise<FraudFlag[]> {
   const res = await api.get<ApiResponse<PaginatedResponse<FraudFlag>>>('/admin/abuse-flags')

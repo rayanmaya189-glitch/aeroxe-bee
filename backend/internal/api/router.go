@@ -283,6 +283,7 @@ func NewRouter(
 	mux.Handle("GET /api/v1/admin/fraud-flags", authMiddleware.AdminAuth(http.HandlerFunc(fraudHandler.ListFlags)))
 	mux.Handle("POST /api/v1/admin/fraud-flags/{id}/review", authMiddleware.AdminAuth(http.HandlerFunc(fraudHandler.ReviewFlag)))
 	mux.Handle("GET /api/v1/admin/abuse-flags", authMiddleware.AdminAuth(http.HandlerFunc(fraudHandler.ListAbuseFlags)))
+	mux.Handle("GET /api/v1/admin/smishing-flags", authMiddleware.AdminAuth(http.HandlerFunc(fraudHandler.ListSmishingFlags)))
 
 	// Admin user management routes
 	mux.Handle("GET /api/v1/admin/users", authMiddleware.AdminAuth(http.HandlerFunc(userHandler.List)))

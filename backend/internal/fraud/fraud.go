@@ -3,6 +3,7 @@ package fraud
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -121,6 +122,25 @@ func (d *Detector) GetPendingFlags(ctx context.Context) []models.FraudFlag {
 		}
 	}
 	return pending
+}
+
+// GetAllFlags returns all fraud flags, optionally filtered by content-type prefix.
+// When contentOnly is true, only flags whose FlagType starts with "sensitive content detected:" are returned.
+func (d *Detector) GetAllFlags(ctx context.Context, contentOnly bool) []models.FraudFlag {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	if !contentOnly {
+		result := make([]models.FraudFlag, len(d.flags))
+		copy(result, d.flags)
+		return result
+	}
+	var filtered []models.FraudFlag
+	for _, f := range d.flags {
+		if strings.HasPrefix(f.FlagType, "sensitive content detected:") {
+			filtered = append(filtered, f)
+		}
+	}
+	return filtered
 }
 
 func (d *Detector) MarkReviewed(ctx context.Context, flagID string) error {

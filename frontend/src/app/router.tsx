@@ -28,6 +28,7 @@ const BillingPage = lazy(() => import('@/features/billing/pages/BillingPage').th
 const CircuitBreakersPage = lazy(() => import('@/features/circuit-breakers/pages/CircuitBreakersPage').then((m) => ({ default: m.CircuitBreakersPage })))
 const DeadLettersPage = lazy(() => import('@/features/dead-letters/pages/DeadLettersPage').then((m) => ({ default: m.DeadLettersPage })))
 const FraudFlagsPage = lazy(() => import('@/features/fraud/pages/FraudFlagsPage').then((m) => ({ default: m.FraudFlagsPage })))
+const SmishingFlagsPage = lazy(() => import('@/features/fraud/pages/SmishingFlagsPage').then((m) => ({ default: m.SmishingFlagsPage })))
 const PlansPage = lazy(() => import('@/features/billing/pages/PlansPage').then((m) => ({ default: m.PlansPage })))
 const FeatureCatalogPage = lazy(() => import('@/features/billing/pages/FeatureCatalogPage').then((m) => ({ default: m.FeatureCatalogPage })))
 const BillingSettingsPage = lazy(() => import('@/features/billing/pages/BillingSettingsPage').then((m) => ({ default: m.BillingSettingsPage })))
@@ -152,6 +153,7 @@ const routes: RouteObject[] = [
           { path: 'circuit-breakers', element: <LazyLoader><CircuitBreakersPage /></LazyLoader> },
           { path: 'dead-letters', element: <LazyLoader><DeadLettersPage /></LazyLoader> },
           { path: 'fraud-flags', element: <LazyLoader><FraudFlagsPage /></LazyLoader> },
+          { path: 'smishing-flags', element: <LazyLoader><SmishingFlagsPage /></LazyLoader> },
           { path: 'plans', element: <LazyLoader><PlansPage /></LazyLoader> },
           { path: 'feature-catalog', element: <LazyLoader><FeatureCatalogPage /></LazyLoader> },
           { path: 'billing-settings', element: <LazyLoader><BillingSettingsPage /></LazyLoader> },
