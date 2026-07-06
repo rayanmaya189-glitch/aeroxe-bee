@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'
@@ -7,6 +7,7 @@ import { useAuthStore } from '@/store/authStore'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { cn } from '@/utils/cn'
 import { getSmishingFlagsCount } from '@/services/dashboard'
+import { useToast } from '@/components/ui/Toast'
 import {
   LayoutDashboard, TrendingUp, Users, BarChart3, FileText, Webhook,
   CreditCard, Settings, Zap, ChevronLeft, ChevronDown,
@@ -117,6 +118,18 @@ export function Sidebar() {
     refetchInterval: 30_000,
     enabled: isAdmin,
   })
+
+  const { addToast } = useToast()
+  const prevCount = useRef(pendingSmishingCount)
+  useEffect(() => {
+    if (!isAdmin) return
+    const prev = prevCount.current
+    prevCount.current = pendingSmishingCount
+    if (prev > 0 && pendingSmishingCount > prev) {
+      const increase = pendingSmishingCount - prev
+      addToast(`${increase} new smishing flag${increase !== 1 ? 's' : ''} detected`, 'warning')
+    }
+  }, [pendingSmishingCount, isAdmin, addToast])
 
   const navItems = isAdmin ? [] : memberNav  // admin uses groups now
   const navGroups = isAdmin ? adminNavGroups : []
