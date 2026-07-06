@@ -126,6 +126,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const visibleToasts = showAll ? toasts : toasts.slice(-MAX_VISIBLE)
   const hiddenCount = toasts.length - MAX_VISIBLE
 
+  const clearAll = useCallback(() => {
+    setToasts((prev) => {
+      prev.forEach((t) => clearTimeout(t.timerId))
+      return []
+    })
+    setShowAll(false)
+  }, [])
+
   return (
     <>
       {children}
@@ -133,24 +141,37 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         <div ref={containerRef} className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
           <AnimatePresence>
             {hiddenCount > 0 && !showAll && (
-              <motion.button
-                key="show-more"
+              <motion.div
+                key="actions-bar"
                 layout
                 initial={{ opacity: 0, y: 20, scale: 0.96 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -10, scale: 0.96 }}
                 transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                onClick={() => setShowAll(true)}
-                className={cn(
-                  'flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-xs font-medium text-white/70 shadow-xl backdrop-blur-xl transition-colors hover:border-white/20 hover:text-white/90',
-                  'bg-white/5',
-                )}
+                className="flex items-center gap-2"
               >
-                <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-white/10 px-1 text-[10px] font-semibold text-white/80">
-                  {hiddenCount > 99 ? '99+' : hiddenCount}
-                </span>
-                <span>more</span>
-              </motion.button>
+                <motion.button
+                  layout
+                  onClick={() => setShowAll(true)}
+                  className={cn(
+                    'flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-xs font-medium text-white/70 shadow-xl backdrop-blur-xl transition-colors hover:border-white/20 hover:text-white/90',
+                    'bg-white/5',
+                  )}
+                >
+                  <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-white/10 px-1 text-[10px] font-semibold text-white/80">
+                    {hiddenCount > 99 ? '99+' : hiddenCount}
+                  </span>
+                  <span>more</span>
+                </motion.button>
+                <motion.button
+                  layout
+                  onClick={clearAll}
+                  className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs font-medium text-red-400/80 shadow-xl backdrop-blur-xl transition-colors hover:border-red-500/30 hover:text-red-300"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  <span>Dismiss all</span>
+                </motion.button>
+              </motion.div>
             )}
             {visibleToasts.map((toast) => (
               <motion.div
