@@ -27,8 +27,11 @@ type Dispatcher struct {
 type deliveryState struct {
 	WebhookID    string
 	MessageID    string
+	Event        string
 	Attempts     int
 	LastStatus   string
+	StatusCode   int
+	ResponseBody string
 	LastAttempt  time.Time
 	NextRetry    time.Time
 	Completed    bool
@@ -60,17 +63,23 @@ func NewDispatcher(cfg config.WebhookConfig) *Dispatcher {
 	}
 }
 
-func (d *Dispatcher) Dispatch(ctx context.Context, webhook models.Webhook, payload Payload) error {
+type dispatchResult struct {
+	StatusCode   int
+	ResponseBody string
+	Err          error
+}
+
+func (d *Dispatcher) Dispatch(ctx context.Context, webhook models.Webhook, payload Payload) dispatchResult {
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("marshal payload: %w", err)
+		return dispatchResult{Err: fmt.Errorf("marshal payload: %w", err)}
 	}
 
 	signature := SignPayload(body, webhook.Secret)
 
 	req, err := http.NewRequestWithContext(ctx, "POST", webhook.URL, bytes.NewReader(body))
 	if err != nil {
-		return fmt.Errorf("create request: %w", err)
+		return dispatchResult{Err: fmt.Errorf("create request: %w", err)}
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -80,16 +89,21 @@ func (d *Dispatcher) Dispatch(ctx context.Context, webhook models.Webhook, paylo
 
 	resp, err := d.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("deliver webhook: %w", err)
+		return dispatchResult{Err: fmt.Errorf("deliver webhook: %w", err)}
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 300 {
-		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-		return fmt.Errorf("webhook returned %d: %s", resp.StatusCode, string(respBody))
+	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+	result := dispatchResult{
+		StatusCode:   resp.StatusCode,
+		ResponseBody: string(respBody),
 	}
 
-	return nil
+	if resp.StatusCode >= 300 {
+		result.Err = fmt.Errorf("webhook returned %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	return result
 }
 
 func (d *Dispatcher) DispatchWithRetry(ctx context.Context, webhook models.Webhook, payload Payload) *deliveryState {
@@ -100,18 +114,21 @@ func (d *Dispatcher) DispatchWithRetry(ctx context.Context, webhook models.Webho
 		state = &deliveryState{
 			WebhookID:  webhook.ID,
 			MessageID:  payload.MessageID,
+			Event:      payload.Event,
 			NextRetry:  time.Now(),
 		}
 		d.deliveries[key] = state
 	}
 	d.mu.Unlock()
 
-	err := d.Dispatch(ctx, webhook, payload)
+	result := d.Dispatch(ctx, webhook, payload)
 	state.LastAttempt = time.Now()
+	state.StatusCode = result.StatusCode
+	state.ResponseBody = result.ResponseBody
 
-	if err != nil {
+	if result.Err != nil {
 		state.Attempts++
-		state.LastStatus = fmt.Sprintf("failed: %v", err)
+		state.LastStatus = fmt.Sprintf("failed: %v", result.Err)
 		if state.Attempts < d.cfg.MaxAttempts {
 			backoff := d.cfg.BaseBackoff * (1 << (state.Attempts - 1))
 			if backoff > d.cfg.MaxBackoff {
@@ -137,7 +154,8 @@ func (d *Dispatcher) GetState(webhookID, messageID string) *deliveryState {
 }
 
 func (d *Dispatcher) RetryDeadLetters(ctx context.Context, webhook models.Webhook, payload Payload) error {
-	return d.Dispatch(ctx, webhook, payload)
+	result := d.Dispatch(ctx, webhook, payload)
+	return result.Err
 }
 
 func SignPayload(payload []byte, secret string) string {

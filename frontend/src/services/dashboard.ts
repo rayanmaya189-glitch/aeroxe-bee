@@ -1,6 +1,6 @@
 import api from './api'
 import type { ApiResponse, PaginatedResponse } from '@/types/api'
-import type { DashboardStats, DailyChartData, Account, AnalyticsDaily, Webhook, Template, Plan, CircuitBreakerEvent, DeadLetter, FraudFlag, FeatureCatalogItem, BIDashboard } from '@/types/models'
+import type { DashboardStats, DailyChartData, Account, AnalyticsDaily, Webhook, WebhookDelivery, Template, Plan, CircuitBreakerEvent, DeadLetter, FraudFlag, FeatureCatalogItem, BIDashboard } from '@/types/models'
 
 // Dashboard stats (admin)
 export async function getDashboardStats(): Promise<DashboardStats> {
@@ -583,6 +583,20 @@ export async function toggleFeatureCatalogItem(id: string, active: boolean): Pro
 export async function deleteFeatureCatalogItem(id: string): Promise<void> {
   const res = await api.delete(`/admin/feature-catalog/${id}`)
   if (!res.data.success) throw new Error(res.data.error ?? 'Failed to delete feature')
+}
+
+// ─── Webhook Delivery Logs ──────────────────────────────────────
+
+export async function getWebhookDeliveries(id: string): Promise<WebhookDelivery[]> {
+  const res = await api.get<ApiResponse<WebhookDelivery[]>>(`/webhooks/${id}/deliveries`)
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load deliveries')
+  return res.data.data
+}
+
+export async function getMemberWebhookDeliveries(id: string): Promise<WebhookDelivery[]> {
+  const res = await api.get<ApiResponse<WebhookDelivery[]>>(`/member/webhooks/${id}/deliveries`)
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load deliveries')
+  return res.data.data
 }
 
 // ─── BI Dashboard (admin) ────────────────────────────────────────

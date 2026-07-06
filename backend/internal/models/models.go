@@ -331,9 +331,13 @@ type WebhookDelivery struct {
 	ID            string    `db:"id" json:"id"`
 	WebhookID     string    `db:"webhook_id" json:"webhook_id"`
 	MessageID     string    `db:"message_id" json:"message_id"`
+	Event         string    `db:"event" json:"event"`
 	AttemptCount  int       `db:"attempt_count" json:"attempt_count"`
+	StatusCode    int       `db:"status_code" json:"status_code"`
+	ResponseBody  string    `db:"response_body" json:"response_body"`
 	LastStatus    string    `db:"last_status" json:"last_status"`
 	LastAttemptAt *time.Time `db:"last_attempt_at" json:"last_attempt_at,omitempty"`
+	Completed     bool      `db:"completed" json:"completed"`
 	CreatedAt     time.Time `db:"created_at" json:"created_at"`
 }
 

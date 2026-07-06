@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PageTransition } from '@/components/ui/PageTransition'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getWebhooks, createWebhook, deleteWebhook, rotateWebhookSecret, bulkDeleteWebhooks } from '@/services/dashboard'
+import { getWebhooks, createWebhook, deleteWebhook, rotateWebhookSecret, bulkDeleteWebhooks, getWebhookDeliveries } from '@/services/dashboard'
 import api from '@/services/api'
-import type { Webhook } from '@/types/models'
+import type { Webhook, WebhookDelivery } from '@/types/models'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -14,8 +14,9 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { PageSkeleton } from '@/components/ui/Skeleton'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
-import { Plus, WebhookIcon, Trash2, CheckSquare, Square, Eye, EyeOff, Check, Copy, ChevronDown, ChevronRight, Shield, Terminal, Code } from 'lucide-react'
+import { Plus, WebhookIcon, Trash2, CheckSquare, Square, Eye, EyeOff, Check, Copy, ChevronDown, ChevronRight, Shield, Terminal, Code, History, CheckCircle, XCircle, Clock, Loader2 } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
+import { cn } from '@/utils/cn'
 
 export function WebhooksPage() {
   const queryClient = useQueryClient()
@@ -33,6 +34,9 @@ export function WebhooksPage() {
   const [showVerificationDocs, setShowVerificationDocs] = useState(false)
   const [copied, setCopied] = useState(false)
   const [secretVisible, setSecretVisible] = useState(false)
+  const [logsExpanded, setLogsExpanded] = useState<Record<string, boolean>>({})
+  const [deliveriesCache, setDeliveriesCache] = useState<Record<string, WebhookDelivery[]>>({})
+  const [loadingLogs, setLoadingLogs] = useState<Record<string, boolean>>({})
 
   const [page, setPage] = useState(1)
   const PAGE_SIZE = 30
@@ -215,6 +219,48 @@ export function WebhooksPage() {
                   <Button variant="ghost" size="xs" onClick={() => rotateMutation.mutate(wh.id)}>Rotate secret</Button>
                   <Button variant="ghost" size="xs" className="text-red-400" onClick={() => setDeleteTarget(wh)}>Delete</Button>
                 </div>
+                {/* ─── Delivery log toggle ────────────────────────────── */}
+                <div className="mt-2 border-t border-white/[0.04] pt-2">
+                  <button
+                    onClick={async () => {
+                      const expanded = !logsExpanded[wh.id]
+                      setLogsExpanded((prev) => ({ ...prev, [wh.id]: expanded }))
+                      if (expanded && !deliveriesCache[wh.id]) {
+                        setLoadingLogs((prev) => ({ ...prev, [wh.id]: true }))
+                        try {
+                          const deliveries = await getWebhookDeliveries(wh.id)
+                          setDeliveriesCache((prev) => ({ ...prev, [wh.id]: deliveries }))
+                        } catch {
+                          setDeliveriesCache((prev) => ({ ...prev, [wh.id]: [] }))
+                          addToast('Failed to load delivery logs', 'error')
+                        } finally {
+                          setLoadingLogs((prev) => ({ ...prev, [wh.id]: false }))
+                        }
+                      }
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-gray-500 hover:text-gray-300 hover:bg-white/[0.03] transition-colors"
+                  >
+                    <History className="h-3 w-3" />
+                    <span>Delivery logs</span>
+                    {loadingLogs[wh.id] && <Loader2 className="ml-auto h-3 w-3 animate-spin" />}
+                    {logsExpanded[wh.id]
+                      ? <ChevronDown className="ml-auto h-3 w-3" />
+                      : <ChevronRight className="ml-auto h-3 w-3" />
+                    }
+                  </button>
+                  <AnimatePresence>
+                    {logsExpanded[wh.id] && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <DeliveryLogTable deliveries={deliveriesCache[wh.id] || []} loading={loadingLogs[wh.id]} />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               </Card>
             </motion.div>
           ))}
@@ -391,6 +437,79 @@ export function WebhooksPage() {
       />
     </motion.div>
     </PageTransition>
+  )
+}
+
+function DeliveryLogTable({ deliveries, loading }: { deliveries: WebhookDelivery[]; loading?: boolean }) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center gap-2 px-2 py-4 text-xs text-gray-500">
+        <Loader2 className="h-3 w-3 animate-spin" />
+        Loading delivery logs...
+      </div>
+    )
+  }
+
+  if (deliveries.length === 0) {
+    return (
+      <div className="px-2 py-4 text-center text-xs text-gray-500">
+        No delivery logs yet. Deliveries will appear here when webhooks are triggered.
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-2 space-y-1.5 px-1">
+      {deliveries.slice(0, 10).map((d) => (
+        <div
+          key={d.id}
+          className="flex items-center gap-2 rounded-lg border border-white/[0.04] bg-white/[0.02] px-3 py-2 text-xs"
+        >
+          <div className="shrink-0">
+            {d.completed && d.last_status === 'delivered' ? (
+              <CheckCircle className="h-3.5 w-3.5 text-emerald-400" />
+            ) : d.last_status === 'dead_letter' ? (
+              <XCircle className="h-3.5 w-3.5 text-red-400" />
+            ) : d.last_status.startsWith('failed') ? (
+              <XCircle className="h-3.5 w-3.5 text-red-400" />
+            ) : (
+              <Clock className="h-3.5 w-3.5 text-amber-400" />
+            )}
+          </div>
+          <div className="min-w-0 flex-1 space-y-0.5">
+            <div className="flex items-center gap-2">
+              <span className={cn(
+                'font-medium',
+                d.last_status === 'delivered' ? 'text-emerald-300' :
+                d.last_status === 'dead_letter' ? 'text-red-300' :
+                d.last_status.startsWith('failed') ? 'text-red-300' : 'text-amber-300'
+              )}>
+                {d.last_status}
+              </span>
+              {d.status_code > 0 && (
+                <span className="text-gray-500">HTTP {d.status_code}</span>
+              )}
+              <span className="text-gray-600">·</span>
+              <span className="text-gray-500">{d.event}</span>
+            </div>
+            <div className="flex items-center gap-2 text-gray-500">
+              <span className="font-mono">{d.message_id.slice(0, 8)}…</span>
+              <span>·</span>
+              <span>{new Date(d.last_attempt_at || d.created_at).toLocaleString()}</span>
+              {d.attempt_count > 1 && (
+                <>
+                  <span>·</span>
+                  <span>{d.attempt_count} attempts</span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
+      {deliveries.length > 10 && (
+        <p className="text-center text-xs text-gray-500 pt-1">+{deliveries.length - 10} more</p>
+      )}
+    </div>
   )
 }
 

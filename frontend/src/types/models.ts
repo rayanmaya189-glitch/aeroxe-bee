@@ -91,6 +91,20 @@ export interface Webhook {
   last_rotated_at?: string
 }
 
+export interface WebhookDelivery {
+  id: string
+  webhook_id: string
+  message_id: string
+  event: string
+  attempt_count: number
+  status_code: number
+  response_body: string
+  last_status: string
+  last_attempt_at: string
+  completed: boolean
+  created_at: string
+}
+
 export interface Template {
   id: string
   account_id: string

@@ -218,8 +218,7 @@ func main() {
 		consumer := queue.NewConsumer(
 			fmt.Sprintf("%s-%d", cfg.Queue.ConsumerName, i),
 			func(ctx context.Context, lane worker.PriorityLane, msg *worker.QueueMessage) error {
-				return processMessage(ctx, msg, svc, mqttClient, simHealthEngine, deliveryEngine,
-					routingSelector, cbManager, rateMgr, fraudDetector, webhookDispatcher,
+				return processMessage(ctx, msg, svc, mqttClient, simHealthEngine, deliveryEngine,					routingSelector, cbManager, rateMgr, fraudDetector, webhookDispatcher,
 					encMgr, cfg, metrics, lane, logger)
 			},
 		)
@@ -240,13 +239,13 @@ func main() {
 	adminHandler := handlers.NewAdminHandler(svc.Admin, cbManager, metrics)
 	userHandler := handlers.NewUserHandler(userService, authMiddleware)
 	templateHandler := handlers.NewTemplateHandler(svc.Templates, svc.Subscriptions)
-	webhookHandler := handlers.NewWebhookHandler(svc.Webhooks)
+	webhookHandler := handlers.NewWebhookHandler(svc.Webhooks, svc.WebhookDeliveries)
 	otpHandler := handlers.NewOTPHandler(svc.OTP, metrics)
 	billingHandler := handlers.NewBillingHandler(svc.Billing, svc.Subscriptions)
 	fraudHandler := handlers.NewFraudHandler(fraudDetector)
 	preferencesService := services.NewUserPreferencesService(postgres.Pool)
 	kycService := services.NewKycService(postgres.Pool)
-	memberHandler := handlers.NewMemberHandler(svc.Accounts, svc.Devices, svc.Messages, svc.Billing, svc.Subscriptions, svc.Templates, svc.Webhooks, preferencesService, kycService)
+	memberHandler := handlers.NewMemberHandler(svc.Accounts, svc.Devices, svc.Messages, svc.Billing, svc.Subscriptions, svc.Templates, svc.Webhooks, svc.WebhookDeliveries, preferencesService, kycService)
 	qrPairingHandler := handlers.NewQRPairingHandler(svc.Devices, svc.Accounts, svc.MQTTCredentials, encMgr, cfg.MQTT.BrokerURL(), authMiddleware)
 	releaseService := services.NewAppReleaseService(postgres.Pool)
 	firebaseConfigService := services.NewFirebaseConfigService(postgres.Pool)
@@ -574,6 +573,7 @@ func dispatchWebhooks(
 		Timestamp:       time.Now(),
 	}
 
+	event := "message.delivered"
 	for _, wh := range webhooks {
 		state := dispatcher.DispatchWithRetry(ctx, wh, payload)
 		logger.Info("webhook dispatched",
@@ -582,7 +582,32 @@ func dispatchWebhooks(
 			"status", state.LastStatus,
 			"attempts", state.Attempts,
 		)
+
+		// Persist delivery log
+		now := time.Now()
+		delivery := &models.WebhookDelivery{
+			WebhookID:     wh.ID,
+			MessageID:     msg.ID,
+			Event:         event,
+			AttemptCount:  state.Attempts,
+			StatusCode:    state.StatusCode,
+			ResponseBody:  truncateString(state.ResponseBody, 500),
+			LastStatus:    truncateString(state.LastStatus, 200),
+			LastAttemptAt: &now,
+			Completed:     state.Completed,
+			CreatedAt:     now,
+		}
+		if err := svc.WebhookDeliveries.Create(ctx, delivery); err != nil {
+			logger.Error("failed to persist webhook delivery", "error", err, "webhook_id", wh.ID, "message_id", msg.ID)
+		}
 	}
+}
+
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen]
 }
 
 func startBackgroundJobs(

@@ -12,11 +12,12 @@ import (
 )
 
 type WebhookHandler struct {
-	webhookService *services.WebhookService
+	webhookService          *services.WebhookService
+	webhookDeliveryService  *services.WebhookDeliveryService
 }
 
-func NewWebhookHandler(webhookService *services.WebhookService) *WebhookHandler {
-	return &WebhookHandler{webhookService: webhookService}
+func NewWebhookHandler(webhookService *services.WebhookService, deliveryService *services.WebhookDeliveryService) *WebhookHandler {
+	return &WebhookHandler{webhookService: webhookService, webhookDeliveryService: deliveryService}
 }
 
 func (h *WebhookHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -146,4 +147,18 @@ func (h *WebhookHandler) RotateSecret(w http.ResponseWriter, r *http.Request) {
 		Success: true,
 		Data:    map[string]string{"secret": newSecret},
 	})
+}
+
+// ListDeliveries returns recent webhook delivery logs (admin)
+func (h *WebhookHandler) ListDeliveries(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	deliveries, err := h.webhookDeliveryService.ListByWebhookID(r.Context(), id, 20)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to fetch deliveries"})
+		return
+	}
+	if deliveries == nil {
+		deliveries = []models.WebhookDelivery{}
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: deliveries})
 }
