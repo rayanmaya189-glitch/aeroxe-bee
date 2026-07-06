@@ -15,9 +15,11 @@ import { PageSkeleton } from '@/components/ui/Skeleton'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
 import { Plus, FileText } from 'lucide-react'
+import { useToast } from '@/components/ui/Toast'
 
 export function MemberTemplatesPage() {
   const queryClient = useQueryClient()
+  const { addToast } = useToast()
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Template | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Template | null>(null)
@@ -36,12 +38,13 @@ export function MemberTemplatesPage() {
       else { await api.post('/member/templates', { name, body, variables: [] }) }
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['member-templates'] }); closeForm() },
-    onError: (err: Error) => setError(err.message),
+    onError: (err: Error) => { addToast(err.message || 'Failed to save template', 'error'); setError(err.message) },
   })
 
   const deleteMutation = useMutation({
     mutationFn: async () => { if (!deleteTarget) return; await api.delete(`/member/templates/${deleteTarget.id}`) },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['member-templates'] }); setDeleteTarget(null) },
+    onError: (err: Error) => { addToast(err.message || 'Failed to delete template', 'error') },
   })
 
   function openForm(template?: Template) { setEditing(template || null); setName(template?.name || ''); setBody(template?.body || ''); setError(''); setShowForm(true) }

@@ -17,6 +17,7 @@ export function CircuitBreakersPage() {
   const resetMutation = useMutation({
     mutationFn: ({ scope, id }: { scope: string; id: string }) => resetCircuitBreaker(scope, id),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['circuit-breakers'] }); addToast('Circuit breaker reset', 'success') },
+    onError: (err: Error) => { addToast(err.message || 'Failed to reset circuit breaker', 'error') },
   })
 
   if (isLoading) return <PageTransition><PageSkeleton /></PageTransition>

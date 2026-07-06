@@ -27,6 +27,7 @@ export function BillingSettingsPage() {
   const saveMutation = useMutation({
     mutationFn: (data: { method: string; label: string; details: Record<string, unknown>; enabled: boolean }) => upsertPaymentConfig(data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['payment-configs'] }); setEditingConfig(null); addToast('Payment config saved', 'success') },
+    onError: (err: Error) => { addToast(err.message || 'Failed to save payment config', 'error') },
   })
 
   const handleEdit = (config: PaymentConfig) => {

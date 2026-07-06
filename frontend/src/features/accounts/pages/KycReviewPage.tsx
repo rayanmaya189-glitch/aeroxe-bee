@@ -38,11 +38,13 @@ export function KycReviewPage() {
   const approveMutation = useMutation({
     mutationFn: ({ id, notes }: { id: string; notes: string }) => approveKyc(id, notes),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-kyc'] }); closeReview(); addToast('KYC approved', 'success') },
+    onError: (err: Error) => { addToast(err.message || 'Failed to approve KYC', 'error') },
   })
 
   const rejectMutation = useMutation({
     mutationFn: ({ id, notes }: { id: string; notes: string }) => rejectKyc(id, notes),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-kyc'] }); closeReview(); addToast('KYC rejected', 'success') },
+    onError: (err: Error) => { addToast(err.message || 'Failed to reject KYC', 'error') },
   })
 
   function openReview(action: 'approve' | 'reject', target: KycSubmission) {

@@ -15,9 +15,11 @@ import { PageSkeleton } from '@/components/ui/Skeleton'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
 import { Plus, Pencil, Key, Trash2, WebhookIcon, Eye, EyeOff, Check, Copy, ChevronDown, ChevronRight, Shield, Terminal, Code } from 'lucide-react'
+import { useToast } from '@/components/ui/Toast'
 
 export function MemberWebhooksPage() {
   const queryClient = useQueryClient()
+  const { addToast } = useToast()
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Webhook | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Webhook | null>(null)
@@ -49,12 +51,13 @@ export function MemberWebhooksPage() {
       }
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['member-webhooks'] }); closeForm() },
-    onError: (err: Error) => setError(err.message),
+    onError: (err: Error) => { addToast(err.message || 'Failed to save webhook', 'error'); setError(err.message) },
   })
 
   const deleteMutation = useMutation({
     mutationFn: async () => { if (!deleteTarget) return; await api.delete(`/member/webhooks/${deleteTarget.id}`) },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['member-webhooks'] }); setDeleteTarget(null) },
+    onError: (err: Error) => { addToast(err.message || 'Failed to delete webhook', 'error') },
   })
 
   const rotateSecretMutation = useMutation({
@@ -65,11 +68,13 @@ export function MemberWebhooksPage() {
       }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['member-webhooks'] }),
+    onError: (err: Error) => { addToast(err.message || 'Failed to rotate secret', 'error') },
   })
 
   const toggleActiveMutation = useMutation({
     mutationFn: async ({ id, active }: { id: string; active: boolean }) => { await api.put(`/member/webhooks/${id}`, { active }) },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['member-webhooks'] }),
+    onError: (err: Error) => { addToast(err.message || 'Failed to toggle webhook', 'error') },
   })
 
   function openForm(webhook?: Webhook) { setEditing(webhook || null); setUrl(webhook?.url || ''); setEvents(webhook?.events?.join(', ') || ''); setError(''); setShowForm(true) }

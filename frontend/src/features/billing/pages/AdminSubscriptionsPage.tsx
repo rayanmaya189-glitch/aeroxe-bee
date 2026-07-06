@@ -28,10 +28,12 @@ export function AdminSubscriptionsPage() {
   const approveMutation = useMutation({
     mutationFn: ({ id, notes }: { id: string; notes: string }) => approveSubscriptionRequest(id, notes),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-subscription-requests'] }); setReviewTarget(null); setReviewNotes(''); addToast('Request approved', 'success') },
+    onError: (err: Error) => { addToast(err.message || 'Failed to approve request', 'error') },
   })
   const rejectMutation = useMutation({
     mutationFn: ({ id, notes }: { id: string; notes: string }) => rejectSubscriptionRequest(id, notes),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-subscription-requests'] }); setReviewTarget(null); setReviewNotes(''); addToast('Request rejected', 'success') },
+    onError: (err: Error) => { addToast(err.message || 'Failed to reject request', 'error') },
   })
 
   const response = data as PaginatedResponse<SubscriptionRequest> | undefined
