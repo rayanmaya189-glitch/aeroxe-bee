@@ -9,6 +9,7 @@ import { PageSkeleton } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { FilterPanel } from '@/components/ui/FilterPanel'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { useToast } from '@/components/ui/Toast'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
 import { CheckCircle, MessageCircleAlert, ShieldAlert, Siren, PhoneOff, UserX, CheckSquare, Square } from 'lucide-react'
 import { cn } from '@/utils/cn'
@@ -83,6 +84,7 @@ function filterFlags(flags: FraudFlag[], filters: Record<string, string>): Fraud
 
 export function SmishingFlagsPage() {
   const queryClient = useQueryClient()
+  const { addToast } = useToast()
   const { data: flags = [], isLoading } = useQuery({
     queryKey: ['smishing-flags'],
     queryFn: getSmishingFlags,
@@ -92,6 +94,10 @@ export function SmishingFlagsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['smishing-flags'] })
       queryClient.invalidateQueries({ queryKey: ['fraud-flags'] })
+      addToast('Flag reviewed successfully', 'success')
+    },
+    onError: (err: Error) => {
+      addToast(err.message || 'Failed to review flag', 'error')
     },
   })
 
@@ -103,6 +109,10 @@ export function SmishingFlagsPage() {
       queryClient.invalidateQueries({ queryKey: ['smishing-flags-count'] })
       setSelectedIds(new Set())
       setShowBulkReview(false)
+      addToast(`${selectedPendingCount} flag${selectedPendingCount !== 1 ? 's' : ''} reviewed`, 'success')
+    },
+    onError: (err: Error) => {
+      addToast(err.message || 'Bulk review failed', 'error')
     },
   })
 
