@@ -197,13 +197,17 @@ export function Pricing() {
 
         if (plansRes.status === 'fulfilled' && plansRes.value.ok) {
           const json = await plansRes.value.json()
-          if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-            const filtered = json.data
-              .filter((p: ApiPlan) => p.monthly_price !== undefined)
-              .sort((a: ApiPlan, b: ApiPlan) => a.monthly_price - b.monthly_price)
-            const mapped = filtered.map((p: ApiPlan, i: number) => mapApiPlanToPricing(p, i, filtered.length))
-            if (mapped.length > 0) {
-              setPlans(mapped)
+          if (json.success && json.data) {
+            // The backend wraps plans in a PaginatedResponse envelope: { data: [...plans], total, page, ... }
+            const plansData = Array.isArray(json.data) ? json.data : (json.data as { data: ApiPlan[] }).data
+            if (Array.isArray(plansData) && plansData.length > 0) {
+              const filtered = plansData
+                .filter((p: ApiPlan) => p.monthly_price !== undefined)
+                .sort((a: ApiPlan, b: ApiPlan) => a.monthly_price - b.monthly_price)
+              const mapped = filtered.map((p: ApiPlan, i: number) => mapApiPlanToPricing(p, i, filtered.length))
+              if (mapped.length > 0) {
+                setPlans(mapped)
+              }
             }
           }
         }
