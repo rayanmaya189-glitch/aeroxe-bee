@@ -33,6 +33,7 @@ import (
 	"github.com/aeroxe-bee/backend/internal/telemetry"
 	"github.com/aeroxe-bee/backend/internal/webhook"
 	"github.com/aeroxe-bee/backend/internal/fcm"
+	"github.com/aeroxe-bee/backend/internal/scheduler"
 	"github.com/aeroxe-bee/backend/internal/worker"
 	"crypto/rand"
 	"encoding/hex"
@@ -308,6 +309,10 @@ func main() {
 			logger.Info("FCM sender ready", "project_id", cfg.FCM.ProjectID)
 		}
 	}
+
+	// Start the message scheduler for future-dated messages
+	sched := scheduler.New(svc.Messages, queue, encMgr, logger.Logger)
+	go sched.Start(context.Background())
 
 	go startBackgroundJobs(context.Background(), svc, simHealthEngine, cbManager, queue, fcmHandler, fcmSender, metrics, logger)
 

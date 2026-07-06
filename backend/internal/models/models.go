@@ -275,6 +275,7 @@ type Message struct {
 	DeliveryStatus    DeliveryStatus `db:"delivery_status" json:"delivery_status"`
 	ConfidenceScore   float64       `db:"confidence_score" json:"confidence_score"`
 	ErrorReason       *string       `db:"error_reason" json:"error_reason,omitempty"`
+	ScheduledAt       *time.Time    `db:"scheduled_at" json:"scheduled_at,omitempty"`
 	CreatedAt         time.Time     `db:"created_at" json:"created_at"`
 	DeliveredAt       *time.Time    `db:"delivered_at" json:"delivered_at,omitempty"`
 	PurgeAfter        time.Time     `db:"purge_after" json:"purge_after"`

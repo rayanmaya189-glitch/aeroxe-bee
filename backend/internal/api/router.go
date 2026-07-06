@@ -170,6 +170,10 @@ func NewRouter(
 	mux.Handle("GET /api/v1/messages/{id}", authMiddleware.APIKeyAuth(http.HandlerFunc(messageHandler.GetMessage)))
 	mux.Handle("GET /api/v1/messages/{id}/confidence", authMiddleware.APIKeyAuth(http.HandlerFunc(messageHandler.GetConfidence)))
 
+	// Bulk SMS and scheduling routes (plan-checked + rate-limited)
+	mux.Handle("POST /api/v1/send/bulk", versionMiddleware(apiKeyRateLimiter.Limit(authMiddleware.APIKeyAuth(apiKeyPlanChain(http.HandlerFunc(messageHandler.BulkSend))))))
+	mux.Handle("POST /api/v1/send/schedule", versionMiddleware(apiKeyRateLimiter.Limit(authMiddleware.APIKeyAuth(http.HandlerFunc(messageHandler.ScheduleSend)))))
+
 	// OTP routes (plan-checked + rate-limited)
 	mux.Handle("POST /api/v1/otp/send", authMiddleware.APIKeyAuth(apiKeyPlanChain(http.HandlerFunc(otpHandler.Send))))
 	mux.Handle("POST /api/v1/otp/verify", authMiddleware.APIKeyAuth(http.HandlerFunc(otpHandler.Verify)))
