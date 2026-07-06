@@ -13,9 +13,19 @@ interface GroupedToast {
   timerId: ReturnType<typeof setTimeout>
 }
 
+export interface ToastHistoryEntry {
+  id: string
+  variant: ToastVariant
+  message: string
+  count: number
+  timestamp: number
+}
+
 interface ToastContextValue {
   addToast: (message: string, variant?: ToastVariant) => void
   removeToast: (id: string) => void
+  toastHistory: ToastHistoryEntry[]
+  clearHistory: () => void
 }
 
 let _context: ToastContextValue | null = null
@@ -43,24 +53,52 @@ const icons: Record<ToastVariant, React.ReactNode> = {
 
 const TOAST_DURATION = 4000
 const MAX_VISIBLE = 3
+const MAX_HISTORY = 50
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<GroupedToast[]>([])
+  const [toastHistory, setToastHistory] = useState<ToastHistoryEntry[]>([])
   const [showAll, setShowAll] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
+  const pushToHistory = useCallback((toast: GroupedToast) => {
+    setToastHistory((prev) => {
+      // Merge with existing entry of same variant+message
+      const existing = prev.find((h) => h.variant === toast.variant && h.message === toast.message)
+      if (existing) {
+        return prev.map((h) =>
+          h.id === existing.id
+            ? { ...h, count: h.count + toast.count, timestamp: Date.now() }
+            : h
+        )
+      }
+      const entry: ToastHistoryEntry = {
+        id: toast.id,
+        variant: toast.variant,
+        message: toast.message,
+        count: toast.count,
+        timestamp: Date.now(),
+      }
+      const next = [...prev, entry]
+      return next.length > MAX_HISTORY ? next.slice(-MAX_HISTORY) : next
+    })
+  }, [])
+
   const scheduleRemove = useCallback((id: string) => {
     const timer = setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id))
+      setToasts((prev) => {
+        const target = prev.find((t) => t.id === id)
+        if (target) pushToHistory(target)
+        return prev.filter((t) => t.id !== id)
+      })
     }, TOAST_DURATION)
     return timer
-  }, [])
+  }, [pushToHistory])
 
   const addToast = useCallback((message: string, variant: ToastVariant = 'info') => {
     setToasts((prev) => {
       const existing = prev.find((t) => t.variant === variant)
       if (existing) {
-        // Extend timer for the grouped toast, increment count
         clearTimeout(existing.timerId)
         const newTimer = scheduleRemove(existing.id)
         return prev.map((t) =>
@@ -78,9 +116,16 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const removeToast = useCallback((id: string) => {
     setToasts((prev) => {
       const target = prev.find((t) => t.id === id)
-      if (target) clearTimeout(target.timerId)
+      if (target) {
+        clearTimeout(target.timerId)
+        pushToHistory(target)
+      }
       return prev.filter((t) => t.id !== id)
     })
+  }, [pushToHistory])
+
+  const clearHistory = useCallback(() => {
+    setToastHistory([])
   }, [])
 
   // Auto-collapse back to MAX_VISIBLE when count drops to threshold or below
@@ -112,8 +157,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, [toasts, removeToast])
 
   useEffect(() => {
-    _context = { addToast, removeToast }
-  }, [addToast, removeToast])
+    _context = { addToast, removeToast, toastHistory, clearHistory }
+  }, [addToast, removeToast, toastHistory, clearHistory])
 
   // Keep a ref to the latest toasts so unmount cleanup can clear all active timers
   const toastsRef = useRef(toasts)
@@ -132,11 +177,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const clearAll = useCallback(() => {
     setToasts((prev) => {
-      prev.forEach((t) => clearTimeout(t.timerId))
+      prev.forEach((t) => {
+        clearTimeout(t.timerId)
+        pushToHistory(t)
+      })
       return []
     })
     setShowAll(false)
-  }, [])
+  }, [pushToHistory])
 
   return (
     <>
