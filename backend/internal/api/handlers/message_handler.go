@@ -80,6 +80,10 @@ func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "message is required"})
 		return
 	}
+	if len([]rune(req.Message)) > 160 {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "message exceeds 160 character SMS limit"})
+		return
+	}
 	if req.IdempotencyKey == "" {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "idempotency_key is required"})
 		return

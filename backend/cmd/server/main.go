@@ -238,7 +238,7 @@ func main() {
 	accountHandler := handlers.NewAccountHandler(svc.Accounts, svc.APIKeys, svc.Subscriptions, svc.Billing)
 	adminHandler := handlers.NewAdminHandler(svc.Admin, cbManager, metrics)
 	userHandler := handlers.NewUserHandler(userService, authMiddleware)
-	templateHandler := handlers.NewTemplateHandler(svc.Templates)
+	templateHandler := handlers.NewTemplateHandler(svc.Templates, svc.Subscriptions)
 	webhookHandler := handlers.NewWebhookHandler(svc.Webhooks)
 	otpHandler := handlers.NewOTPHandler(svc.OTP, metrics)
 	billingHandler := handlers.NewBillingHandler(svc.Billing, svc.Subscriptions)

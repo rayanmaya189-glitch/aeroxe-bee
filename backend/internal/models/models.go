@@ -346,6 +346,7 @@ type Plan struct {
 	OverageBufferPct       float64        `db:"overage_buffer_pct" json:"overage_buffer_pct"`
 	MaxQueueDepth          int            `db:"max_queue_depth" json:"max_queue_depth"`
 	MaxDevices             int            `db:"max_devices" json:"max_devices"`
+	MaxTemplates           int            `db:"max_templates" json:"max_templates"`
 	DedicatedPool          bool           `db:"dedicated_pool" json:"dedicated_pool"`
 	DefaultRoutingStrategy RoutingStrategy `db:"default_routing_strategy" json:"default_routing_strategy"`
 	PricePerSMS            float64        `db:"price_per_sms" json:"price_per_sms"`
@@ -384,6 +385,7 @@ type Subscription struct {
 	QuotaMonthly   int64            `db:"quota_monthly" json:"quota_monthly"`
 	OverageBufferPct float64        `db:"overage_buffer_pct" json:"overage_buffer_pct"`
 	MaxQueueDepth  int              `db:"max_queue_depth" json:"max_queue_depth"`
+	MaxTemplates   int              `db:"max_templates" json:"max_templates"`
 	DedicatedPool  bool             `db:"dedicated_pool" json:"dedicated_pool"`
 	DefaultRoutingStrategy RoutingStrategy `db:"default_routing_strategy" json:"default_routing_strategy"`
 	CreatedAt      time.Time        `db:"created_at" json:"created_at"`

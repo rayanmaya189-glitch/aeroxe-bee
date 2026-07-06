@@ -112,6 +112,7 @@ export interface Plan {
   overage_buffer_pct: number
   max_queue_depth: number
   max_devices: number
+  max_templates: number
   dedicated_pool: boolean
   default_routing_strategy: string
   price_per_sms: number
@@ -143,6 +144,7 @@ export interface Subscription {
   quota_daily: number
   quota_monthly: number
   max_queue_depth: number
+  max_templates: number
   renewal_date: string
 }
 

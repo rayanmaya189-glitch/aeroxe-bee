@@ -40,6 +40,13 @@ func (s *TemplateService) GetByID(ctx context.Context, id string) (*models.Templ
 	return tpl, nil
 }
 
+func (s *TemplateService) CountByAccount(ctx context.Context, accountID string) (int, error) {
+	var count int
+	err := s.db.QueryRow(ctx,
+		`SELECT COUNT(*) FROM templates WHERE account_id = $1`, accountID).Scan(&count)
+	return count, err
+}
+
 func (s *TemplateService) ListByAccount(ctx context.Context, accountID string) ([]models.Template, error) {
 	rows, err := s.db.Query(ctx,
 		`SELECT id, account_id, name, body, variables, approval_status, approved_at, created_at

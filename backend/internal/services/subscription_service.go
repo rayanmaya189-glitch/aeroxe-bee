@@ -19,12 +19,12 @@ func (s *SubscriptionService) GetByAccountID(ctx context.Context, accountID stri
 	sub := &models.Subscription{}
 	err := s.db.QueryRow(ctx,
 		`SELECT id, account_id, plan_type, billing_cycle, status, renewal_date, stripe_customer_id,
-		        quota_daily, quota_monthly, overage_buffer_pct, max_queue_depth, dedicated_pool,
+		        quota_daily, quota_monthly, overage_buffer_pct, max_queue_depth, max_templates, dedicated_pool,
 		        default_routing_strategy, created_at, updated_at
 		 FROM subscriptions WHERE account_id = $1`, accountID,
 	).Scan(&sub.ID, &sub.AccountID, &sub.PlanType, &sub.BillingCycle, &sub.Status, &sub.RenewalDate,
 		&sub.StripeCustomerID, &sub.QuotaDaily, &sub.QuotaMonthly, &sub.OverageBufferPct,
-		&sub.MaxQueueDepth, &sub.DedicatedPool, &sub.DefaultRoutingStrategy, &sub.CreatedAt, &sub.UpdatedAt)
+		&sub.MaxQueueDepth, &sub.MaxTemplates, &sub.DedicatedPool, &sub.DefaultRoutingStrategy, &sub.CreatedAt, &sub.UpdatedAt)
 	if err == pgx.ErrNoRows {
 		return nil, nil
 	} else if err != nil {
@@ -37,11 +37,11 @@ func (s *SubscriptionService) Create(ctx context.Context, sub *models.Subscripti
 	_, err := s.db.Exec(ctx,
 		`INSERT INTO subscriptions (account_id, plan_type, billing_cycle, status, renewal_date,
 		 stripe_customer_id, quota_daily, quota_monthly, overage_buffer_pct, max_queue_depth,
-		 dedicated_pool, default_routing_strategy, created_at, updated_at)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NOW(),NOW())`,
+		 max_templates, dedicated_pool, default_routing_strategy, created_at, updated_at)
+		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW(),NOW())`,
 		sub.AccountID, sub.PlanType, sub.BillingCycle, sub.Status, sub.RenewalDate,
 		sub.StripeCustomerID, sub.QuotaDaily, sub.QuotaMonthly, sub.OverageBufferPct,
-		sub.MaxQueueDepth, sub.DedicatedPool, sub.DefaultRoutingStrategy)
+		sub.MaxQueueDepth, sub.MaxTemplates, sub.DedicatedPool, sub.DefaultRoutingStrategy)
 	return err
 }
 
@@ -49,11 +49,11 @@ func (s *SubscriptionService) Update(ctx context.Context, sub *models.Subscripti
 	_, err := s.db.Exec(ctx,
 		`UPDATE subscriptions SET plan_type=$1, billing_cycle=$2, status=$3, renewal_date=$4,
 		 quota_daily=$5, quota_monthly=$6, overage_buffer_pct=$7, max_queue_depth=$8,
-		 dedicated_pool=$9, default_routing_strategy=$10, updated_at=NOW()
-		 WHERE id=$11`,
+		 max_templates=$9, dedicated_pool=$10, default_routing_strategy=$11, updated_at=NOW()
+		 WHERE id=$12`,
 		sub.PlanType, sub.BillingCycle, sub.Status, sub.RenewalDate,
 		sub.QuotaDaily, sub.QuotaMonthly, sub.OverageBufferPct, sub.MaxQueueDepth,
-		sub.DedicatedPool, sub.DefaultRoutingStrategy, sub.ID)
+		sub.MaxTemplates, sub.DedicatedPool, sub.DefaultRoutingStrategy, sub.ID)
 	return err
 }
 
@@ -84,4 +84,15 @@ func (s *SubscriptionService) GetMaxQueueDepth(ctx context.Context, accountID st
 		return 1000, nil
 	}
 	return sub.MaxQueueDepth, nil
+}
+
+func (s *SubscriptionService) GetMaxTemplates(ctx context.Context, accountID string) (int, error) {
+	sub, err := s.GetByAccountID(ctx, accountID)
+	if err != nil {
+		return 10, err
+	}
+	if sub == nil {
+		return 10, nil
+	}
+	return sub.MaxTemplates, nil
 }
