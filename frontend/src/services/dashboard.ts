@@ -1,6 +1,6 @@
 import api from './api'
 import type { ApiResponse, PaginatedResponse } from '@/types/api'
-import type { DashboardStats, DailyChartData, Account, AnalyticsDaily, Webhook, Template, Plan, CircuitBreakerEvent, DeadLetter, FraudFlag, FeatureCatalogItem, BIDashboard } from '@/types/models'
+import type { DashboardStats, DailyChartData, Account, AnalyticsDaily, Webhook, WebhookDelivery, Template, Plan, CircuitBreakerEvent, DeadLetter, FraudFlag, FeatureCatalogItem, BIDashboard } from '@/types/models'
 
 // Dashboard stats (admin)
 export async function getDashboardStats(): Promise<DashboardStats> {
@@ -72,8 +72,8 @@ export async function getWebhooks(params: { page?: number; pageSize?: number } =
   return { data: Array.isArray(d.data) ? d.data : [], total: d.total ?? 0, page: d.page ?? 1, page_size: d.page_size ?? 50, total_pages: d.total_pages ?? 0 }
 }
 
-export async function createWebhook(data: { url: string; events: string[] }): Promise<Webhook> {
-  const res = await api.post<ApiResponse<Webhook>>('/webhooks', data)
+export async function createWebhook(data: { url: string; events: string[] }): Promise<Webhook & { secret?: string }> {
+  const res = await api.post<ApiResponse<Webhook & { secret?: string }>>('/webhooks', data)
   if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to create webhook')
   return res.data.data
 }
@@ -194,6 +194,58 @@ export async function retryDeadLetter(id: string): Promise<void> {
 }
 
 // Fraud flags (admin)
+// ─── Member Send SMS ──────────────────────────────────────────
+
+export async function sendSMS(data: {
+  recipient: string
+  message: string
+  sender?: string
+  message_type?: string
+}): Promise<{ message_id: string; status: string; created_at: string }> {
+  const res = await api.post<ApiResponse<{ message_id: string; status: string; created_at: string }>>('/member/send', data)
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Send failed')
+  return res.data.data
+}
+
+// ─── Bulk SMS & Scheduling ──────────────────────────────────────
+
+export interface BulkSendResult {
+  recipient: string
+  message_id: string
+  status: string
+  error?: string
+}
+
+export interface BulkSendResponse {
+  total: number
+  sent: number
+  results: BulkSendResult[]
+  created_at: string
+}
+
+export async function bulkSendSMS(data: {
+  recipients: string[]
+  message: string
+  sender?: string
+  message_type?: string
+}): Promise<BulkSendResponse> {
+  const res = await api.post<ApiResponse<BulkSendResponse>>('/send/bulk', data)
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Bulk send failed')
+  return res.data.data
+}
+
+export async function scheduleSendSMS(data: {
+  recipient: string
+  message: string
+  scheduled_at: string
+  sender?: string
+  message_type?: string
+}): Promise<{ message_id: string; status: string; scheduled_at: string }> {
+  const res = await api.post<ApiResponse<{ message_id: string; status: string; scheduled_at: string }>>('/send/schedule', data)
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Schedule failed')
+  return res.data.data
+}
+
 export async function getFraudFlags(): Promise<FraudFlag[]> {
   const res = await api.get<ApiResponse<PaginatedResponse<FraudFlag>>>('/admin/fraud-flags')
   if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load fraud flags')
@@ -203,6 +255,29 @@ export async function getFraudFlags(): Promise<FraudFlag[]> {
 export async function reviewFraudFlag(id: string): Promise<void> {
   const res = await api.post(`/admin/fraud-flags/${id}/review`)
   if (!res.data.success) throw new Error(res.data.error ?? 'Failed to review fraud flag')
+}
+
+// Smishing flags (admin) — content-based fraud flags (smishing, phishing, scam, suspicious sender/recipient)
+export async function getSmishingFlags(): Promise<FraudFlag[]> {
+  const res = await api.get<ApiResponse<PaginatedResponse<FraudFlag>>>('/admin/smishing-flags')
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load smishing flags')
+  return res.data.data.data || []
+}
+
+export async function getSmishingFlagsCount(): Promise<number> {
+  const res = await api.get<ApiResponse<{ count: number }>>('/admin/smishing-flags/count')
+  if (!res.data.success || res.data.data === undefined) throw new Error(res.data.error ?? 'Failed to load smishing flags count')
+  return res.data.data.count
+}
+
+export async function bulkReviewSmishingFlags(ids: string[]): Promise<void> {
+  const res = await api.post('/admin/smishing-flags/bulk-review', { ids })
+  if (!res.data.success) throw new Error(res.data.error ?? 'Failed to bulk review')
+}
+
+export async function reviewSmishingFlag(id: string): Promise<void> {
+  const res = await api.post(`/admin/fraud-flags/${id}/review`)
+  if (!res.data.success) throw new Error(res.data.error ?? 'Failed to review smishing flag')
 }
 
 // Abuse flags (admin)
@@ -508,6 +583,38 @@ export async function toggleFeatureCatalogItem(id: string, active: boolean): Pro
 export async function deleteFeatureCatalogItem(id: string): Promise<void> {
   const res = await api.delete(`/admin/feature-catalog/${id}`)
   if (!res.data.success) throw new Error(res.data.error ?? 'Failed to delete feature')
+}
+
+// ─── Webhook Delivery Logs ──────────────────────────────────────
+
+export async function getWebhookDeliveries(id: string): Promise<WebhookDelivery[]> {
+  const res = await api.get<ApiResponse<WebhookDelivery[]>>(`/webhooks/${id}/deliveries`)
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load deliveries')
+  return res.data.data
+}
+
+export async function getMemberWebhookDeliveries(id: string): Promise<WebhookDelivery[]> {
+  const res = await api.get<ApiResponse<WebhookDelivery[]>>(`/member/webhooks/${id}/deliveries`)
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load deliveries')
+  return res.data.data
+}
+
+export interface WebhookTestResult {
+  status_code: number
+  response_body: string
+  error?: string
+}
+
+export async function testWebhook(id: string): Promise<WebhookTestResult> {
+  const res = await api.post<ApiResponse<WebhookTestResult>>(`/webhooks/${id}/test`)
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to test webhook')
+  return res.data.data
+}
+
+export async function testMemberWebhook(id: string): Promise<WebhookTestResult> {
+  const res = await api.post<ApiResponse<WebhookTestResult>>(`/member/webhooks/${id}/test`)
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to test webhook')
+  return res.data.data
 }
 
 // ─── BI Dashboard (admin) ────────────────────────────────────────

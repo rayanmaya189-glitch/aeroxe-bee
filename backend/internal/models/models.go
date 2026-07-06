@@ -275,6 +275,7 @@ type Message struct {
 	DeliveryStatus    DeliveryStatus `db:"delivery_status" json:"delivery_status"`
 	ConfidenceScore   float64       `db:"confidence_score" json:"confidence_score"`
 	ErrorReason       *string       `db:"error_reason" json:"error_reason,omitempty"`
+	ScheduledAt       *time.Time    `db:"scheduled_at" json:"scheduled_at,omitempty"`
 	CreatedAt         time.Time     `db:"created_at" json:"created_at"`
 	DeliveredAt       *time.Time    `db:"delivered_at" json:"delivered_at,omitempty"`
 	PurgeAfter        time.Time     `db:"purge_after" json:"purge_after"`
@@ -330,9 +331,13 @@ type WebhookDelivery struct {
 	ID            string    `db:"id" json:"id"`
 	WebhookID     string    `db:"webhook_id" json:"webhook_id"`
 	MessageID     string    `db:"message_id" json:"message_id"`
+	Event         string    `db:"event" json:"event"`
 	AttemptCount  int       `db:"attempt_count" json:"attempt_count"`
+	StatusCode    int       `db:"status_code" json:"status_code"`
+	ResponseBody  string    `db:"response_body" json:"response_body"`
 	LastStatus    string    `db:"last_status" json:"last_status"`
 	LastAttemptAt *time.Time `db:"last_attempt_at" json:"last_attempt_at,omitempty"`
+	Completed     bool      `db:"completed" json:"completed"`
 	CreatedAt     time.Time `db:"created_at" json:"created_at"`
 }
 
@@ -346,6 +351,7 @@ type Plan struct {
 	OverageBufferPct       float64        `db:"overage_buffer_pct" json:"overage_buffer_pct"`
 	MaxQueueDepth          int            `db:"max_queue_depth" json:"max_queue_depth"`
 	MaxDevices             int            `db:"max_devices" json:"max_devices"`
+	MaxTemplates           int            `db:"max_templates" json:"max_templates"`
 	DedicatedPool          bool           `db:"dedicated_pool" json:"dedicated_pool"`
 	DefaultRoutingStrategy RoutingStrategy `db:"default_routing_strategy" json:"default_routing_strategy"`
 	PricePerSMS            float64        `db:"price_per_sms" json:"price_per_sms"`
@@ -384,6 +390,7 @@ type Subscription struct {
 	QuotaMonthly   int64            `db:"quota_monthly" json:"quota_monthly"`
 	OverageBufferPct float64        `db:"overage_buffer_pct" json:"overage_buffer_pct"`
 	MaxQueueDepth  int              `db:"max_queue_depth" json:"max_queue_depth"`
+	MaxTemplates   int              `db:"max_templates" json:"max_templates"`
 	DedicatedPool  bool             `db:"dedicated_pool" json:"dedicated_pool"`
 	DefaultRoutingStrategy RoutingStrategy `db:"default_routing_strategy" json:"default_routing_strategy"`
 	CreatedAt      time.Time        `db:"created_at" json:"created_at"`

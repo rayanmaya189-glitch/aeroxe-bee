@@ -16,6 +16,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
 import { AddDeviceQRModal } from '@/features/member/components/AddDeviceQRModal'
 import { Pencil, Unplug, Smartphone, Plus } from 'lucide-react'
+import { useToast } from '@/components/ui/Toast'
 
 export function MemberDevicesPage() {
   const queryClient = useQueryClient()
@@ -29,14 +30,18 @@ export function MemberDevicesPage() {
     queryFn: async () => { const res = await api.get<ApiResponse<Device[]>>('/member/devices'); return res.data.data || [] },
   })
 
+  const { addToast } = useToast()
+
   const renameMutation = useMutation({
     mutationFn: async () => { if (!renameTarget) return; await api.put(`/member/devices/${renameTarget.id}`, { name: renameName }) },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['member-devices'] }); setRenameTarget(null); setRenameName('') },
+    onError: (err: Error) => { addToast(err.message || 'Failed to rename device', 'error') },
   })
 
   const disconnectMutation = useMutation({
     mutationFn: async () => { if (!disconnectTarget) return; await api.delete(`/member/devices/${disconnectTarget.id}`) },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['member-devices'] }); setDisconnectTarget(null) },
+    onError: (err: Error) => { addToast(err.message || 'Failed to disconnect device', 'error') },
   })
 
   const onlineCount = devices.filter((d) => d.status === 'ONLINE').length

@@ -165,6 +165,9 @@ func (h *BillingHandler) CreatePlan(w http.ResponseWriter, r *http.Request) {
 	if plan.MaxDevices < 1 {
 		plan.MaxDevices = 1
 	}
+	if plan.MaxTemplates < 1 {
+		plan.MaxTemplates = 10
+	}
 	if plan.MaxQueueDepth < 1 {
 		plan.MaxQueueDepth = 100
 	}
@@ -218,6 +221,9 @@ func (h *BillingHandler) UpdatePlan(w http.ResponseWriter, r *http.Request) {
 	}
 	if plan.MaxDevices < 1 {
 		plan.MaxDevices = 1
+	}
+	if plan.MaxTemplates < 1 {
+		plan.MaxTemplates = 10
 	}
 	if plan.MaxQueueDepth < 1 {
 		plan.MaxQueueDepth = 100

@@ -418,6 +418,7 @@ func (h *SubscriptionRequestHandler) Approve(w http.ResponseWriter, r *http.Requ
 		sub.QuotaMonthly = plan.MonthlyQuota
 		sub.OverageBufferPct = plan.OverageBufferPct
 		sub.MaxQueueDepth = plan.MaxQueueDepth
+		sub.MaxTemplates = plan.MaxTemplates
 		sub.DedicatedPool = plan.DedicatedPool
 		sub.DefaultRoutingStrategy = plan.DefaultRoutingStrategy
 		_ = h.subscriptionService.Update(r.Context(), sub)

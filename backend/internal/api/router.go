@@ -170,6 +170,10 @@ func NewRouter(
 	mux.Handle("GET /api/v1/messages/{id}", authMiddleware.APIKeyAuth(http.HandlerFunc(messageHandler.GetMessage)))
 	mux.Handle("GET /api/v1/messages/{id}/confidence", authMiddleware.APIKeyAuth(http.HandlerFunc(messageHandler.GetConfidence)))
 
+	// Bulk SMS and scheduling routes (plan-checked + rate-limited)
+	mux.Handle("POST /api/v1/send/bulk", versionMiddleware(apiKeyRateLimiter.Limit(authMiddleware.APIKeyAuth(apiKeyPlanChain(http.HandlerFunc(messageHandler.BulkSend))))))
+	mux.Handle("POST /api/v1/send/schedule", versionMiddleware(apiKeyRateLimiter.Limit(authMiddleware.APIKeyAuth(http.HandlerFunc(messageHandler.ScheduleSend)))))
+
 	// OTP routes (plan-checked + rate-limited)
 	mux.Handle("POST /api/v1/otp/send", authMiddleware.APIKeyAuth(apiKeyPlanChain(http.HandlerFunc(otpHandler.Send))))
 	mux.Handle("POST /api/v1/otp/verify", authMiddleware.APIKeyAuth(http.HandlerFunc(otpHandler.Verify)))
@@ -209,6 +213,8 @@ func NewRouter(
 	mux.Handle("PUT /api/v1/webhooks/{id}", authMiddleware.AdminAuth(http.HandlerFunc(webhookHandler.Update)))
 	mux.Handle("DELETE /api/v1/webhooks/{id}", authMiddleware.AdminAuth(http.HandlerFunc(webhookHandler.Delete)))
 	mux.Handle("POST /api/v1/webhooks/{id}/rotate-secret", authMiddleware.AdminAuth(http.HandlerFunc(webhookHandler.RotateSecret)))
+	mux.Handle("GET /api/v1/webhooks/{id}/deliveries", authMiddleware.AdminAuth(http.HandlerFunc(webhookHandler.ListDeliveries)))
+	mux.Handle("POST /api/v1/webhooks/{id}/test", authMiddleware.AdminAuth(http.HandlerFunc(webhookHandler.TestWebhook)))
 
 	// Billing routes
 	mux.Handle("GET /api/v1/plans", authMiddleware.JWTAuth(http.HandlerFunc(billingHandler.ListPlans)))
@@ -238,6 +244,7 @@ func NewRouter(
 	mux.Handle("PUT /api/v1/member/devices/{id}", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.UpdateDevice))))
 	mux.Handle("DELETE /api/v1/member/devices/{id}", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.DeleteDevice))))
 	mux.Handle("GET /api/v1/member/messages", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.GetMessages))))
+	mux.Handle("POST /api/v1/member/send", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(messageHandler.MemberSend))))
 	mux.Handle("GET /api/v1/member/analytics", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.GetAnalytics))))
 	mux.Handle("GET /api/v1/member/stats", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.GetStats))))
 
@@ -261,6 +268,8 @@ func NewRouter(
 	mux.Handle("PUT /api/v1/member/webhooks/{id}", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.UpdateWebhook))))
 	mux.Handle("DELETE /api/v1/member/webhooks/{id}", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.DeleteWebhook))))
 	mux.Handle("POST /api/v1/member/webhooks/{id}/rotate-secret", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.RotateWebhookSecret))))
+	mux.Handle("GET /api/v1/member/webhooks/{id}/deliveries", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.GetWebhookDeliveries))))
+	mux.Handle("POST /api/v1/member/webhooks/{id}/test", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.TestWebhook))))
 
 	// Admin routes
 	mux.Handle("GET /api/v1/admin/stats", authMiddleware.AdminAuth(http.HandlerFunc(adminHandler.GetStats)))
@@ -283,6 +292,9 @@ func NewRouter(
 	mux.Handle("GET /api/v1/admin/fraud-flags", authMiddleware.AdminAuth(http.HandlerFunc(fraudHandler.ListFlags)))
 	mux.Handle("POST /api/v1/admin/fraud-flags/{id}/review", authMiddleware.AdminAuth(http.HandlerFunc(fraudHandler.ReviewFlag)))
 	mux.Handle("GET /api/v1/admin/abuse-flags", authMiddleware.AdminAuth(http.HandlerFunc(fraudHandler.ListAbuseFlags)))
+	mux.Handle("GET /api/v1/admin/smishing-flags", authMiddleware.AdminAuth(http.HandlerFunc(fraudHandler.ListSmishingFlags)))
+	mux.Handle("GET /api/v1/admin/smishing-flags/count", authMiddleware.AdminAuth(http.HandlerFunc(fraudHandler.SmishingFlagsCount)))
+	mux.Handle("POST /api/v1/admin/smishing-flags/bulk-review", authMiddleware.AdminAuth(http.HandlerFunc(fraudHandler.BulkReviewSmishingFlags)))
 
 	// Admin user management routes
 	mux.Handle("GET /api/v1/admin/users", authMiddleware.AdminAuth(http.HandlerFunc(userHandler.List)))
@@ -382,7 +394,9 @@ func NewRouter(
 
 	// SSE (Server-Sent Events) for real-time device status updates
 	if sseHandler != nil {
-		mux.Handle("GET /api/v1/events", authMiddleware.JWTAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Support both JWT Bearer header and ?token= query param (for EventSource connections)
+		sseMux := http.NewServeMux()
+		sseMux.Handle("GET /api/v1/events", authMiddleware.JWTAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			accountID := middleware.GetAccountID(r.Context())
 			if accountID == "" {
 				w.Header().Set("Content-Type", "application/json")
@@ -392,6 +406,19 @@ func NewRouter(
 			}
 			sseHandler.Subscribe(w, r, accountID)
 		})))
+		// Also handle SSE connections with ?token= query param (used by frontend EventSource)
+		mux.HandleFunc("GET /api/v1/events/stream", func(w http.ResponseWriter, r *http.Request) {
+			token := r.URL.Query().Get("token")
+			if token == "" {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte(`{"error":"missing token"}`))
+				return
+			}
+			// Set the Authorization header so JWTAuth middleware can read it
+			r.Header.Set("Authorization", "Bearer "+token)
+			sseMux.ServeHTTP(w, r)
+		})
 	}
 
 	return mux

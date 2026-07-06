@@ -118,8 +118,8 @@ func (s *AccountService) Delete(ctx context.Context, id string) error {
 func (s *AccountService) CreateFreeSubscription(ctx context.Context, accountID string) error {
 	renewalDate := time.Now().AddDate(0, 1, 0)
 	_, err := s.db.Exec(ctx,
-		`INSERT INTO subscriptions (account_id, plan_type, billing_cycle, status, renewal_date, quota_daily, quota_monthly, overage_buffer_pct, max_queue_depth, dedicated_pool, default_routing_strategy)
-		 SELECT $1, id, 'monthly', 'active', $2, daily_quota, monthly_quota, overage_buffer_pct, max_queue_depth, dedicated_pool, default_routing_strategy
+		`INSERT INTO subscriptions (account_id, plan_type, billing_cycle, status, renewal_date, quota_daily, quota_monthly, overage_buffer_pct, max_queue_depth, max_templates, dedicated_pool, default_routing_strategy)
+		 SELECT $1, id, 'monthly', 'active', $2, daily_quota, monthly_quota, overage_buffer_pct, max_queue_depth, max_templates, dedicated_pool, default_routing_strategy
 		 FROM plans WHERE id = 'free'
 		 ON CONFLICT DO NOTHING`,
 		accountID, renewalDate)
@@ -130,12 +130,12 @@ func (s *AccountService) GetOrCreateSubscription(ctx context.Context, accountID 
 	sub := &models.Subscription{}
 	err := s.db.QueryRow(ctx,
 		`SELECT id, account_id, plan_type, billing_cycle, status, renewal_date, stripe_customer_id,
-		        quota_daily, quota_monthly, overage_buffer_pct, max_queue_depth, dedicated_pool,
+		        quota_daily, quota_monthly, overage_buffer_pct, max_queue_depth, max_templates, dedicated_pool,
 		        default_routing_strategy, created_at, updated_at
 		 FROM subscriptions WHERE account_id = $1`, accountID,
 	).Scan(&sub.ID, &sub.AccountID, &sub.PlanType, &sub.BillingCycle, &sub.Status, &sub.RenewalDate,
 		&sub.StripeCustomerID, &sub.QuotaDaily, &sub.QuotaMonthly, &sub.OverageBufferPct,
-		&sub.MaxQueueDepth, &sub.DedicatedPool, &sub.DefaultRoutingStrategy, &sub.CreatedAt, &sub.UpdatedAt)
+		&sub.MaxQueueDepth, &sub.MaxTemplates, &sub.DedicatedPool, &sub.DefaultRoutingStrategy, &sub.CreatedAt, &sub.UpdatedAt)
 	if err == pgx.ErrNoRows {
 		return nil, nil
 	} else if err != nil {

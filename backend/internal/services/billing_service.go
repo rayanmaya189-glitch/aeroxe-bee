@@ -107,11 +107,11 @@ func (s *BillingService) GetPlan(ctx context.Context, planID string) (*models.Pl
 	plan := &models.Plan{}
 	err := s.db.QueryRow(ctx,
 		`SELECT id, name, visibility, daily_quota, monthly_quota, overage_buffer_pct, max_queue_depth,
-		        max_devices, dedicated_pool, default_routing_strategy, price_per_sms, monthly_price,
+		        max_devices, max_templates, dedicated_pool, default_routing_strategy, price_per_sms, monthly_price,
 		        is_popular, cta_text, COALESCE(features, '{}')
 		 FROM plans WHERE id = $1`, planID,
 	).Scan(&plan.ID, &plan.Name, &plan.Visibility, &plan.DailyQuota, &plan.MonthlyQuota, &plan.OverageBufferPct,
-		&plan.MaxQueueDepth, &plan.MaxDevices, &plan.DedicatedPool, &plan.DefaultRoutingStrategy,
+		&plan.MaxQueueDepth, &plan.MaxDevices, &plan.MaxTemplates, &plan.DedicatedPool, &plan.DefaultRoutingStrategy,
 		&plan.PricePerSMS, &plan.MonthlyPrice, &plan.IsPopular, &plan.CtaText, &plan.Features)
 	if err == pgx.ErrNoRows {
 		return nil, nil
@@ -125,7 +125,7 @@ func (s *BillingService) GetPlan(ctx context.Context, planID string) (*models.Pl
 func (s *BillingService) ListPlansForAdmin(ctx context.Context) ([]models.Plan, error) {
 	rows, err := s.db.Query(ctx,
 		`SELECT id, name, visibility, daily_quota, monthly_quota, overage_buffer_pct, max_queue_depth,
-		        max_devices, dedicated_pool, default_routing_strategy, price_per_sms, monthly_price,
+		        max_devices, max_templates, dedicated_pool, default_routing_strategy, price_per_sms, monthly_price,
 		        is_popular, cta_text, COALESCE(features, '{}')
 		 FROM plans ORDER BY monthly_price ASC`)
 	if err != nil {
@@ -137,7 +137,7 @@ func (s *BillingService) ListPlansForAdmin(ctx context.Context) ([]models.Plan, 
 	for rows.Next() {
 		var p models.Plan
 		if err := rows.Scan(&p.ID, &p.Name, &p.Visibility, &p.DailyQuota, &p.MonthlyQuota, &p.OverageBufferPct,
-			&p.MaxQueueDepth, &p.MaxDevices, &p.DedicatedPool, &p.DefaultRoutingStrategy,
+			&p.MaxQueueDepth, &p.MaxDevices, &p.MaxTemplates, &p.DedicatedPool, &p.DefaultRoutingStrategy,
 			&p.PricePerSMS, &p.MonthlyPrice, &p.IsPopular, &p.CtaText, &p.Features); err != nil {
 			return nil, err
 		}
@@ -153,7 +153,7 @@ func (s *BillingService) ListPlansForAdmin(ctx context.Context) ([]models.Plan, 
 func (s *BillingService) ListPlansForMember(ctx context.Context, accountID string) ([]models.Plan, error) {
 	rows, err := s.db.Query(ctx,
 		`SELECT p.id, p.name, p.visibility, p.daily_quota, p.monthly_quota, p.overage_buffer_pct,
-		        p.max_queue_depth, p.max_devices, p.dedicated_pool, p.default_routing_strategy,
+		        p.max_queue_depth, p.max_devices, p.max_templates, p.dedicated_pool, p.default_routing_strategy,
 		        p.price_per_sms, p.monthly_price, p.is_popular, p.cta_text, COALESCE(p.features, '{}')
 	 FROM plans p
 	 WHERE p.visibility = 'public'
@@ -171,7 +171,7 @@ func (s *BillingService) ListPlansForMember(ctx context.Context, accountID strin
 	for rows.Next() {
 		var p models.Plan
 		if err := rows.Scan(&p.ID, &p.Name, &p.Visibility, &p.DailyQuota, &p.MonthlyQuota, &p.OverageBufferPct,
-			&p.MaxQueueDepth, &p.MaxDevices, &p.DedicatedPool, &p.DefaultRoutingStrategy,
+			&p.MaxQueueDepth, &p.MaxDevices, &p.MaxTemplates, &p.DedicatedPool, &p.DefaultRoutingStrategy,
 			&p.PricePerSMS, &p.MonthlyPrice, &p.IsPopular, &p.CtaText, &p.Features); err != nil {
 			return nil, err
 		}
@@ -192,11 +192,11 @@ func (s *BillingService) CreatePlan(ctx context.Context, plan *models.Plan) erro
 	}
 	_, err := s.db.Exec(ctx,
 		`INSERT INTO plans (id, name, visibility, daily_quota, monthly_quota, overage_buffer_pct, max_queue_depth,
-		        max_devices, dedicated_pool, default_routing_strategy, price_per_sms, monthly_price,
+		        max_devices, max_templates, dedicated_pool, default_routing_strategy, price_per_sms, monthly_price,
 		        is_popular, cta_text, features)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
 		plan.ID, plan.Name, plan.Visibility, plan.DailyQuota, plan.MonthlyQuota, plan.OverageBufferPct,
-		plan.MaxQueueDepth, plan.MaxDevices, plan.DedicatedPool, plan.DefaultRoutingStrategy,
+		plan.MaxQueueDepth, plan.MaxDevices, plan.MaxTemplates, plan.DedicatedPool, plan.DefaultRoutingStrategy,
 		plan.PricePerSMS, plan.MonthlyPrice, plan.IsPopular, plan.CtaText, plan.Features)
 	return err
 }
@@ -204,10 +204,10 @@ func (s *BillingService) CreatePlan(ctx context.Context, plan *models.Plan) erro
 func (s *BillingService) UpdatePlan(ctx context.Context, plan *models.Plan) error {
 	_, err := s.db.Exec(ctx,
 		`UPDATE plans SET name=$2, visibility=$3, daily_quota=$4, monthly_quota=$5, overage_buffer_pct=$6,
-		        max_queue_depth=$7, max_devices=$8, dedicated_pool=$9, default_routing_strategy=$10,
-		        price_per_sms=$11, monthly_price=$12, is_popular=$13, cta_text=$14, features=$15 WHERE id=$1`,
+		        max_queue_depth=$7, max_devices=$8, max_templates=$9, dedicated_pool=$10, default_routing_strategy=$11,
+		        price_per_sms=$12, monthly_price=$13, is_popular=$14, cta_text=$15, features=$16 WHERE id=$1`,
 		plan.ID, plan.Name, plan.Visibility, plan.DailyQuota, plan.MonthlyQuota, plan.OverageBufferPct,
-		plan.MaxQueueDepth, plan.MaxDevices, plan.DedicatedPool, plan.DefaultRoutingStrategy,
+		plan.MaxQueueDepth, plan.MaxDevices, plan.MaxTemplates, plan.DedicatedPool, plan.DefaultRoutingStrategy,
 		plan.PricePerSMS, plan.MonthlyPrice, plan.IsPopular, plan.CtaText, plan.Features)
 	return err
 }

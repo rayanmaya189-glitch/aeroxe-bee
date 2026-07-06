@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/aeroxe-bee/backend/internal/api/middleware"
@@ -10,11 +11,15 @@ import (
 )
 
 type TemplateHandler struct {
-	templateService *services.TemplateService
+	templateService      *services.TemplateService
+	subscriptionService  *services.SubscriptionService
 }
 
-func NewTemplateHandler(templateService *services.TemplateService) *TemplateHandler {
-	return &TemplateHandler{templateService: templateService}
+func NewTemplateHandler(templateService *services.TemplateService, subscriptionService *services.SubscriptionService) *TemplateHandler {
+	return &TemplateHandler{
+		templateService:     templateService,
+		subscriptionService: subscriptionService,
+	}
 }
 
 func (h *TemplateHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -26,6 +31,24 @@ func (h *TemplateHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	tpl.AccountID = accountID
 	tpl.ApprovalStatus = models.TemplatePending
+
+	// Enforce template limit from plan subscription
+	maxTemplates, err := h.subscriptionService.GetMaxTemplates(r.Context(), accountID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to check template limit"})
+		return
+	}
+	count, err := h.templateService.CountByAccount(r.Context(), accountID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to count templates"})
+		return
+	}
+	if count >= maxTemplates {
+		writeJSON(w, http.StatusTooManyRequests, APIResponse{
+			Error: fmt.Sprintf("template limit reached: max %d templates allowed on your plan", maxTemplates),
+		})
+		return
+	}
 
 	if err := h.templateService.Create(r.Context(), &tpl); err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to create template"})

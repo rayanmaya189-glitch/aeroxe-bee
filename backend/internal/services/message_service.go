@@ -22,12 +22,12 @@ func (s *MessageService) Create(ctx context.Context, msg *models.Message) error 
 	_, err := s.db.Exec(ctx,
 		`INSERT INTO messages (id, device_id, api_key_id, direction, recipient, sender, encrypted_message,
 		 message_type, priority_lane, template_id, status, delivery_status, confidence_score,
-		 error_reason, created_at, delivered_at, purge_after, idempotency_key, routing_strategy_used)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
+		 error_reason, scheduled_at, created_at, delivered_at, purge_after, idempotency_key, routing_strategy_used)
+		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
 		msg.ID, msg.DeviceID, msg.APIKeyID, msg.Direction, msg.Recipient, msg.Sender,
 		msg.EncryptedMessage, msg.MessageType, msg.PriorityLane, msg.TemplateID,
 		msg.Status, msg.DeliveryStatus, msg.ConfidenceScore, msg.ErrorReason,
-		msg.CreatedAt, msg.DeliveredAt, msg.PurgeAfter, msg.IdempotencyKey, msg.RoutingStrategyUsed)
+		msg.ScheduledAt, msg.CreatedAt, msg.DeliveredAt, msg.PurgeAfter, msg.IdempotencyKey, msg.RoutingStrategyUsed)
 	return err
 }
 
@@ -36,12 +36,12 @@ func (s *MessageService) GetByID(ctx context.Context, id string) (*models.Messag
 	err := s.db.QueryRow(ctx,
 		`SELECT id, device_id, api_key_id, direction, recipient, sender, encrypted_message,
 		        message_type, priority_lane, template_id, status, delivery_status, confidence_score,
-		        error_reason, created_at, delivered_at, purge_after, idempotency_key, routing_strategy_used
+		        error_reason, scheduled_at, created_at, delivered_at, purge_after, idempotency_key, routing_strategy_used
 		 FROM messages WHERE id = $1`, id,
 	).Scan(&msg.ID, &msg.DeviceID, &msg.APIKeyID, &msg.Direction, &msg.Recipient, &msg.Sender,
 		&msg.EncryptedMessage, &msg.MessageType, &msg.PriorityLane, &msg.TemplateID,
 		&msg.Status, &msg.DeliveryStatus, &msg.ConfidenceScore, &msg.ErrorReason,
-		&msg.CreatedAt, &msg.DeliveredAt, &msg.PurgeAfter, &msg.IdempotencyKey, &msg.RoutingStrategyUsed)
+		&msg.ScheduledAt, &msg.CreatedAt, &msg.DeliveredAt, &msg.PurgeAfter, &msg.IdempotencyKey, &msg.RoutingStrategyUsed)
 	if err == pgx.ErrNoRows {
 		return nil, nil
 	} else if err != nil {
@@ -55,14 +55,14 @@ func (s *MessageService) GetByIDAndAccount(ctx context.Context, id, accountID st
 	err := s.db.QueryRow(ctx,
 		`SELECT m.id, m.device_id, m.api_key_id, m.direction, m.recipient, m.sender, m.encrypted_message,
 		        m.message_type, m.priority_lane, m.template_id, m.status, m.delivery_status, m.confidence_score,
-		        m.error_reason, m.created_at, m.delivered_at, m.purge_after, m.idempotency_key, m.routing_strategy_used
+		        m.error_reason, m.scheduled_at, m.created_at, m.delivered_at, m.purge_after, m.idempotency_key, m.routing_strategy_used
 		 FROM messages m
 		 JOIN api_keys ak ON m.api_key_id = ak.id
 		 WHERE m.id = $1 AND ak.account_id = $2`, id, accountID,
 	).Scan(&msg.ID, &msg.DeviceID, &msg.APIKeyID, &msg.Direction, &msg.Recipient, &msg.Sender,
 		&msg.EncryptedMessage, &msg.MessageType, &msg.PriorityLane, &msg.TemplateID,
 		&msg.Status, &msg.DeliveryStatus, &msg.ConfidenceScore, &msg.ErrorReason,
-		&msg.CreatedAt, &msg.DeliveredAt, &msg.PurgeAfter, &msg.IdempotencyKey, &msg.RoutingStrategyUsed)
+		&msg.ScheduledAt, &msg.CreatedAt, &msg.DeliveredAt, &msg.PurgeAfter, &msg.IdempotencyKey, &msg.RoutingStrategyUsed)
 	if err == pgx.ErrNoRows {
 		return nil, nil
 	} else if err != nil {
@@ -75,7 +75,7 @@ func (s *MessageService) ListByAccount(ctx context.Context, accountID string, of
 	rows, err := s.db.Query(ctx,
 		`SELECT m.id, m.device_id, m.api_key_id, m.direction, m.recipient, m.sender, m.encrypted_message,
 		        m.message_type, m.priority_lane, m.template_id, m.status, m.delivery_status, m.confidence_score,
-		        m.error_reason, m.created_at, m.delivered_at, m.purge_after, m.idempotency_key, m.routing_strategy_used
+		        m.error_reason, m.scheduled_at, m.created_at, m.delivered_at, m.purge_after, m.idempotency_key, m.routing_strategy_used
 		 FROM messages m
 		 JOIN api_keys ak ON m.api_key_id = ak.id
 		 WHERE ak.account_id = $1
@@ -91,7 +91,7 @@ func (s *MessageService) ListByAccount(ctx context.Context, accountID string, of
 		if err := rows.Scan(&m.ID, &m.DeviceID, &m.APIKeyID, &m.Direction, &m.Recipient, &m.Sender,
 			&m.EncryptedMessage, &m.MessageType, &m.PriorityLane, &m.TemplateID,
 			&m.Status, &m.DeliveryStatus, &m.ConfidenceScore, &m.ErrorReason,
-			&m.CreatedAt, &m.DeliveredAt, &m.PurgeAfter, &m.IdempotencyKey, &m.RoutingStrategyUsed); err != nil {
+			&m.ScheduledAt, &m.CreatedAt, &m.DeliveredAt, &m.PurgeAfter, &m.IdempotencyKey, &m.RoutingStrategyUsed); err != nil {
 			return nil, err
 		}
 		msgs = append(msgs, m)
@@ -158,7 +158,7 @@ func (s *MessageService) ListPendingByAccount(ctx context.Context, accountID str
 	rows, err := s.db.Query(ctx,
 		`SELECT m.id, m.device_id, m.api_key_id, m.direction, m.recipient, m.sender, m.encrypted_message,
 		        m.message_type, m.priority_lane, m.template_id, m.status, m.delivery_status, m.confidence_score,
-		        m.error_reason, m.created_at, m.delivered_at, m.purge_after, m.idempotency_key, m.routing_strategy_used
+		        m.error_reason, m.scheduled_at, m.created_at, m.delivered_at, m.purge_after, m.idempotency_key, m.routing_strategy_used
 		 FROM messages m
 		 JOIN api_keys ak ON m.api_key_id = ak.id
 		 WHERE ak.account_id = $1
@@ -178,7 +178,7 @@ func (s *MessageService) ListPendingByAccount(ctx context.Context, accountID str
 		if err := rows.Scan(&m.ID, &m.DeviceID, &m.APIKeyID, &m.Direction, &m.Recipient, &m.Sender,
 			&m.EncryptedMessage, &m.MessageType, &m.PriorityLane, &m.TemplateID,
 			&m.Status, &m.DeliveryStatus, &m.ConfidenceScore, &m.ErrorReason,
-			&m.CreatedAt, &m.DeliveredAt, &m.PurgeAfter, &m.IdempotencyKey, &m.RoutingStrategyUsed); err != nil {
+			&m.ScheduledAt, &m.CreatedAt, &m.DeliveredAt, &m.PurgeAfter, &m.IdempotencyKey, &m.RoutingStrategyUsed); err != nil {
 			return nil, err
 		}
 		msgs = append(msgs, m)
@@ -200,6 +200,50 @@ func (s *MessageService) DB() DatabaseQuerier {
 }
 
 // ListByAccountFiltered returns paginated messages with optional status and type filters
+// GetScheduledMessages returns messages scheduled to be sent at or before the given time.
+func (s *MessageService) GetScheduledMessages(ctx context.Context, before time.Time, limit int) ([]models.Message, error) {
+	rows, err := s.db.Query(ctx,
+		`SELECT id, device_id, api_key_id, direction, recipient, sender, encrypted_message,
+		        message_type, priority_lane, template_id, status, delivery_status, confidence_score,
+		        error_reason, scheduled_at, created_at, delivered_at, purge_after, idempotency_key, routing_strategy_used
+		 FROM messages
+		 WHERE status = 'scheduled' AND scheduled_at <= $1
+		 ORDER BY scheduled_at ASC LIMIT $2`, before, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var msgs []models.Message
+	for rows.Next() {
+		var m models.Message
+		if err := rows.Scan(&m.ID, &m.DeviceID, &m.APIKeyID, &m.Direction, &m.Recipient, &m.Sender,
+			&m.EncryptedMessage, &m.MessageType, &m.PriorityLane, &m.TemplateID,
+			&m.Status, &m.DeliveryStatus, &m.ConfidenceScore, &m.ErrorReason,
+			&m.ScheduledAt, &m.CreatedAt, &m.DeliveredAt, &m.PurgeAfter, &m.IdempotencyKey, &m.RoutingStrategyUsed); err != nil {
+			return nil, err
+		}
+		msgs = append(msgs, m)
+	}
+	return msgs, nil
+}
+
+// ReleaseScheduled marks a scheduled message as pending so the queue can pick it up.
+func (s *MessageService) ReleaseScheduled(ctx context.Context, id string) error {
+	_, err := s.db.Exec(ctx,
+		`UPDATE messages SET status = 'pending', scheduled_at = NULL WHERE id = $1 AND status = 'scheduled'`, id)
+	return err
+}
+
+// CountScheduledByAccount returns count of scheduled messages for an account.
+func (s *MessageService) CountScheduledByAccount(ctx context.Context, accountID string) (int, error) {
+	var count int
+	err := s.db.QueryRow(ctx,
+		`SELECT COUNT(*) FROM messages m JOIN api_keys ak ON m.api_key_id = ak.id
+		 WHERE ak.account_id = $1 AND m.status = 'scheduled'`, accountID).Scan(&count)
+	return count, err
+}
+
 func (s *MessageService) ListByAccountFiltered(ctx context.Context, accountID string, offset, limit int, statusFilter, typeFilter string) ([]models.Message, error) {
 	conditions := []string{"ak.account_id = $1"}
 	args := []interface{}{accountID}
@@ -222,7 +266,7 @@ func (s *MessageService) ListByAccountFiltered(ctx context.Context, accountID st
 	rows, err := s.db.Query(ctx,
 		fmt.Sprintf(`SELECT m.id, m.device_id, m.api_key_id, m.direction, m.recipient, m.sender, m.encrypted_message,
 	        m.message_type, m.priority_lane, m.template_id, m.status, m.delivery_status, m.confidence_score,
-	        m.error_reason, m.created_at, m.delivered_at, m.purge_after, m.idempotency_key, m.routing_strategy_used
+	        m.error_reason, m.scheduled_at, m.created_at, m.delivered_at, m.purge_after, m.idempotency_key, m.routing_strategy_used
 	 FROM messages m
 	 JOIN api_keys ak ON m.api_key_id = ak.id
 	 WHERE %s
@@ -239,7 +283,7 @@ func (s *MessageService) ListByAccountFiltered(ctx context.Context, accountID st
 		if err := rows.Scan(&m.ID, &m.DeviceID, &m.APIKeyID, &m.Direction, &m.Recipient, &m.Sender,
 			&m.EncryptedMessage, &m.MessageType, &m.PriorityLane, &m.TemplateID,
 			&m.Status, &m.DeliveryStatus, &m.ConfidenceScore, &m.ErrorReason,
-			&m.CreatedAt, &m.DeliveredAt, &m.PurgeAfter, &m.IdempotencyKey, &m.RoutingStrategyUsed); err != nil {
+			&m.ScheduledAt, &m.CreatedAt, &m.DeliveredAt, &m.PurgeAfter, &m.IdempotencyKey, &m.RoutingStrategyUsed); err != nil {
 			return nil, err
 		}
 		msgs = append(msgs, m)

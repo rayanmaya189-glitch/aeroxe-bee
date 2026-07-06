@@ -14,11 +14,13 @@ import { PageSkeleton } from '@/components/ui/Skeleton'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
 import { Plus, FileText, Trash2, CheckSquare, Square, CheckCircle, XCircle } from 'lucide-react'
+import { useToast } from '@/components/ui/Toast'
 
 type FilterTab = 'all' | 'pending' | 'approved' | 'rejected'
 
 export function TemplatesPage() {
   const queryClient = useQueryClient()
+  const { addToast } = useToast()
   const [activeTab, setActiveTab] = useState<FilterTab>('all')
   const [showForm, setShowForm] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Template | null>(null)
@@ -53,27 +55,30 @@ export function TemplatesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-templates'] })
-      setShowForm(false); setName(''); setBody('')
+      setShowForm(false); setName(''); setBody(''); addToast('Template created', 'success')
     },
-    onError: (err: Error) => setError(err.message),
+    onError: (err: Error) => { addToast(err.message || 'Failed to create template', 'error'); setError(err.message) },
   })
 
   const deleteMutation = useMutation({
     mutationFn: async () => { if (deleteTarget) await deleteTemplate(deleteTarget.id) },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-templates'] })
-      setDeleteTarget(null)
+      setDeleteTarget(null); addToast('Template deleted', 'success')
     },
+    onError: (err: Error) => { addToast(err.message || 'Failed to delete template', 'error') },
   })
 
   const approveMutation = useMutation({
     mutationFn: approveTemplate,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-templates'] }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-templates'] }); addToast('Template approved', 'success') },
+    onError: (err: Error) => { addToast(err.message || 'Failed to approve template', 'error') },
   })
 
   const rejectMutation = useMutation({
     mutationFn: rejectTemplate,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-templates'] }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-templates'] }); addToast('Template rejected', 'success') },
+    onError: (err: Error) => { addToast(err.message || 'Failed to reject template', 'error') },
   })
 
   const bulkDeleteMutation = useMutation({
@@ -81,8 +86,9 @@ export function TemplatesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-templates'] })
       setSelectedIds(new Set())
-      setShowBulkDelete(false)
+      setShowBulkDelete(false); addToast(`${selectedIds.size} templates deleted`, 'success')
     },
+    onError: (err: Error) => { addToast(err.message || 'Failed to bulk delete templates', 'error') },
   })
 
   const bulkApproveMutation = useMutation({
@@ -90,8 +96,9 @@ export function TemplatesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-templates'] })
       setSelectedIds(new Set())
-      setShowBulkApprove(false)
+      setShowBulkApprove(false); addToast(`${selectedPendingCount} templates approved`, 'success')
     },
+    onError: (err: Error) => { addToast(err.message || 'Failed to bulk approve templates', 'error') },
   })
 
   const bulkRejectMutation = useMutation({
@@ -99,8 +106,9 @@ export function TemplatesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-templates'] })
       setSelectedIds(new Set())
-      setShowBulkReject(false)
+      setShowBulkReject(false); addToast(`${selectedPendingCount} templates rejected`, 'success')
     },
+    onError: (err: Error) => { addToast(err.message || 'Failed to bulk reject templates', 'error') },
   })
 
   const toggleSelect = (id: string) => {

@@ -10,11 +10,13 @@ import { Badge } from '@/components/ui/Badge'
 import { Modal } from '@/components/ui/Modal'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
 import { Settings } from 'lucide-react'
+import { useToast } from '@/components/ui/Toast'
 
 const METHOD_LABELS: Record<string, string> = { bank_transfer: 'Bank Transfer', trc20: 'TRC-20 (USDT)', qr_code: 'QR Code' }
 
 export function BillingSettingsPage() {
   const queryClient = useQueryClient()
+  const { addToast } = useToast()
   const [editingConfig, setEditingConfig] = useState<PaymentConfig | null>(null)
   const [formDetails, setFormDetails] = useState<Record<string, string>>({})
   const [formLabel, setFormLabel] = useState('')
@@ -24,7 +26,8 @@ export function BillingSettingsPage() {
 
   const saveMutation = useMutation({
     mutationFn: (data: { method: string; label: string; details: Record<string, unknown>; enabled: boolean }) => upsertPaymentConfig(data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['payment-configs'] }); setEditingConfig(null) },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['payment-configs'] }); setEditingConfig(null); addToast('Payment config saved', 'success') },
+    onError: (err: Error) => { addToast(err.message || 'Failed to save payment config', 'error') },
   })
 
   const handleEdit = (config: PaymentConfig) => {

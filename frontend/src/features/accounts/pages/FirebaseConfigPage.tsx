@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/Input'
 import { PageSkeleton } from '@/components/ui/Skeleton'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
 import { Settings, Save, RotateCcw, Shield, Zap, Bell, Globe, Wrench } from 'lucide-react'
+import { useToast } from '@/components/ui/Toast'
 
 interface ConfigEntry {
   id: string
@@ -33,6 +34,7 @@ const categoryConfig: Record<string, { label: string; icon: React.ReactNode; col
 }
 
 export function FirebaseConfigPage() {
+  const { addToast } = useToast()
   const [entries, setEntries] = useState<ConfigEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -77,9 +79,9 @@ export function FirebaseConfigPage() {
       await api.put('/admin/firebase-config', { entries: entriesToUpdate })
       setEditedValues({})
       setHasChanges(false)
-      load()
+      load(); addToast('Config saved', 'success')
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to save config')
+      addToast(err instanceof Error ? err.message : 'Failed to save config', 'error'); setError(err instanceof Error ? err.message : 'Failed to save config')
     } finally {
       setSaving(false)
     }

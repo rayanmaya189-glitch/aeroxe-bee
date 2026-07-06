@@ -18,6 +18,8 @@ const NotFoundPage = lazy(() => import('@/pages/NotFoundPage').then((m) => ({ de
 const MemberDashboardPage = lazy(() => import('@/features/member/pages/MemberDashboardPage').then((m) => ({ default: m.MemberDashboardPage })))
 const MemberDevicesPage = lazy(() => import('@/features/member/pages/MemberDevicesPage').then((m) => ({ default: m.MemberDevicesPage })))
 const MemberMessagesPage = lazy(() => import('@/features/member/pages/MemberMessagesPage').then((m) => ({ default: m.MemberMessagesPage })))
+const SendSmsPage = lazy(() => import('@/features/member/pages/SendSmsPage').then((m) => ({ default: m.SendSmsPage })))
+const BulkSmsPage = lazy(() => import('@/features/member/pages/BulkSmsPage').then((m) => ({ default: m.BulkSmsPage })))
 const MemberAnalyticsPage = lazy(() => import('@/features/member/pages/MemberAnalyticsPage').then((m) => ({ default: m.MemberAnalyticsPage })))
 const MemberTemplatesPage = lazy(() => import('@/features/member/pages/MemberTemplatesPage').then((m) => ({ default: m.MemberTemplatesPage })))
 const MemberWebhooksPage = lazy(() => import('@/features/member/pages/MemberWebhooksPage').then((m) => ({ default: m.MemberWebhooksPage })))
@@ -28,6 +30,7 @@ const BillingPage = lazy(() => import('@/features/billing/pages/BillingPage').th
 const CircuitBreakersPage = lazy(() => import('@/features/circuit-breakers/pages/CircuitBreakersPage').then((m) => ({ default: m.CircuitBreakersPage })))
 const DeadLettersPage = lazy(() => import('@/features/dead-letters/pages/DeadLettersPage').then((m) => ({ default: m.DeadLettersPage })))
 const FraudFlagsPage = lazy(() => import('@/features/fraud/pages/FraudFlagsPage').then((m) => ({ default: m.FraudFlagsPage })))
+const SmishingFlagsPage = lazy(() => import('@/features/fraud/pages/SmishingFlagsPage').then((m) => ({ default: m.SmishingFlagsPage })))
 const PlansPage = lazy(() => import('@/features/billing/pages/PlansPage').then((m) => ({ default: m.PlansPage })))
 const FeatureCatalogPage = lazy(() => import('@/features/billing/pages/FeatureCatalogPage').then((m) => ({ default: m.FeatureCatalogPage })))
 const BillingSettingsPage = lazy(() => import('@/features/billing/pages/BillingSettingsPage').then((m) => ({ default: m.BillingSettingsPage })))
@@ -152,6 +155,7 @@ const routes: RouteObject[] = [
           { path: 'circuit-breakers', element: <LazyLoader><CircuitBreakersPage /></LazyLoader> },
           { path: 'dead-letters', element: <LazyLoader><DeadLettersPage /></LazyLoader> },
           { path: 'fraud-flags', element: <LazyLoader><FraudFlagsPage /></LazyLoader> },
+          { path: 'smishing-flags', element: <LazyLoader><SmishingFlagsPage /></LazyLoader> },
           { path: 'plans', element: <LazyLoader><PlansPage /></LazyLoader> },
           { path: 'feature-catalog', element: <LazyLoader><FeatureCatalogPage /></LazyLoader> },
           { path: 'billing-settings', element: <LazyLoader><BillingSettingsPage /></LazyLoader> },
@@ -171,6 +175,8 @@ const routes: RouteObject[] = [
           { path: 'member', element: <LazyLoader><MemberDashboardPage /></LazyLoader> },
           { path: 'member/devices', element: <LazyLoader><MemberDevicesPage /></LazyLoader> },
           { path: 'member/messages', element: <LazyLoader><MemberMessagesPage /></LazyLoader> },
+          { path: 'member/send', element: <LazyLoader><SendSmsPage /></LazyLoader> },
+          { path: 'member/bulk-sms', element: <LazyLoader><BulkSmsPage /></LazyLoader> },
           { path: 'member/analytics', element: <LazyLoader><MemberAnalyticsPage /></LazyLoader> },
           { path: 'member/templates', element: <LazyLoader><MemberTemplatesPage /></LazyLoader> },
           { path: 'member/webhooks', element: <LazyLoader><MemberWebhooksPage /></LazyLoader> },

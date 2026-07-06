@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
 import { Check, Crown } from 'lucide-react'
+import { useToast } from '@/components/ui/Toast'
 
 export function MemberUpgradePage() {
   const queryClient = useQueryClient()
@@ -20,12 +21,15 @@ export function MemberUpgradePage() {
   const { data: plans = [], isLoading: plansLoading } = useQuery({ queryKey: ['plans'], queryFn: getPlans })
   const { data: paymentMethods = [], isLoading: methodsLoading } = useQuery({ queryKey: ['enabled-payment-configs'], queryFn: getEnabledPaymentConfigs })
 
+  const { addToast } = useToast()
+
   const upgradeMutation = useMutation({
     mutationFn: () => {
       if (!selectedPlan) throw new Error('No plan selected')
       return createSubscriptionRequest({ requested_plan: selectedPlan.id, requested_billing_cycle: billingCycle, reason: `Upgrade to ${selectedPlan.name} (${billingCycle})` })
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['my-subscription-requests'] }); setSelectedPlan(null) },
+    onError: (err: Error) => { addToast(err.message || 'Failed to submit upgrade request', 'error') },
   })
 
   const payMutation = useMutation({
@@ -35,6 +39,7 @@ export function MemberUpgradePage() {
       return createPaymentRequest({ plan_id: selectedPlan.id, billing_cycle: billingCycle, payment_method: paymentMethod, amount, proof_url: proofUrl })
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['my-payment-requests'] }); setSelectedPlan(null); setPaymentMethod(''); setProofUrl('') },
+    onError: (err: Error) => { addToast(err.message || 'Failed to submit payment request', 'error') },
   })
 
   const calculatePrice = (plan: Plan) => billingCycle === 'yearly' ? plan.monthly_price * 10 : plan.monthly_price

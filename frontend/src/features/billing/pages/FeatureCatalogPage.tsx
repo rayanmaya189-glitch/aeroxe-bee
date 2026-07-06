@@ -14,6 +14,7 @@ import { staggerContainer, fadeInUp, itemVariants } from '@/components/animation
 import { getFeatureCatalog, createFeatureCatalogItem, toggleFeatureCatalogItem, deleteFeatureCatalogItem } from '@/services/dashboard'
 import type { FeatureCatalogItem } from '@/types/models'
 import { Tags, Plus, GripVertical, Trash2, Eye, EyeOff } from 'lucide-react'
+import { useToast } from '@/components/ui/Toast'
 
 const CATEGORY_COLORS: Record<string, string> = {
   quota: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
@@ -30,6 +31,7 @@ const CATEGORIES = ['all', 'quota', 'devices', 'routing', 'analytics', 'support'
 
 export function FeatureCatalogPage() {
   const queryClient = useQueryClient()
+  const { addToast } = useToast()
   const [showAddModal, setShowAddModal] = useState(false)
   const [newName, setNewName] = useState('')
   const [newCategory, setNewCategory] = useState('general')
@@ -47,22 +49,24 @@ export function FeatureCatalogPage() {
     mutationFn: () => createFeatureCatalogItem({ name: newName, category: newCategory }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feature-catalog'] })
-      setShowAddModal(false); setNewName(''); setNewCategory('general'); setError('')
+      setShowAddModal(false); setNewName(''); setNewCategory('general'); setError(''); addToast('Feature added to catalog', 'success')
     },
-    onError: (err: Error) => setError(err.message),
+    onError: (err: Error) => { addToast(err.message || 'Failed to add feature', 'error'); setError(err.message) },
   })
 
   const toggleMutation = useMutation({
     mutationFn: (item: FeatureCatalogItem) => toggleFeatureCatalogItem(item.id, !item.active),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['feature-catalog'] }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['feature-catalog'] }); addToast('Feature toggled', 'success') },
+    onError: (err: Error) => { addToast(err.message || 'Failed to toggle feature', 'error') },
   })
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteFeatureCatalogItem(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feature-catalog'] })
-      setDeleteTarget(null)
+      setDeleteTarget(null); addToast('Feature removed', 'success')
     },
+    onError: (err: Error) => { addToast(err.message || 'Failed to delete feature', 'error') },
   })
 
   const filtered = filterCategory === 'all' ? features : features.filter((f) => f.category === filterCategory)

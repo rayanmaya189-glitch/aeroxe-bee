@@ -10,19 +10,22 @@ import (
 	"github.com/aeroxe-bee/backend/internal/api/middleware"
 	"github.com/aeroxe-bee/backend/internal/models"
 	"github.com/aeroxe-bee/backend/internal/services"
+	"github.com/aeroxe-bee/backend/internal/webhook"
 )
 
 // MemberHandler handles member portal API endpoints
 type MemberHandler struct {
-	accountService       *services.AccountService
-	deviceService        *services.DeviceService
-	messageService       *services.MessageService
-	billingService       *services.BillingService
-	subscriptionService  *services.SubscriptionService
-	templateService      *services.TemplateService
-	webhookService       *services.WebhookService
-	preferencesService   *services.UserPreferencesService
-	kycService           *services.KycService
+	accountService         *services.AccountService
+	deviceService          *services.DeviceService
+	messageService         *services.MessageService
+	billingService         *services.BillingService
+	subscriptionService    *services.SubscriptionService
+	templateService        *services.TemplateService
+	webhookService         *services.WebhookService
+	webhookDeliveryService *services.WebhookDeliveryService
+	webhookDispatcher      *webhook.Dispatcher
+	preferencesService     *services.UserPreferencesService
+	kycService             *services.KycService
 }
 
 func NewMemberHandler(
@@ -33,19 +36,23 @@ func NewMemberHandler(
 	subscriptionService *services.SubscriptionService,
 	templateService *services.TemplateService,
 	webhookService *services.WebhookService,
+	webhookDeliveryService *services.WebhookDeliveryService,
+	webhookDispatcher *webhook.Dispatcher,
 	preferencesService *services.UserPreferencesService,
 	kycService *services.KycService,
 ) *MemberHandler {
 	return &MemberHandler{
-		accountService:       accountService,
-		deviceService:        deviceService,
-		messageService:       messageService,
-		billingService:       billingService,
-		subscriptionService:  subscriptionService,
-		templateService:      templateService,
-		webhookService:       webhookService,
-		preferencesService:   preferencesService,
-		kycService:           kycService,
+		accountService:         accountService,
+		deviceService:          deviceService,
+		messageService:         messageService,
+		billingService:         billingService,
+		subscriptionService:    subscriptionService,
+		templateService:        templateService,
+		webhookService:         webhookService,
+		webhookDeliveryService: webhookDeliveryService,
+		webhookDispatcher:      webhookDispatcher,
+		preferencesService:     preferencesService,
+		kycService:             kycService,
 	}
 }
 
@@ -875,4 +882,60 @@ func (h *MemberHandler) RotateWebhookSecret(w http.ResponseWriter, r *http.Reque
 		Success: true,
 		Data:    map[string]string{"secret": newSecret},
 	})
+}
+
+// GetWebhookDeliveries returns recent delivery logs for a member's webhook
+func (h *MemberHandler) GetWebhookDeliveries(w http.ResponseWriter, r *http.Request) {
+	accountID := middleware.GetAccountID(r.Context())
+	id := r.PathValue("id")
+
+	// Verify ownership
+	webhook, err := h.webhookService.GetByID(r.Context(), id)
+	if err != nil || webhook == nil {
+		writeJSON(w, http.StatusNotFound, APIResponse{Error: "webhook not found"})
+		return
+	}
+	if webhook.AccountID != accountID {
+		writeJSON(w, http.StatusForbidden, APIResponse{Error: "access denied"})
+		return
+	}
+
+	deliveries, err := h.webhookDeliveryService.ListByWebhookID(r.Context(), id, 20)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to fetch deliveries"})
+		return
+	}
+	if deliveries == nil {
+		deliveries = []models.WebhookDelivery{}
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: deliveries})
+}
+
+// TestWebhook sends a test payload to the member's webhook endpoint
+func (h *MemberHandler) TestWebhook(w http.ResponseWriter, r *http.Request) {
+	accountID := middleware.GetAccountID(r.Context())
+	id := r.PathValue("id")
+
+	wh, err := h.webhookService.GetByID(r.Context(), id)
+	if err != nil || wh == nil {
+		writeJSON(w, http.StatusNotFound, APIResponse{Error: "webhook not found"})
+		return
+	}
+	if wh.AccountID != accountID {
+		writeJSON(w, http.StatusForbidden, APIResponse{Error: "access denied"})
+		return
+	}
+
+	result := h.webhookDispatcher.DispatchTest(r.Context(), *wh)
+
+	resp := map[string]interface{}{
+		"status_code":   result.StatusCode,
+		"response_body": result.ResponseBody,
+	}
+	if result.Err != nil {
+		resp["error"] = result.Err.Error()
+		writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: resp})
+		return
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: resp})
 }

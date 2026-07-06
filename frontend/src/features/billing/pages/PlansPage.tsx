@@ -15,12 +15,14 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { formatNumber } from '@/utils/format'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
 import { Plus, Receipt, Check, X, Tags } from 'lucide-react'
+import { useToast } from '@/components/ui/Toast'
 
 const containerVariants = staggerContainer
 const itemVariant = itemVariants
 
 export function PlansPage() {
   const queryClient = useQueryClient()
+  const { addToast } = useToast()
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Plan | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Plan | null>(null)
@@ -35,9 +37,9 @@ export function PlansPage() {
   const [maxQueueDepth, setMaxQueueDepth] = useState('')
   const [routingStrategy, setRoutingStrategy] = useState('fastest_delivery')
   const [dedicatedPool, setDedicatedPool] = useState(false)
-  const [visibility, setVisibility] = useState<'public' | 'private' | 'custom'>('public')
-  const [maxDevices, setMaxDevices] = useState('')
-  const [isPopular, setIsPopular] = useState(false)
+  const [visibility, setVisibility] = useState<'public' | 'private' | 'custom'>('public')	const [maxDevices, setMaxDevices] = useState('')
+	const [maxTemplates, setMaxTemplates] = useState('')
+	const [isPopular, setIsPopular] = useState(false)
   const [ctaText, setCtaText] = useState('')
   const [featuresList, setFeaturesList] = useState<string[]>([])
   const [featureInput, setFeatureInput] = useState('')
@@ -51,17 +53,17 @@ export function PlansPage() {
     : ['5K SMS/month', '10K daily SMS', 'Advanced analytics', 'Priority support', 'Custom webhooks', 'OTP system', 'API access']
 
   const saveMutation = useMutation({
-    mutationFn: async () => {
-        const payload: Plan = { id: planId, name, visibility, daily_quota: Number(dailyQuota) || 0, monthly_quota: Number(monthlyQuota) || 0, monthly_price: Number(monthlyPrice) || 0, price_per_sms: Number(pricePerSms) || 0, overage_buffer_pct: Number(overageBuffer) || 0, max_queue_depth: Number(maxQueueDepth) || 100, max_devices: Number(maxDevices) || 1, dedicated_pool: dedicatedPool, default_routing_strategy: routingStrategy, is_popular: isPopular, cta_text: ctaText || 'Get Started', features: featuresList }
+    mutationFn: async () => {	const payload: Plan = { id: planId, name, visibility, daily_quota: Number(dailyQuota) || 0, monthly_quota: Number(monthlyQuota) || 0, monthly_price: Number(monthlyPrice) || 0, price_per_sms: Number(pricePerSms) || 0, overage_buffer_pct: Number(overageBuffer) || 0, max_queue_depth: Number(maxQueueDepth) || 100, max_devices: Number(maxDevices) || 1, max_templates: Number(maxTemplates) || 10, dedicated_pool: dedicatedPool, default_routing_strategy: routingStrategy, is_popular: isPopular, cta_text: ctaText || 'Get Started', features: featuresList }
       return editing ? updatePlan(editing.id, payload) : createPlan(payload)
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-plans'] }); closeForm() },
-    onError: (err: Error) => setError(err.message),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-plans'] }); closeForm(); addToast(editing ? 'Plan updated' : 'Plan created', 'success') },
+    onError: (err: Error) => { addToast(err.message || 'Failed to save plan', 'error'); setError(err.message) },
   })
 
   const deleteMutation = useMutation({
     mutationFn: async () => { if (deleteTarget) await deletePlan(deleteTarget.id) },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-plans'] }); setDeleteTarget(null) },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-plans'] }); setDeleteTarget(null); addToast('Plan deleted', 'success') },
+    onError: (err: Error) => { addToast(err.message || 'Failed to delete plan', 'error') },
   })
 
   function openForm(plan?: Plan) {
@@ -70,8 +72,7 @@ export function PlansPage() {
     setMonthlyPrice(String(plan?.monthly_price ?? '')); setPricePerSms(String(plan?.price_per_sms ?? ''))
     setOverageBuffer(String(plan?.overage_buffer_pct ?? '')); setMaxQueueDepth(String(plan?.max_queue_depth ?? ''))
     setRoutingStrategy(plan?.default_routing_strategy || 'fastest_delivery')
-    setDedicatedPool(plan?.dedicated_pool || false); setVisibility(plan?.visibility || 'public')
-    setMaxDevices(String(plan?.max_devices ?? '')); setIsPopular(plan?.is_popular || false)
+    setDedicatedPool(plan?.dedicated_pool || false); setVisibility(plan?.visibility || 'public')	setMaxDevices(String(plan?.max_devices ?? '')); setMaxTemplates(String(plan?.max_templates ?? '')); setIsPopular(plan?.is_popular || false)
     setCtaText(plan?.cta_text || '')
     setFeaturesList(plan?.features ? [...plan.features] : [])
     setFeatureInput('')
@@ -125,8 +126,7 @@ export function PlansPage() {
                     {plan.visibility === 'custom' && <Badge variant="warning" size="sm">Custom</Badge>}
                     {plan.dedicated_pool && <Badge variant="primary" size="sm">Dedicated</Badge>}
                   </div>
-                </div>                  <div className="mt-6 space-y-3 text-sm">
-                  {[['Daily quota', formatNumber(plan.daily_quota)], ['Monthly quota', formatNumber(plan.monthly_quota)], ['Max devices', String(plan.max_devices ?? '—')], ['Overage buffer', `${plan.overage_buffer_pct}%`], ['Price per SMS', `$${plan.price_per_sms}`], ['Max queue', formatNumber(plan.max_queue_depth)], ['CTA text', plan.cta_text || '—']].map(([l, v]) => (
+                </div>                  <div className="mt-6 space-y-3 text-sm">                    {[['Daily quota', formatNumber(plan.daily_quota)], ['Monthly quota', formatNumber(plan.monthly_quota)], ['Max devices', String(plan.max_devices ?? '—')], ['Max templates', String(plan.max_templates ?? '—')], ['Overage buffer', `${plan.overage_buffer_pct}%`], ['Price per SMS', `$${plan.price_per_sms}`], ['Max queue', formatNumber(plan.max_queue_depth)], ['CTA text', plan.cta_text || '—']].map(([l, v]) => (
                     <div key={l} className="flex items-center justify-between">
                       <div className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-emerald-400" /><span className="text-gray-400">{l}</span></div>
                       <span className="font-medium text-gray-200">{v}</span>
@@ -177,9 +177,9 @@ export function PlansPage() {
             <Input label="Monthly price ($)" type="number" step="0.01" value={monthlyPrice} onChange={(e) => setMonthlyPrice(e.target.value)} required />
             <Input label="Price per SMS ($)" type="number" step="0.001" value={pricePerSms} onChange={(e) => setPricePerSms(e.target.value)} required />
             <Input label="Overage buffer (%)" type="number" value={overageBuffer} onChange={(e) => setOverageBuffer(e.target.value)} required />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-3">
+          </div>		<div className="grid gap-4 sm:grid-cols-4">
             <Input label="Max devices" type="number" value={maxDevices} onChange={(e) => setMaxDevices(e.target.value)} required />
+            <Input label="Max templates" type="number" value={maxTemplates} onChange={(e) => setMaxTemplates(e.target.value)} required />
             <Input label="CTA button text" value={ctaText} onChange={(e) => setCtaText(e.target.value)} placeholder="e.g. Get Started, Contact Sales" />
             <label className="flex items-end gap-3 pb-1">
               <input type="checkbox" checked={isPopular} onChange={(e) => setIsPopular(e.target.checked)} className="h-4 w-4 rounded border-white/20 bg-white/5 text-blue-500" />

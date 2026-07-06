@@ -3,6 +3,7 @@ package fraud
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -121,6 +122,58 @@ func (d *Detector) GetPendingFlags(ctx context.Context) []models.FraudFlag {
 		}
 	}
 	return pending
+}
+
+// GetAllFlags returns all fraud flags, optionally filtered by content-type prefix.
+// When contentOnly is true, only flags whose FlagType starts with "sensitive content detected:" are returned.
+// GetSmishingFlagsPendingCount returns the count of unreviewed content-based fraud flags.
+func (d *Detector) GetSmishingFlagsPendingCount(ctx context.Context) int {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	count := 0
+	for _, f := range d.flags {
+		if !f.Reviewed && strings.HasPrefix(f.FlagType, "sensitive content detected:") {
+			count++
+		}
+	}
+	return count
+}
+
+func (d *Detector) GetAllFlags(ctx context.Context, contentOnly bool) []models.FraudFlag {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	if !contentOnly {
+		result := make([]models.FraudFlag, len(d.flags))
+		copy(result, d.flags)
+		return result
+	}
+	var filtered []models.FraudFlag
+	for _, f := range d.flags {
+		if strings.HasPrefix(f.FlagType, "sensitive content detected:") {
+			filtered = append(filtered, f)
+		}
+	}
+	return filtered
+}
+
+// BulkReview marks multiple flags as reviewed.
+func (d *Detector) BulkReview(ctx context.Context, flagIDs []string) int {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	ids := make(map[string]struct{}, len(flagIDs))
+	for _, id := range flagIDs {
+		ids[id] = struct{}{}
+	}
+	count := 0
+	now := time.Now()
+	for i, f := range d.flags {
+		if _, ok := ids[f.ID]; ok && !f.Reviewed {
+			d.flags[i].Reviewed = true
+			d.flags[i].ReviewedAt = &now
+			count++
+		}
+	}
+	return count
 }
 
 func (d *Detector) MarkReviewed(ctx context.Context, flagID string) error {
