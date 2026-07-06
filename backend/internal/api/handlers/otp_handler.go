@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/aeroxe-bee/backend/internal/api/middleware"
+	"github.com/aeroxe-bee/backend/internal/fraud"
 	"github.com/aeroxe-bee/backend/internal/services"
 	"github.com/aeroxe-bee/backend/internal/telemetry"
 )
@@ -41,6 +42,12 @@ func (h *OTPHandler) Send(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Phone == "" {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "phone is required"})
+		return
+	}
+
+	// Validate phone number format
+	if !fraud.IsValidPhoneNumber(req.Phone) {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid phone number format"})
 		return
 	}
 

@@ -360,6 +360,8 @@ func processMessage(
 		AccountID:   msg.AccountID,
 		DeviceID:    "",
 		Recipient:   msg.Recipient,
+		Sender:      msg.Sender,
+		Message:     msg.Message,
 		MessageType: msg.MessageType,
 	}
 	if result := fraudDetector.Analyze(ctx, fraudInput); result.Flagged {

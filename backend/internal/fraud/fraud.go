@@ -13,13 +13,15 @@ import (
 type Detector struct {
 	client         *redis.Client
 	flags          []models.FraudFlag
+	contentFilter  *ContentFilter
 	mu             sync.RWMutex
 }
 
 func NewDetector(client *redis.Client) *Detector {
 	return &Detector{
-		client: client,
-		flags:  make([]models.FraudFlag, 0),
+		client:        client,
+		flags:         make([]models.FraudFlag, 0),
+		contentFilter: NewContentFilter(),
 	}
 }
 
@@ -27,6 +29,8 @@ type DetectionInput struct {
 	AccountID      string
 	DeviceID       string
 	Recipient      string
+	Sender         string
+	Message        string
 	MessageType    models.MessageType
 }
 
@@ -149,7 +153,36 @@ func (d *Detector) Analyze(ctx context.Context, input DetectionInput) *Detection
 		return velocityResult
 	}
 
+	// Content filter: check message body and sender for sensitive content
+	if contentResult := d.CheckSensitiveContent(input); contentResult.Flagged {
+		return contentResult
+	}
+
 	return &DetectionResult{Flagged: false}
+}
+
+// CheckSensitiveContent scans the message body and sender for prohibited content.
+func (d *Detector) CheckSensitiveContent(input DetectionInput) *DetectionResult {
+	blocked, violations := d.contentFilter.Scan(input.Message, input.Sender)
+	if !blocked || len(violations) == 0 {
+		return &DetectionResult{Flagged: false}
+	}
+
+	// Use the highest-weight violation as the reason
+	maxWeight := 0.0
+	worstCategory := violations[0].Category
+	for _, v := range violations {
+		if v.Weight > maxWeight {
+			maxWeight = v.Weight
+			worstCategory = v.Category
+		}
+	}
+
+	return &DetectionResult{
+		Flagged: true,
+		Reason:  fmt.Sprintf("sensitive content detected: %s (%d violations)", worstCategory, len(violations)),
+		Weight:  maxWeight,
+	}
 }
 
 func (d *Detector) String() string {
