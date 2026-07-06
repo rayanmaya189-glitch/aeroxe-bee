@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useQuery } from '@tanstack/react-query'
 import { useUIStore } from '@/store/uiStore'
 import { useAuthStore } from '@/store/authStore'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { cn } from '@/utils/cn'
+import { getSmishingFlagsCount } from '@/services/dashboard'
 import {
   LayoutDashboard, TrendingUp, Users, BarChart3, FileText, Webhook,
   CreditCard, Settings, Zap, ChevronLeft, ChevronDown,
@@ -108,6 +110,12 @@ export function Sidebar() {
   const user = useAuthStore((s) => s.user)
   const isAdmin = user?.role === 'admin' || user?.role === 'staff'
   const [hoveredItem, setHoveredItem] = useState<string | null>(null)
+  const { data: pendingSmishingCount = 0 } = useQuery({
+    queryKey: ['smishing-flags-count'],
+    queryFn: getSmishingFlagsCount,
+    refetchInterval: 30_000,
+    enabled: isAdmin,
+  })
 
   const navItems = isAdmin ? [] : memberNav  // admin uses groups now
   const navGroups = isAdmin ? adminNavGroups : []
@@ -156,6 +164,7 @@ export function Sidebar() {
                 setHoveredItem={setHoveredItem}
                 onNavClick={handleNavClick}
                 collapsed={false}
+                pendingSmishingCount={pendingSmishingCount}
               />
             </motion.div>
           )}
@@ -180,6 +189,7 @@ export function Sidebar() {
         onNavClick={handleNavClick}
         collapsed={!sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
+        pendingSmishingCount={pendingSmishingCount}
       />
     </motion.div>
   )
@@ -192,6 +202,7 @@ function SidebarGroupedNav({
   setHoveredItem,
   onNavClick,
   collapsed,
+  pendingSmishingCount,
 }: {
   groups: NavGroup[]
   isActive: (path: string) => boolean
@@ -199,6 +210,7 @@ function SidebarGroupedNav({
   setHoveredItem: (v: string | null) => void
   onNavClick: (path: string) => void
   collapsed: boolean
+  pendingSmishingCount: number
 }) {
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null)
 
@@ -240,6 +252,12 @@ function SidebarGroupedNav({
                 hasActiveChild ? 'text-blue-400' : 'text-gray-500 group-hover:text-gray-300',
               )}>
                 {group.icon}
+                {group.label === 'Operations' && pendingSmishingCount > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-rose-500" />
+                  </span>
+                )}
               </span>
               <AnimatePresence>
                 {hoveredItem === `group-${group.label}` && (
@@ -300,6 +318,11 @@ function SidebarGroupedNav({
                             {item.icon}
                           </span>
                           <span className="truncate">{item.label}</span>
+                          {item.path === '/smishing-flags' && pendingSmishingCount > 0 && (
+                            <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500/90 px-1.5 text-[11px] font-semibold text-white shadow-sm shadow-rose-500/30">
+                              {pendingSmishingCount > 99 ? '99+' : pendingSmishingCount}
+                            </span>
+                          )}
                         </button>
                       )
                     })}
@@ -324,6 +347,7 @@ function SidebarContent({
   onNavClick,
   collapsed,
   onToggle,
+  pendingSmishingCount,
 }: {
   navItems: NavItem[]
   navGroups?: NavGroup[]
@@ -333,6 +357,7 @@ function SidebarContent({
   setHoveredItem: (v: string | null) => void
   onNavClick: (path: string) => void
   collapsed: boolean
+  pendingSmishingCount: number
   onToggle?: () => void
 }) {
   return (
@@ -376,6 +401,7 @@ function SidebarContent({
             setHoveredItem={setHoveredItem}
             onNavClick={onNavClick}
             collapsed={collapsed}
+            pendingSmishingCount={pendingSmishingCount}
           />
         )}
         {/* Flat nav (member) */}

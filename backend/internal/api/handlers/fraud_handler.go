@@ -37,6 +37,12 @@ func (h *FraudHandler) ListAbuseFlags(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: pg.ToResponse(SlicePage(flags, pg), int64(len(flags)))})
 }
 
+// SmishingFlagsCount returns the count of unreviewed content-based fraud flags.
+func (h *FraudHandler) SmishingFlagsCount(w http.ResponseWriter, r *http.Request) {
+	count := h.detector.GetSmishingFlagsPendingCount(r.Context())
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: map[string]int{"count": count}})
+}
+
 // ListSmishingFlags returns only content-based fraud flags (smishing, phishing, scam, suspicious sender/recipient).
 func (h *FraudHandler) ListSmishingFlags(w http.ResponseWriter, r *http.Request) {
 	pg := ParsePagination(r, 20, 100)

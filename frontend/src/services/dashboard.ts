@@ -212,6 +212,12 @@ export async function getSmishingFlags(): Promise<FraudFlag[]> {
   return res.data.data.data || []
 }
 
+export async function getSmishingFlagsCount(): Promise<number> {
+  const res = await api.get<ApiResponse<{ count: number }>>('/admin/smishing-flags/count')
+  if (!res.data.success || res.data.data === undefined) throw new Error(res.data.error ?? 'Failed to load smishing flags count')
+  return res.data.data.count
+}
+
 export async function reviewSmishingFlag(id: string): Promise<void> {
   const res = await api.post(`/admin/fraud-flags/${id}/review`)
   if (!res.data.success) throw new Error(res.data.error ?? 'Failed to review smishing flag')

@@ -126,6 +126,19 @@ func (d *Detector) GetPendingFlags(ctx context.Context) []models.FraudFlag {
 
 // GetAllFlags returns all fraud flags, optionally filtered by content-type prefix.
 // When contentOnly is true, only flags whose FlagType starts with "sensitive content detected:" are returned.
+// GetSmishingFlagsPendingCount returns the count of unreviewed content-based fraud flags.
+func (d *Detector) GetSmishingFlagsPendingCount(ctx context.Context) int {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	count := 0
+	for _, f := range d.flags {
+		if !f.Reviewed && strings.HasPrefix(f.FlagType, "sensitive content detected:") {
+			count++
+		}
+	}
+	return count
+}
+
 func (d *Detector) GetAllFlags(ctx context.Context, contentOnly bool) []models.FraudFlag {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
