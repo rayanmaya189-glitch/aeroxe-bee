@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { PageTransition } from '@/components/ui/PageTransition'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/services/api'
 import type { ApiResponse, PaginatedResponse } from '@/types/api'
 import { Card } from '@/components/ui/Card'
@@ -42,22 +43,12 @@ const statusConfig: Record<string, { label: string; variant: 'success' | 'warnin
 }
 
 export function AppReleasesPage() {
+  const queryClient = useQueryClient()
   const { addToast } = useToast()
-  const [releases, setReleases] = useState<AppRelease[]>([])
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showCreate, setShowCreate] = useState(false)
   const [showUpload, setShowUpload] = useState(false)
   const [uploadReleaseId, setUploadReleaseId] = useState('')
-  const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({})
-
-  function withLoading(key: string, fn: () => Promise<void>) {
-    return async () => {
-      if (actionLoading[key]) return
-      setActionLoading((prev) => ({ ...prev, [key]: true }))
-      try { await fn() } finally { setActionLoading((prev) => ({ ...prev, [key]: false })) }
-    }
-  }
 
   // Form state
   const [form, setForm] = useState({
@@ -70,60 +61,79 @@ export function AppReleasesPage() {
     apk_url: '',
   })
 
-  const load = useCallback(async () => {
-    try {
-      setLoading(true)
-      setError('')
+  const { data: releases = [], isLoading } = useQuery({
+    queryKey: ['admin-releases'],
+    queryFn: async () => {
       const res = await api.get<ApiResponse<PaginatedResponse<AppRelease>>>('/admin/releases')
-      setReleases(res.data.data?.data || [])
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load releases')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+      return res.data.data?.data || []
+    },
+    staleTime: 60_000,
+  })
 
-  useEffect(() => { load() }, [load])
-
-  async function handleCreate() {
-    try {
-      await api.post('/admin/releases', {
-        version_code: parseInt(form.version_code),
-        version_name: form.version_name,
-        release_type: form.release_type,
-        title: form.title,
-        release_notes: form.release_notes,
-        min_required_version: parseInt(form.min_required_version) || 1,
-        apk_url: form.apk_url,
-      })
+  const createMutation = useMutation({
+    mutationFn: () => api.post('/admin/releases', {
+      version_code: parseInt(form.version_code),
+      version_name: form.version_name,
+      release_type: form.release_type,
+      title: form.title,
+      release_notes: form.release_notes,
+      min_required_version: parseInt(form.min_required_version) || 1,
+      apk_url: form.apk_url,
+    }),
+    onSuccess: () => {
+      setError('')
+      queryClient.invalidateQueries({ queryKey: ['admin-releases'] })
       setShowCreate(false)
       setForm({ version_code: '', version_name: '', release_type: 'normal', title: '', release_notes: '', min_required_version: '1', apk_url: '' })
-      load(); addToast('Release created', 'success')
-    } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to create release', 'error'); setError(err instanceof Error ? err.message : 'Failed to create release') }
+      addToast('Release created', 'success')
+    },
+    onError: (err: Error) => { addToast(err.message || 'Failed to create release', 'error'); setError(err.message || 'Failed to create release') },
+  })
+
+  const submitMutation = useMutation({
+    mutationFn: (id: string) => api.post(`/admin/releases/${id}/submit`),
+    onSuccess: () => { setError(''); queryClient.invalidateQueries({ queryKey: ['admin-releases'] }); addToast('Release submitted for approval', 'success') },
+    onError: (err: Error) => { addToast(err.message || 'Failed to submit', 'error'); setError(err.message || 'Failed to submit') },
+  })
+
+  const approveMutation = useMutation({
+    mutationFn: (id: string) => api.post(`/admin/releases/${id}/approve`),
+    onSuccess: () => { setError(''); queryClient.invalidateQueries({ queryKey: ['admin-releases'] }); addToast('Release approved', 'success') },
+    onError: (err: Error) => { addToast(err.message || 'Failed to approve', 'error'); setError(err.message || 'Failed to approve') },
+  })
+
+  const rejectMutation = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => api.post(`/admin/releases/${id}/reject`, { reason }),
+    onSuccess: () => { setError(''); queryClient.invalidateQueries({ queryKey: ['admin-releases'] }); addToast('Release rejected', 'success') },
+    onError: (err: Error) => { addToast(err.message || 'Failed to reject', 'error'); setError(err.message || 'Failed to reject') },
+  })
+
+  const publishMutation = useMutation({
+    mutationFn: (id: string) => api.post(`/admin/releases/${id}/release`),
+    onSuccess: () => { setError(''); queryClient.invalidateQueries({ queryKey: ['admin-releases'] }); addToast('Release published', 'success') },
+    onError: (err: Error) => { addToast(err.message || 'Failed to publish', 'error'); setError(err.message || 'Failed to publish') },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/admin/releases/${id}`),
+    onSuccess: () => { setError(''); queryClient.invalidateQueries({ queryKey: ['admin-releases'] }); addToast('Release deleted', 'success') },
+    onError: (err: Error) => { addToast(err.message || 'Failed to delete', 'error'); setError(err.message || 'Failed to delete') },
+  })
+
+  function handlePublish(id: string) {
+    if (!confirm('Publish this release? This will make it the active version for all users.')) return
+    publishMutation.mutate(id)
   }
 
-  async function handleSubmit(id: string) {
-    try { await api.post(`/admin/releases/${id}/submit`); load(); addToast('Release submitted for approval', 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to submit', 'error'); setError(err instanceof Error ? err.message : 'Failed') }
+  function handleDelete(id: string) {
+    if (!confirm('Delete this release?')) return
+    deleteMutation.mutate(id)
   }
 
-  async function handleApprove(id: string) {
-    try { await api.post(`/admin/releases/${id}/approve`); load(); addToast('Release approved', 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to approve', 'error'); setError(err instanceof Error ? err.message : 'Failed') }
-  }
-
-  async function handleReject(id: string) {
+  function handleReject(id: string) {
     const reason = prompt('Rejection reason:')
     if (reason === null) return
-    try { await api.post(`/admin/releases/${id}/reject`, { reason }); load(); addToast('Release rejected', 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to reject', 'error'); setError(err instanceof Error ? err.message : 'Failed') }
-  }
-
-  async function handlePublish(id: string) {
-    if (!confirm('Publish this release? This will make it the active version for all users.')) return
-    try { await api.post(`/admin/releases/${id}/release`); load(); addToast('Release published', 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to publish', 'error'); setError(err instanceof Error ? err.message : 'Failed') }
-  }
-
-  async function handleDelete(id: string) {
-    if (!confirm('Delete this release?')) return
-    try { await api.delete(`/admin/releases/${id}`); load(); addToast('Release deleted', 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to delete', 'error'); setError(err instanceof Error ? err.message : 'Failed') }
+    rejectMutation.mutate({ id, reason })
   }
 
   function formatBytes(bytes: number) {
@@ -134,7 +144,7 @@ export function AppReleasesPage() {
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
   }
 
-  if (loading) return <PageTransition><PageSkeleton /></PageTransition>
+  if (isLoading) return <PageTransition><PageSkeleton /></PageTransition>
 
   return (
     <PageTransition>
@@ -213,18 +223,18 @@ export function AppReleasesPage() {
                       {release.status === 'draft' && (
                         <>
                           <Button size="xs" variant="ghost" onClick={() => { setUploadReleaseId(release.id); setShowUpload(true) }} icon={<Upload className="h-3 w-3" />}>Upload APK</Button>
-                          <Button size="xs" onClick={withLoading(`submit-${release.id}`, () => handleSubmit(release.id))} loading={actionLoading[`submit-${release.id}`]} icon={<Send className="h-3 w-3" />}>Submit</Button>
-                          <Button size="xs" variant="ghost" className="text-red-400" onClick={withLoading(`delete-${release.id}`, () => handleDelete(release.id))} loading={actionLoading[`delete-${release.id}`]} icon={<Trash2 className="h-3 w-3" />}>Delete</Button>
+                          <Button size="xs" onClick={() => submitMutation.mutate(release.id)} loading={submitMutation.isPending} icon={<Send className="h-3 w-3" />}>Submit</Button>
+                          <Button size="xs" variant="ghost" className="text-red-400" onClick={() => handleDelete(release.id)} loading={deleteMutation.isPending} icon={<Trash2 className="h-3 w-3" />}>Delete</Button>
                         </>
                       )}
                       {release.status === 'pending_approval' && (
                         <>
-                          <Button size="xs" onClick={withLoading(`approve-${release.id}`, () => handleApprove(release.id))} loading={actionLoading[`approve-${release.id}`]} icon={<CheckCircle className="h-3 w-3" />}>Approve</Button>
-                          <Button size="xs" variant="ghost" className="text-red-400" onClick={withLoading(`reject-${release.id}`, () => handleReject(release.id))} loading={actionLoading[`reject-${release.id}`]} icon={<XCircle className="h-3 w-3" />}>Reject</Button>
+                          <Button size="xs" onClick={() => approveMutation.mutate(release.id)} loading={approveMutation.isPending} icon={<CheckCircle className="h-3 w-3" />}>Approve</Button>
+                          <Button size="xs" variant="ghost" className="text-red-400" onClick={() => handleReject(release.id)} loading={rejectMutation.isPending} icon={<XCircle className="h-3 w-3" />}>Reject</Button>
                         </>
                       )}
                       {release.status === 'approved' && (
-                        <Button size="xs" onClick={withLoading(`publish-${release.id}`, () => handlePublish(release.id))} loading={actionLoading[`publish-${release.id}`]} icon={<Rocket className="h-3 w-3" />}>Publish</Button>
+                        <Button size="xs" onClick={() => handlePublish(release.id)} loading={publishMutation.isPending} icon={<Rocket className="h-3 w-3" />}>Publish</Button>
                       )}
                     </div>
                   </div>
@@ -236,7 +246,7 @@ export function AppReleasesPage() {
 
         {/* Create Release Modal */}
         <Modal open={showCreate} onClose={() => setShowCreate(false)} title="New App Release"
-          footer={<><Button variant="ghost" size="sm" onClick={() => setShowCreate(false)}>Cancel</Button>          <Button size="sm" onClick={withLoading('create', handleCreate)} loading={actionLoading['create']}>Create</Button></>}>
+          footer={<><Button variant="ghost" size="sm" onClick={() => setShowCreate(false)}>Cancel</Button><Button size="sm" onClick={() => createMutation.mutate()} loading={createMutation.isPending}>Create</Button></>}>
           <div className="space-y-4">
             <Input label="Version Code" type="number" value={form.version_code} onChange={(e) => setForm({ ...form, version_code: e.target.value })} placeholder="1" required />
             <Input label="Version Name" value={form.version_name} onChange={(e) => setForm({ ...form, version_name: e.target.value })} placeholder="1.0.0" required />
@@ -259,7 +269,7 @@ export function AppReleasesPage() {
 
         {/* Upload APK Modal */}
         <Modal open={showUpload} onClose={() => setShowUpload(false)} title="Upload APK">
-          <APKUpload releaseId={uploadReleaseId} onDone={() => { setShowUpload(false); load() }} />
+          <APKUpload releaseId={uploadReleaseId} onDone={() => { setShowUpload(false); queryClient.invalidateQueries({ queryKey: ['admin-releases'] }) }} />
         </Modal>
       </motion.div>
     </PageTransition>
