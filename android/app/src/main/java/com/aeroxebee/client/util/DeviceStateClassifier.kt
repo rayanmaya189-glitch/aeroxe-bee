@@ -80,6 +80,16 @@ class DeviceStateClassifier @Inject constructor(
         return "ACTIVE"
     }
 
+    /**
+     * Check if the app is whitelisted from battery optimizations.
+     */
+    fun isIgnoringBatteryOptimizations(): Boolean {
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        return try {
+            powerManager.isIgnoringBatteryOptimizations(context.packageName)
+        } catch (_: Exception) { false }
+    }
+
     fun openBatterySettings() {
         val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK

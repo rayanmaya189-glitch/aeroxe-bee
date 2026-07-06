@@ -58,7 +58,7 @@ class DeviceViewModel @Inject constructor(
                         error = null,
                         batteryGuide = batteryGuide,
                         canScheduleExactAlarms = canScheduleExactAlarms,
-                        isBatteryOptimized = deviceState == DeviceState.ACTIVE,
+                        isBatteryOptimized = deviceStateClassifier.isIgnoringBatteryOptimizations(),
                     )
                 }
             } catch (e: Exception) {
