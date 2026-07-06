@@ -281,7 +281,6 @@ export function SmishingFlagsPage() {
             </thead>
             <tbody className="divide-y divide-white/[0.04]">
               {filteredFlags.map((f) => {
-                const category = extractCategory(f.flag_type)
                 const theme = getCategoryTheme(f.flag_type)
                 const isSelected = selectedIds.has(f.id)
                 return (

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Badge } from '@/components/ui/Badge'
 import { staggerContainer, fadeInUp } from '@/components/animations/variants'
-import { Send, CalendarClock, Users, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import { Send, CalendarClock, Users, CheckCircle, AlertCircle } from 'lucide-react'
 
 type SendMode = 'now' | 'schedule'
 
