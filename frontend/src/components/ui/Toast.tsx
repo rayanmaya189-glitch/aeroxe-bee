@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/utils/cn'
 import { CheckCircle, XCircle, AlertTriangle, Info, X } from 'lucide-react'
@@ -41,6 +41,7 @@ const icons: Record<ToastVariant, React.ReactNode> = {
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([])
+  const containerRef = useRef<HTMLDivElement>(null)
 
   const addToast = useCallback((message: string, variant: ToastVariant = 'info') => {
     const id = Math.random().toString(36).slice(2)
@@ -54,6 +55,28 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setToasts((prev) => prev.filter((t) => t.id !== id))
   }, [])
 
+  // Dismiss newest toast on click outside
+  useEffect(() => {
+    if (toasts.length === 0) return
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        const newest = toasts[toasts.length - 1]
+        if (newest) removeToast(newest.id)
+      }
+    }
+
+    // Small delay to avoid the event that triggered the toast from also dismissing it
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside)
+    }, 100)
+
+    return () => {
+      clearTimeout(timer)
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [toasts, removeToast])
+
   useEffect(() => {
     _context = { addToast, removeToast }
   }, [addToast, removeToast])
@@ -62,7 +85,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <>
       {children}
       {toasts.length > 0 && (
-        <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+        <div ref={containerRef} className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
           <AnimatePresence>
             {toasts.map((toast) => (
               <motion.div
@@ -72,14 +95,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 exit={{ opacity: 0, y: 20, scale: 0.96 }}
                 transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
                 className={cn(
-                  'flex items-center gap-3 rounded-lg border px-4 py-3 text-sm font-medium shadow-xl backdrop-blur-xl',
+                  'flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 text-sm font-medium shadow-xl backdrop-blur-xl',
                   variantStyles[toast.variant],
                 )}
+                onClick={() => removeToast(toast.id)}
               >
                 {icons[toast.variant]}
                 <span>{toast.message}</span>
                 <button
-                  onClick={() => removeToast(toast.id)}
+                  onClick={(e) => { e.stopPropagation(); removeToast(toast.id) }}
                   className="ml-2 rounded p-0.5 hover:bg-white/10"
                 >
                   <X className="h-3.5 w-3.5" />
