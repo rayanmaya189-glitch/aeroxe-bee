@@ -42,9 +42,11 @@ const icons: Record<ToastVariant, React.ReactNode> = {
 }
 
 const TOAST_DURATION = 4000
+const MAX_VISIBLE = 3
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<GroupedToast[]>([])
+  const [showAll, setShowAll] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   const scheduleRemove = useCallback((id: string) => {
@@ -81,6 +83,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     })
   }, [])
 
+  // Auto-collapse back to MAX_VISIBLE when count drops to threshold or below
+  useEffect(() => {
+    if (showAll && toasts.length <= MAX_VISIBLE) {
+      setShowAll(false)
+    }
+  }, [toasts.length, showAll])
+
   // Dismiss newest toast on click outside
   useEffect(() => {
     if (toasts.length === 0) return
@@ -114,13 +123,36 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const visibleToasts = showAll ? toasts : toasts.slice(-MAX_VISIBLE)
+  const hiddenCount = toasts.length - MAX_VISIBLE
+
   return (
     <>
       {children}
       {toasts.length > 0 && (
         <div ref={containerRef} className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
           <AnimatePresence>
-            {toasts.map((toast) => (
+            {hiddenCount > 0 && !showAll && (
+              <motion.button
+                key="show-more"
+                layout
+                initial={{ opacity: 0, y: 20, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.96 }}
+                transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                onClick={() => setShowAll(true)}
+                className={cn(
+                  'flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-xs font-medium text-white/70 shadow-xl backdrop-blur-xl transition-colors hover:border-white/20 hover:text-white/90',
+                  'bg-white/5',
+                )}
+              >
+                <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-white/10 px-1 text-[10px] font-semibold text-white/80">
+                  {hiddenCount > 99 ? '99+' : hiddenCount}
+                </span>
+                <span>more</span>
+              </motion.button>
+            )}
+            {visibleToasts.map((toast) => (
               <motion.div
                 key={toast.id}
                 layout
