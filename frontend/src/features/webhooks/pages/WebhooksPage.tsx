@@ -25,6 +25,7 @@ export function WebhooksPage() {
   const { addToast } = useToast()
   const [showForm, setShowForm] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Webhook | null>(null)
+  const [rotateTarget, setRotateTarget] = useState<Webhook | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [showBulkDelete, setShowBulkDelete] = useState(false)
   const [url, setUrl] = useState('')
@@ -221,7 +222,7 @@ export function WebhooksPage() {
                 </div>
                 <div className="mt-4 flex gap-2 border-t border-white/[0.06] pt-4">
                   <Button variant="ghost" size="xs" icon={<Send className="h-3 w-3" />} onClick={async () => { setTestLoading(wh.id); try { const result = await testWebhook(wh.id); setTestResult({ webhookId: wh.id, url: wh.url, result }) } catch { addToast('Failed to test webhook', 'error') } finally { setTestLoading(null) } }} loading={testLoading === wh.id}>Test</Button>
-                  <Button variant="ghost" size="xs" onClick={() => rotateMutation.mutate(wh.id)}>Rotate secret</Button>
+                  <Button variant="ghost" size="xs" onClick={() => setRotateTarget(wh)}>Rotate secret</Button>
                   <Button variant="ghost" size="xs" className="text-red-400" onClick={() => setDeleteTarget(wh)}>Delete</Button>
                 </div>
                 {/* ─── Delivery log toggle ────────────────────────────── */}
@@ -485,6 +486,8 @@ export function WebhooksPage() {
           </div>
         )}
       </Modal>
+
+      <ConfirmDialog open={!!rotateTarget} onClose={() => setRotateTarget(null)} onConfirm={() => { rotateMutation.mutate(rotateTarget!.id); setRotateTarget(null) }} title="Rotate webhook secret" description={`Are you sure you want to rotate the secret for ${rotateTarget?.url}? The current secret will stop working immediately.`} loading={rotateMutation.isPending} confirmLabel="Rotate" />
 
       <ConfirmDialog
         open={showBulkDelete}

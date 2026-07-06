@@ -28,6 +28,7 @@ export function MemberWebhooksPage() {
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Webhook | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Webhook | null>(null)
+  const [rotateTarget, setRotateTarget] = useState<Webhook | null>(null)
   const [url, setUrl] = useState('')
   const [events, setEvents] = useState('')
   const [error, setError] = useState('')
@@ -136,7 +137,7 @@ export function MemberWebhooksPage() {
                 <div className="mt-4 flex gap-2 border-t border-white/[0.06] pt-4">
                   <Button variant="ghost" size="xs" icon={<Pencil className="h-3 w-3" />} onClick={() => openForm(wh)}>Edit</Button>
                   <Button variant="ghost" size="xs" icon={<Send className="h-3 w-3" />} onClick={async () => { setTestLoading(wh.id); try { const result = await testMemberWebhook(wh.id); setTestResult({ webhookId: wh.id, url: wh.url, result }) } catch { addToast('Failed to test webhook', 'error') } finally { setTestLoading(null) } }} loading={testLoading === wh.id}>Test</Button>
-                  <Button variant="ghost" size="xs" icon={<Key className="h-3 w-3" />} onClick={() => rotateSecretMutation.mutate(wh.id)}>Rotate secret</Button>
+                  <Button variant="ghost" size="xs" icon={<Key className="h-3 w-3" />} onClick={() => setRotateTarget(wh)}>Rotate secret</Button>
                   <Button variant="ghost" size="xs" icon={<Trash2 className="h-3 w-3" />} className="text-red-400" onClick={() => setDeleteTarget(wh)}>Delete</Button>
                 </div>
                 {/* ─── Delivery log toggle ────────────────────────────── */}
@@ -364,6 +365,7 @@ export function MemberWebhooksPage() {
         )}
       </Modal>
 
+      <ConfirmDialog open={!!rotateTarget} onClose={() => setRotateTarget(null)} onConfirm={() => { rotateSecretMutation.mutate(rotateTarget!.id); setRotateTarget(null) }} title="Rotate webhook secret" description={`Are you sure you want to rotate the secret for ${rotateTarget?.url}? The current secret will stop working immediately.`} loading={rotateSecretMutation.isPending} confirmLabel="Rotate" />
       <ConfirmDialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={() => deleteMutation.mutate()} title="Delete webhook" description={`Are you sure you want to delete the webhook for ${deleteTarget?.url}?`} loading={deleteMutation.isPending} />
     </motion.div>
     </PageTransition>
