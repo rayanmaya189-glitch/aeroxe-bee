@@ -41,6 +41,8 @@ export function UsersPage() {
   const debouncedSearch = useDebounce(search, 300)
 
   const [error, setError] = useState('')
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
 
   const loadUsers = useCallback(async () => {
     try {
@@ -59,12 +61,14 @@ export function UsersPage() {
   useEffect(() => { loadUsers() }, [loadUsers])
 
   async function handleDelete(id: string) {
-    try { await deleteUser(id); loadUsers(); addToast('User deleted', 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to delete user', 'error'); setError(err instanceof Error ? err.message : 'Failed to delete user') }
+    setDeletingId(id)
+    try { await deleteUser(id); loadUsers(); addToast('User deleted', 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to delete user', 'error'); setError(err instanceof Error ? err.message : 'Failed to delete user') } finally { setDeletingId(null) }
   }
 
   async function handleBulkDelete() {
     if (selectedIds.length === 0) return
-    try { await bulkDeleteUsers(selectedIds); setSelectedIds([]); loadUsers(); addToast(`${selectedIds.length} users deleted`, 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to delete users', 'error'); setError(err instanceof Error ? err.message : 'Failed to delete users') }
+    setBulkDeleting(true)
+    try { await bulkDeleteUsers(selectedIds); setSelectedIds([]); loadUsers(); addToast(`${selectedIds.length} users deleted`, 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to delete users', 'error'); setError(err instanceof Error ? err.message : 'Failed to delete users') } finally { setBulkDeleting(false) }
   }
 
   const columns: Column<User>[] = [
@@ -93,7 +97,7 @@ export function UsersPage() {
       render: (row) => (
         <div className="flex gap-1">
           <Button variant="ghost" size="xs" onClick={() => { setEditingUser(row); setShowCreate(true) }}>Edit</Button>
-          <Button variant="ghost" size="xs" className="text-red-400" onClick={() => handleDelete(row.id)}>Delete</Button>
+          <Button variant="ghost" size="xs" className="text-red-400" onClick={() => handleDelete(row.id)} loading={deletingId === row.id}>Delete</Button>
         </div>
       ),
     },
@@ -126,7 +130,7 @@ export function UsersPage() {
             </div>
             <div className="flex gap-2">
               {selectedIds.length > 0 && (
-                <Button variant="danger" size="sm" icon={<Trash2 className="h-4 w-4" />} onClick={handleBulkDelete}>
+                <Button variant="danger" size="sm" icon={<Trash2 className="h-4 w-4" />} onClick={handleBulkDelete} loading={bulkDeleting}>
                   Delete ({selectedIds.length})
                 </Button>
               )}

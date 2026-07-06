@@ -49,6 +49,15 @@ export function AppReleasesPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [showUpload, setShowUpload] = useState(false)
   const [uploadReleaseId, setUploadReleaseId] = useState('')
+  const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({})
+
+  function withLoading(key: string, fn: () => Promise<void>) {
+    return async () => {
+      if (actionLoading[key]) return
+      setActionLoading((prev) => ({ ...prev, [key]: true }))
+      try { await fn() } finally { setActionLoading((prev) => ({ ...prev, [key]: false })) }
+    }
+  }
 
   // Form state
   const [form, setForm] = useState({
@@ -204,18 +213,18 @@ export function AppReleasesPage() {
                       {release.status === 'draft' && (
                         <>
                           <Button size="xs" variant="ghost" onClick={() => { setUploadReleaseId(release.id); setShowUpload(true) }} icon={<Upload className="h-3 w-3" />}>Upload APK</Button>
-                          <Button size="xs" onClick={() => handleSubmit(release.id)} icon={<Send className="h-3 w-3" />}>Submit</Button>
-                          <Button size="xs" variant="ghost" className="text-red-400" onClick={() => handleDelete(release.id)} icon={<Trash2 className="h-3 w-3" />}>Delete</Button>
+                          <Button size="xs" onClick={withLoading(`submit-${release.id}`, () => handleSubmit(release.id))} loading={actionLoading[`submit-${release.id}`]} icon={<Send className="h-3 w-3" />}>Submit</Button>
+                          <Button size="xs" variant="ghost" className="text-red-400" onClick={withLoading(`delete-${release.id}`, () => handleDelete(release.id))} loading={actionLoading[`delete-${release.id}`]} icon={<Trash2 className="h-3 w-3" />}>Delete</Button>
                         </>
                       )}
                       {release.status === 'pending_approval' && (
                         <>
-                          <Button size="xs" onClick={() => handleApprove(release.id)} icon={<CheckCircle className="h-3 w-3" />}>Approve</Button>
-                          <Button size="xs" variant="ghost" className="text-red-400" onClick={() => handleReject(release.id)} icon={<XCircle className="h-3 w-3" />}>Reject</Button>
+                          <Button size="xs" onClick={withLoading(`approve-${release.id}`, () => handleApprove(release.id))} loading={actionLoading[`approve-${release.id}`]} icon={<CheckCircle className="h-3 w-3" />}>Approve</Button>
+                          <Button size="xs" variant="ghost" className="text-red-400" onClick={withLoading(`reject-${release.id}`, () => handleReject(release.id))} loading={actionLoading[`reject-${release.id}`]} icon={<XCircle className="h-3 w-3" />}>Reject</Button>
                         </>
                       )}
                       {release.status === 'approved' && (
-                        <Button size="xs" onClick={() => handlePublish(release.id)} icon={<Rocket className="h-3 w-3" />}>Publish</Button>
+                        <Button size="xs" onClick={withLoading(`publish-${release.id}`, () => handlePublish(release.id))} loading={actionLoading[`publish-${release.id}`]} icon={<Rocket className="h-3 w-3" />}>Publish</Button>
                       )}
                     </div>
                   </div>
@@ -227,7 +236,7 @@ export function AppReleasesPage() {
 
         {/* Create Release Modal */}
         <Modal open={showCreate} onClose={() => setShowCreate(false)} title="New App Release"
-          footer={<><Button variant="ghost" size="sm" onClick={() => setShowCreate(false)}>Cancel</Button><Button size="sm" onClick={handleCreate}>Create</Button></>}>
+          footer={<><Button variant="ghost" size="sm" onClick={() => setShowCreate(false)}>Cancel</Button>          <Button size="sm" onClick={withLoading('create', handleCreate)} loading={actionLoading['create']}>Create</Button></>}>
           <div className="space-y-4">
             <Input label="Version Code" type="number" value={form.version_code} onChange={(e) => setForm({ ...form, version_code: e.target.value })} placeholder="1" required />
             <Input label="Version Name" value={form.version_name} onChange={(e) => setForm({ ...form, version_name: e.target.value })} placeholder="1.0.0" required />
