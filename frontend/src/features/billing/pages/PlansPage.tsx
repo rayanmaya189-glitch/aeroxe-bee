@@ -37,9 +37,10 @@ export function PlansPage() {
   const [maxQueueDepth, setMaxQueueDepth] = useState('')
   const [routingStrategy, setRoutingStrategy] = useState('fastest_delivery')
   const [dedicatedPool, setDedicatedPool] = useState(false)
-  const [visibility, setVisibility] = useState<'public' | 'private' | 'custom'>('public')	const [maxDevices, setMaxDevices] = useState('')
-	const [maxTemplates, setMaxTemplates] = useState('')
-	const [isPopular, setIsPopular] = useState(false)
+  const [visibility, setVisibility] = useState<'public' | 'private' | 'custom'>('public')
+  const [maxDevices, setMaxDevices] = useState('')
+  const [maxTemplates, setMaxTemplates] = useState('')
+  const [isPopular, setIsPopular] = useState(false)
   const [ctaText, setCtaText] = useState('')
   const [featuresList, setFeaturesList] = useState<string[]>([])
   const [featureInput, setFeatureInput] = useState('')
@@ -53,7 +54,8 @@ export function PlansPage() {
     : ['5K SMS/month', '10K daily SMS', 'Advanced analytics', 'Priority support', 'Custom webhooks', 'OTP system', 'API access']
 
   const saveMutation = useMutation({
-    mutationFn: async () => {	const payload: Plan = { id: planId, name, visibility, daily_quota: Number(dailyQuota) || 0, monthly_quota: Number(monthlyQuota) || 0, monthly_price: Number(monthlyPrice) || 0, price_per_sms: Number(pricePerSms) || 0, overage_buffer_pct: Number(overageBuffer) || 0, max_queue_depth: Number(maxQueueDepth) || 100, max_devices: Number(maxDevices) || 1, max_templates: Number(maxTemplates) || 10, dedicated_pool: dedicatedPool, default_routing_strategy: routingStrategy, is_popular: isPopular, cta_text: ctaText || 'Get Started', features: featuresList }
+    mutationFn: async () => {
+      const payload: Plan = { id: planId, name, visibility, daily_quota: Number(dailyQuota) || 0, monthly_quota: Number(monthlyQuota) || 0, monthly_price: Number(monthlyPrice) || 0, price_per_sms: Number(pricePerSms) || 0, overage_buffer_pct: Number(overageBuffer) || 0, max_queue_depth: Number(maxQueueDepth) || 100, max_devices: Number(maxDevices) || 1, max_templates: Number(maxTemplates) || 10, dedicated_pool: dedicatedPool, default_routing_strategy: routingStrategy, is_popular: isPopular, cta_text: ctaText || 'Get Started', features: featuresList }
       return editing ? updatePlan(editing.id, payload) : createPlan(payload)
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin-plans'] }); closeForm(); addToast(editing ? 'Plan updated' : 'Plan created', 'success') },
@@ -72,7 +74,8 @@ export function PlansPage() {
     setMonthlyPrice(String(plan?.monthly_price ?? '')); setPricePerSms(String(plan?.price_per_sms ?? ''))
     setOverageBuffer(String(plan?.overage_buffer_pct ?? '')); setMaxQueueDepth(String(plan?.max_queue_depth ?? ''))
     setRoutingStrategy(plan?.default_routing_strategy || 'fastest_delivery')
-    setDedicatedPool(plan?.dedicated_pool || false); setVisibility(plan?.visibility || 'public')	setMaxDevices(String(plan?.max_devices ?? '')); setMaxTemplates(String(plan?.max_templates ?? '')); setIsPopular(plan?.is_popular || false)
+    setDedicatedPool(plan?.dedicated_pool || false); setVisibility(plan?.visibility || 'public')
+    setMaxDevices(String(plan?.max_devices ?? '')); setMaxTemplates(String(plan?.max_templates ?? '')); setIsPopular(plan?.is_popular || false)
     setCtaText(plan?.cta_text || '')
     setFeaturesList(plan?.features ? [...plan.features] : [])
     setFeatureInput('')
