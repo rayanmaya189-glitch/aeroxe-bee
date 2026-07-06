@@ -5,10 +5,12 @@ import { CheckCircle, XCircle, AlertTriangle, Info, X } from 'lucide-react'
 
 type ToastVariant = 'success' | 'error' | 'warning' | 'info'
 
-interface ToastItem {
+interface GroupedToast {
   id: string
-  message: string
   variant: ToastVariant
+  message: string
+  count: number
+  timerId: ReturnType<typeof setTimeout>
 }
 
 interface ToastContextValue {
@@ -39,20 +41,44 @@ const icons: Record<ToastVariant, React.ReactNode> = {
   info: <Info className="h-4 w-4" />,
 }
 
+const TOAST_DURATION = 4000
+
 export function ToastProvider({ children }: { children: React.ReactNode }) {
-  const [toasts, setToasts] = useState<ToastItem[]>([])
+  const [toasts, setToasts] = useState<GroupedToast[]>([])
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const addToast = useCallback((message: string, variant: ToastVariant = 'info') => {
-    const id = Math.random().toString(36).slice(2)
-    setToasts((prev) => [...prev, { id, message, variant }])
-    setTimeout(() => {
+  const scheduleRemove = useCallback((id: string) => {
+    const timer = setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id))
-    }, 4000)
+    }, TOAST_DURATION)
+    return timer
   }, [])
 
+  const addToast = useCallback((message: string, variant: ToastVariant = 'info') => {
+    setToasts((prev) => {
+      const existing = prev.find((t) => t.variant === variant)
+      if (existing) {
+        // Extend timer for the grouped toast, increment count
+        clearTimeout(existing.timerId)
+        const newTimer = scheduleRemove(existing.id)
+        return prev.map((t) =>
+          t.id === existing.id
+            ? { ...t, message, count: t.count + 1, timerId: newTimer }
+            : t
+        )
+      }
+      const id = Math.random().toString(36).slice(2)
+      const timerId = scheduleRemove(id)
+      return [...prev, { id, variant, message, count: 1, timerId }]
+    })
+  }, [scheduleRemove])
+
   const removeToast = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id))
+    setToasts((prev) => {
+      const target = prev.find((t) => t.id === id)
+      if (target) clearTimeout(target.timerId)
+      return prev.filter((t) => t.id !== id)
+    })
   }, [])
 
   // Dismiss newest toast on click outside
@@ -66,7 +92,6 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // Small delay to avoid the event that triggered the toast from also dismissing it
     const timer = setTimeout(() => {
       document.addEventListener('mousedown', handleClickOutside)
     }, 100)
@@ -81,6 +106,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     _context = { addToast, removeToast }
   }, [addToast, removeToast])
 
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      toasts.forEach((t) => clearTimeout(t.timerId))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   return (
     <>
       {children}
@@ -90,6 +123,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             {toasts.map((toast) => (
               <motion.div
                 key={toast.id}
+                layout
                 initial={{ opacity: 0, y: 20, scale: 0.96 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 20, scale: 0.96 }}
@@ -102,6 +136,17 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               >
                 {icons[toast.variant]}
                 <span>{toast.message}</span>
+                {toast.count > 1 && (
+                  <span className={cn(
+                    'flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11px] font-semibold',
+                    toast.variant === 'success' ? 'bg-emerald-500/20 text-emerald-300' :
+                    toast.variant === 'error' ? 'bg-red-500/20 text-red-300' :
+                    toast.variant === 'warning' ? 'bg-amber-500/20 text-amber-300' :
+                    'bg-blue-500/20 text-blue-300',
+                  )}>
+                    {toast.count > 99 ? '99+' : toast.count}
+                  </span>
+                )}
                 <button
                   onClick={(e) => { e.stopPropagation(); removeToast(toast.id) }}
                   className="ml-2 rounded p-0.5 hover:bg-white/10"
