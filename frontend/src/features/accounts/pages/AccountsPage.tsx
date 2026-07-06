@@ -40,6 +40,7 @@ export function AccountsPage() {
   const debouncedSearch = useDebounce(search, 300)
 
   const [error, setError] = useState('')
+  const [actingId, setActingId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -59,15 +60,18 @@ export function AccountsPage() {
   useEffect(() => { load() }, [load])
 
   async function handleSuspend(id: string) {
-    try { await suspendAccount(id); load(); addToast('Account suspended', 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to suspend account', 'error'); setError(err instanceof Error ? err.message : 'Failed to suspend account') }
+    setError(''); setActingId(id)
+    try { await suspendAccount(id); load(); addToast('Account suspended', 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to suspend account', 'error'); setError(err instanceof Error ? err.message : 'Failed to suspend account') } finally { setActingId(null) }
   }
 
   async function handleActivate(id: string) {
-    try { await activateAccount(id); load(); addToast('Account activated', 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to activate account', 'error'); setError(err instanceof Error ? err.message : 'Failed to activate account') }
+    setError(''); setActingId(id)
+    try { await activateAccount(id); load(); addToast('Account activated', 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to activate account', 'error'); setError(err instanceof Error ? err.message : 'Failed to activate account') } finally { setActingId(null) }
   }
 
   async function handleDelete(id: string) {
-    try { await deleteAccount(id); load(); addToast('Account deleted', 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to delete account', 'error'); setError(err instanceof Error ? err.message : 'Failed to delete account') }
+    setError(''); setActingId(id)
+    try { await deleteAccount(id); load(); addToast('Account deleted', 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to delete account', 'error'); setError(err instanceof Error ? err.message : 'Failed to delete account') } finally { setActingId(null) }
   }
 
   const columns: Column<Account>[] = [
@@ -97,11 +101,11 @@ export function AccountsPage() {
       render: (row) => (
         <div className="flex gap-1">
           {row.status === 'active' ? (
-            <Button variant="ghost" size="xs" onClick={() => handleSuspend(row.id)}>Suspend</Button>
+            <Button variant="ghost" size="xs" onClick={() => handleSuspend(row.id)} loading={actingId === row.id}>Suspend</Button>
           ) : (
-            <Button variant="ghost" size="xs" onClick={() => handleActivate(row.id)}>Activate</Button>
+            <Button variant="ghost" size="xs" onClick={() => handleActivate(row.id)} loading={actingId === row.id}>Activate</Button>
           )}
-          <Button variant="ghost" size="xs" className="text-red-400" onClick={() => handleDelete(row.id)}>Delete</Button>
+          <Button variant="ghost" size="xs" className="text-red-400" onClick={() => handleDelete(row.id)} loading={actingId === row.id}>Delete</Button>
         </div>
       ),
     },
