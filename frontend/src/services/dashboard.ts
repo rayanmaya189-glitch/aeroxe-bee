@@ -599,6 +599,24 @@ export async function getMemberWebhookDeliveries(id: string): Promise<WebhookDel
   return res.data.data
 }
 
+export interface WebhookTestResult {
+  status_code: number
+  response_body: string
+  error?: string
+}
+
+export async function testWebhook(id: string): Promise<WebhookTestResult> {
+  const res = await api.post<ApiResponse<WebhookTestResult>>(`/webhooks/${id}/test`)
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to test webhook')
+  return res.data.data
+}
+
+export async function testMemberWebhook(id: string): Promise<WebhookTestResult> {
+  const res = await api.post<ApiResponse<WebhookTestResult>>(`/member/webhooks/${id}/test`)
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to test webhook')
+  return res.data.data
+}
+
 // ─── BI Dashboard (admin) ────────────────────────────────────────
 
 export async function getBIDashboard(): Promise<BIDashboard> {

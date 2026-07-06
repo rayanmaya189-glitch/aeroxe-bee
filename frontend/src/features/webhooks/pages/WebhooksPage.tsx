@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PageTransition } from '@/components/ui/PageTransition'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getWebhooks, createWebhook, deleteWebhook, rotateWebhookSecret, bulkDeleteWebhooks, getWebhookDeliveries } from '@/services/dashboard'
+import { getWebhooks, createWebhook, deleteWebhook, rotateWebhookSecret, bulkDeleteWebhooks, getWebhookDeliveries, testWebhook } from '@/services/dashboard'
+import type { WebhookTestResult } from '@/services/dashboard'
 import api from '@/services/api'
 import type { Webhook, WebhookDelivery } from '@/types/models'
 import { Card } from '@/components/ui/Card'
@@ -14,7 +15,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { PageSkeleton } from '@/components/ui/Skeleton'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
-import { Plus, WebhookIcon, Trash2, CheckSquare, Square, Eye, EyeOff, Check, Copy, ChevronDown, ChevronRight, Shield, History, CheckCircle, XCircle, Clock, Loader2 } from 'lucide-react'
+import { Plus, WebhookIcon, Trash2, CheckSquare, Square, Eye, EyeOff, Check, Copy, ChevronDown, ChevronRight, Shield, History, CheckCircle, XCircle, Clock, Loader2, Send } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
 import { WebhookVerificationDocs } from '@/components/ui/WebhookVerificationDocs'
 import { cn } from '@/utils/cn'
@@ -38,6 +39,8 @@ export function WebhooksPage() {
   const [logsExpanded, setLogsExpanded] = useState<Record<string, boolean>>({})
   const [deliveriesCache, setDeliveriesCache] = useState<Record<string, WebhookDelivery[]>>({})
   const [loadingLogs, setLoadingLogs] = useState<Record<string, boolean>>({})
+  const [testResult, setTestResult] = useState<{ webhookId: string; url: string; result: WebhookTestResult } | null>(null)
+  const [testLoading, setTestLoading] = useState<string | null>(null)
 
   const [page, setPage] = useState(1)
   const PAGE_SIZE = 30
@@ -217,6 +220,7 @@ export function WebhooksPage() {
                   </button>
                 </div>
                 <div className="mt-4 flex gap-2 border-t border-white/[0.06] pt-4">
+                  <Button variant="ghost" size="xs" icon={<Send className="h-3 w-3" />} onClick={async () => { setTestLoading(wh.id); try { const result = await testWebhook(wh.id); setTestResult({ webhookId: wh.id, url: wh.url, result }) } catch { addToast('Failed to test webhook', 'error') } finally { setTestLoading(null) } }} loading={testLoading === wh.id}>Test</Button>
                   <Button variant="ghost" size="xs" onClick={() => rotateMutation.mutate(wh.id)}>Rotate secret</Button>
                   <Button variant="ghost" size="xs" className="text-red-400" onClick={() => setDeleteTarget(wh)}>Delete</Button>
                 </div>
@@ -427,6 +431,60 @@ export function WebhooksPage() {
         description={`Are you sure you want to delete the webhook for ${deleteTarget?.url}?`}
         loading={deleteMutation.isPending}
       />
+
+      {/* ─── Test Result Modal ──────────────────────────────────────── */}
+      <Modal
+        open={!!testResult}
+        onClose={() => setTestResult(null)}
+        title="Webhook test result"
+        size="lg"
+        footer={<Button size="sm" onClick={() => setTestResult(null)}>Done</Button>}
+      >
+        {testResult && (
+          <div className="space-y-5">
+            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+              <p className="text-sm text-gray-300 mb-1">
+                Sent test payload to <span className="font-mono text-gray-100">{testResult.url}</span>
+              </p>
+              <p className="text-xs text-gray-500">Event: <code className="rounded bg-white/[0.06] px-1.5 py-0.5 font-mono">test.ping</code></p>
+            </div>
+
+            <div className="flex items-center gap-3 rounded-xl border p-4" style={{
+              borderColor: testResult.result.status_code >= 200 && testResult.result.status_code < 300
+                ? 'rgba(52,211,153,0.2)'
+                : 'rgba(248,113,113,0.2)',
+              backgroundColor: testResult.result.status_code >= 200 && testResult.result.status_code < 300
+                ? 'rgba(52,211,153,0.05)'
+                : 'rgba(248,113,113,0.05)',
+            }}>
+              {testResult.result.status_code >= 200 && testResult.result.status_code < 300
+                ? <CheckCircle className="h-5 w-5 shrink-0 text-emerald-400" />
+                : <XCircle className="h-5 w-5 shrink-0 text-red-400" />
+              }
+              <div>
+                <p className="text-sm font-medium" style={{
+                  color: testResult.result.status_code >= 200 && testResult.result.status_code < 300 ? '#6ee7b7' : '#fca5a5',
+                }}>
+                  HTTP {testResult.result.status_code}
+                  {testResult.result.status_code >= 200 && testResult.result.status_code < 300 ? ' — Success' : ' — Error'}
+                </p>
+                {testResult.result.error && (
+                  <p className="mt-0.5 text-xs text-red-400/80">{testResult.result.error}</p>
+                )}
+              </div>
+            </div>
+
+            {testResult.result.response_body && (
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-gray-400 uppercase tracking-wider">Response Body</label>
+                <pre className="max-h-48 overflow-y-auto rounded-xl border border-white/[0.08] bg-black/40 p-4 font-mono text-xs text-gray-300 whitespace-pre-wrap break-all">
+                  {testResult.result.response_body}
+                </pre>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
 
       <ConfirmDialog
         open={showBulkDelete}

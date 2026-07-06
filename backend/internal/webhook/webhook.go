@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/aeroxe-bee/backend/internal/config"
 	"github.com/aeroxe-bee/backend/internal/models"
 )
@@ -145,6 +147,21 @@ func (d *Dispatcher) DispatchWithRetry(ctx context.Context, webhook models.Webho
 	}
 
 	return state
+}
+
+// DispatchTest sends a test payload to the webhook endpoint and returns the result.
+func (d *Dispatcher) DispatchTest(ctx context.Context, webhook models.Webhook) dispatchResult {
+	payload := Payload{
+		Event:     "test.ping",
+		MessageID: "test-" + uuid.New().String(),
+		Recipient: "+1234567890",
+		Sender:    "TestSender",
+		MessageType: "test",
+		DeliveryStatus: models.DeliveryStatusSent,
+		ConfidenceScore: 1.0,
+		Timestamp:       time.Now(),
+	}
+	return d.Dispatch(ctx, webhook, payload)
 }
 
 func (d *Dispatcher) GetState(webhookID, messageID string) *deliveryState {

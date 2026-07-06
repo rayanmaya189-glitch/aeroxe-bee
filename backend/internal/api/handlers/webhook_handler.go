@@ -9,15 +9,17 @@ import (
 	"github.com/aeroxe-bee/backend/internal/api/middleware"
 	"github.com/aeroxe-bee/backend/internal/models"
 	"github.com/aeroxe-bee/backend/internal/services"
+	"github.com/aeroxe-bee/backend/internal/webhook"
 )
 
 type WebhookHandler struct {
 	webhookService          *services.WebhookService
 	webhookDeliveryService  *services.WebhookDeliveryService
+	webhookDispatcher       *webhook.Dispatcher
 }
 
-func NewWebhookHandler(webhookService *services.WebhookService, deliveryService *services.WebhookDeliveryService) *WebhookHandler {
-	return &WebhookHandler{webhookService: webhookService, webhookDeliveryService: deliveryService}
+func NewWebhookHandler(webhookService *services.WebhookService, deliveryService *services.WebhookDeliveryService, dispatcher *webhook.Dispatcher) *WebhookHandler {
+	return &WebhookHandler{webhookService: webhookService, webhookDeliveryService: deliveryService, webhookDispatcher: dispatcher}
 }
 
 func (h *WebhookHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -161,4 +163,28 @@ func (h *WebhookHandler) ListDeliveries(w http.ResponseWriter, r *http.Request) 
 		deliveries = []models.WebhookDelivery{}
 	}
 	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: deliveries})
+}
+
+// TestWebhook sends a test payload to the webhook endpoint (admin)
+func (h *WebhookHandler) TestWebhook(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+
+	wh, err := h.webhookService.GetByID(r.Context(), id)
+	if err != nil || wh == nil {
+		writeJSON(w, http.StatusNotFound, APIResponse{Error: "webhook not found"})
+		return
+	}
+
+	result := h.webhookDispatcher.DispatchTest(r.Context(), *wh)
+
+	resp := map[string]interface{}{
+		"status_code":   result.StatusCode,
+		"response_body": result.ResponseBody,
+	}
+	if result.Err != nil {
+		resp["error"] = result.Err.Error()
+		writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: resp})
+		return
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: resp})
 }
