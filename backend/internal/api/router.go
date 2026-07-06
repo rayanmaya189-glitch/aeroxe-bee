@@ -390,7 +390,9 @@ func NewRouter(
 
 	// SSE (Server-Sent Events) for real-time device status updates
 	if sseHandler != nil {
-		mux.Handle("GET /api/v1/events", authMiddleware.JWTAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Support both JWT Bearer header and ?token= query param (for EventSource connections)
+		sseMux := http.NewServeMux()
+		sseMux.Handle("GET /api/v1/events", authMiddleware.JWTAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			accountID := middleware.GetAccountID(r.Context())
 			if accountID == "" {
 				w.Header().Set("Content-Type", "application/json")
@@ -400,6 +402,19 @@ func NewRouter(
 			}
 			sseHandler.Subscribe(w, r, accountID)
 		})))
+		// Also handle SSE connections with ?token= query param (used by frontend EventSource)
+		mux.HandleFunc("GET /api/v1/events/stream", func(w http.ResponseWriter, r *http.Request) {
+			token := r.URL.Query().Get("token")
+			if token == "" {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte(`{"error":"missing token"}`))
+				return
+			}
+			// Set the Authorization header so JWTAuth middleware can read it
+			r.Header.Set("Authorization", "Bearer "+token)
+			sseMux.ServeHTTP(w, r)
+		})
 	}
 
 	return mux

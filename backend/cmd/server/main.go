@@ -311,7 +311,13 @@ func main() {
 	}
 
 	// Start the message scheduler for future-dated messages
-	sched := scheduler.New(svc.Messages, queue, encMgr, logger.Logger)
+	sched := scheduler.New(svc.Messages, queue, encMgr, logger.Logger,
+		scheduler.WithReleaseCallback(func(msgID, recipient, scheduledFor string) {
+			if sseHandler != nil {
+				sseHandler.BroadcastScheduledReleased(msgID, recipient, scheduledFor)
+			}
+		}),
+	)
 	go sched.Start(context.Background())
 
 	go startBackgroundJobs(context.Background(), svc, simHealthEngine, cbManager, queue, fcmHandler, fcmSender, metrics, logger)

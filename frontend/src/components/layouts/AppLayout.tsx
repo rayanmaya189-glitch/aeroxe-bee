@@ -1,12 +1,38 @@
+import { useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
 import { useUIStore } from '@/store/uiStore'
 import { useIsMobile } from '@/hooks/useMediaQuery'
+import { useToast } from '@/components/ui/Toast'
 
 export function AppLayout() {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen)
   const isMobile = useIsMobile()
+  const { addToast } = useToast()
+
+  useEffect(() => {
+    const token = sessionStorage.getItem('auth_token')
+    if (!token) return
+
+    // EventSource auto-reconnects on connection loss with exponential backoff.
+    const es = new EventSource(`/api/v1/events/stream?token=${encodeURIComponent(token)}`)
+
+    es.addEventListener('scheduled.released', (e) => {
+      try {
+        const data = JSON.parse(e.data)
+        const recipient = data.recipient ? `to ${data.recipient}` : ''
+        addToast(`Scheduled message ${recipient} picked up for delivery`, 'info')
+      } catch {
+        // ignore parse errors
+      }
+    })
+
+    return () => {
+      es.close()
+    }
+  }, [addToast])
+
   return (
     <div className="min-h-screen bg-[#030712]">
       {/* Background grid pattern */}

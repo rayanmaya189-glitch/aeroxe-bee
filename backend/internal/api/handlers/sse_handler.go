@@ -36,6 +36,13 @@ type MessageStatusUpdate struct {
 	ConfidenceScore float64 `json:"confidence_score"`
 }
 
+type ScheduledReleasedEvent struct {
+	MessageID       string    `json:"message_id"`
+	Recipient       string    `json:"recipient"`
+	ScheduledFor    string    `json:"scheduled_for"`
+	ReleasedAt      string    `json:"released_at"`
+}
+
 func NewSSEHandler(svc *services.ServiceRegistry) *SSEHandler {
 	return &SSEHandler{
 		svc:         svc,
@@ -139,6 +146,30 @@ func (h *SSEHandler) BroadcastMessageStatus(msgID, deviceID, status, deliverySta
 			Status:          status,
 			DeliveryStatus:  deliveryStatus,
 			ConfidenceScore: confidence,
+		},
+	}
+
+	for _, ch := range h.connections {
+		select {
+		case ch <- event:
+		default:
+			// Skip slow consumers
+		}
+	}
+}
+
+// BroadcastScheduledReleased notifies clients that a scheduled message has been picked up for delivery.
+func (h *SSEHandler) BroadcastScheduledReleased(msgID, recipient, scheduledFor string) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	event := SSEEvent{
+		Event: "scheduled.released",
+		Data: ScheduledReleasedEvent{
+			MessageID:    msgID,
+			Recipient:    recipient,
+			ScheduledFor: scheduledFor,
+			ReleasedAt:   time.Now().UTC().Format(time.RFC3339),
 		},
 	}
 

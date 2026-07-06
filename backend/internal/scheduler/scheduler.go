@@ -11,15 +11,19 @@ import (
 	"github.com/aeroxe-bee/backend/internal/worker"
 )
 
+// ScheduledReleaseCallback is called when a scheduled message is picked up for delivery.
+type ScheduledReleaseCallback func(msgID, recipient, scheduledFor string)
+
 // Scheduler polls for due scheduled messages and enqueues them for delivery.
 type Scheduler struct {
-	messageService *services.MessageService
-	queue          *worker.Queue
-	encryption     *encryption.Manager
-	logger         *slog.Logger
-	stopCh         chan struct{}
-	pollInterval   time.Duration
-	batchSize      int
+	messageService          *services.MessageService
+	queue                   *worker.Queue
+	encryption              *encryption.Manager
+	logger                  *slog.Logger
+	stopCh                  chan struct{}
+	pollInterval            time.Duration
+	batchSize               int
+	onScheduledRelease      ScheduledReleaseCallback
 }
 
 func New(
@@ -27,9 +31,10 @@ func New(
 	queue *worker.Queue,
 	encryption *encryption.Manager,
 	logger *slog.Logger,
+	opts ...Option,
 ) *Scheduler {
 	poll := 5 * time.Second
-	return &Scheduler{
+	s := &Scheduler{
 		messageService: messageService,
 		queue:          queue,
 		encryption:     encryption,
@@ -37,6 +42,21 @@ func New(
 		stopCh:         make(chan struct{}),
 		pollInterval:   poll,
 		batchSize:      50,
+		onScheduledRelease: nil,
+	}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
+}
+
+// Option configures the scheduler.
+type Option func(*Scheduler)
+
+// WithReleaseCallback sets a callback that fires when a scheduled message is released.
+func WithReleaseCallback(cb ScheduledReleaseCallback) Option {
+	return func(s *Scheduler) {
+		s.onScheduledRelease = cb
 	}
 }
 
@@ -133,6 +153,13 @@ func (s *Scheduler) processDue(ctx context.Context) {
 			continue
 		}
 
+		if s.onScheduledRelease != nil {
+			scheduledFor := ""
+			if msg.ScheduledAt != nil {
+				scheduledFor = msg.ScheduledAt.Format(time.RFC3339)
+			}
+			s.onScheduledRelease(msg.ID, msg.Recipient, scheduledFor)
+		}
 		s.logger.Info("scheduled message released", "msg_id", msg.ID, "lane", lane)
 	}
 
