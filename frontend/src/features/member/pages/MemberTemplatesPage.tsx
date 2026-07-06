@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { PageTransition } from '@/components/ui/PageTransition'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/services/api'
-import type { ApiResponse } from '@/types/api'
+import type { ApiResponse, PaginatedResponse } from '@/types/api'
 import type { Template } from '@/types/models'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -27,7 +27,7 @@ export function MemberTemplatesPage() {
 
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ['member-templates'],
-    queryFn: async () => { const res = await api.get<ApiResponse<Template[]>>('/member/templates'); return res.data.data || [] },
+    queryFn: async () => { const res = await api.get<ApiResponse<PaginatedResponse<Template>>>('/member/templates'); return res.data.data?.data || [] },
   })
 
   const saveMutation = useMutation({

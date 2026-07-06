@@ -1,5 +1,5 @@
 import api from './api'
-import type { ApiResponse, LoginRequest, LoginResponse } from '@/types/api'
+import type { ApiResponse, LoginRequest, LoginResponse, PaginatedResponse } from '@/types/api'
 
 export async function login(data: LoginRequest): Promise<LoginResponse> {
   const res = await api.post<ApiResponse<LoginResponse>>('/auth/login', data)
@@ -68,9 +68,9 @@ export interface UserSession {
 }
 
 export async function getSessions(): Promise<UserSession[]> {
-  const res = await api.get<ApiResponse<UserSession[]>>('/auth/sessions')
+  const res = await api.get<ApiResponse<PaginatedResponse<UserSession>>>('/auth/sessions')
   if (!res.data.success || !res.data.data) throw new Error('Failed to fetch sessions')
-  return res.data.data
+  return res.data.data.data || []
 }
 
 export async function revokeSession(sessionId: string): Promise<void> {
@@ -106,9 +106,9 @@ export interface ApiKeyCreateResult {
 }
 
 export async function listApiKeys(): Promise<ApiKeyInfo[]> {
-  const res = await api.get<ApiResponse<ApiKeyInfo[]>>('/account/api-keys')
+  const res = await api.get<ApiResponse<PaginatedResponse<ApiKeyInfo>>>('/account/api-keys')
   if (!res.data.success || !res.data.data) throw new Error('Failed to fetch API keys')
-  return res.data.data
+  return res.data.data.data || []
 }
 
 export async function createApiKey(data: { label: string; scopes: string[]; expires_in?: string }): Promise<ApiKeyCreateResult> {

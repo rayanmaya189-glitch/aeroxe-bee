@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { PageTransition } from '@/components/ui/PageTransition'
 import api from '@/services/api'
-import type { ApiResponse } from '@/types/api'
+import type { ApiResponse, PaginatedResponse } from '@/types/api'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -63,8 +63,8 @@ export function AppReleasesPage() {
     try {
       setLoading(true)
       setError('')
-      const res = await api.get<ApiResponse<AppRelease[]>>('/admin/releases')
-      setReleases(res.data.data || [])
+      const res = await api.get<ApiResponse<PaginatedResponse<AppRelease>>>('/admin/releases')
+      setReleases(res.data.data?.data || [])
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load releases')
     } finally {

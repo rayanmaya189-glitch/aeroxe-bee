@@ -195,9 +195,9 @@ export async function retryDeadLetter(id: string): Promise<void> {
 
 // Fraud flags (admin)
 export async function getFraudFlags(): Promise<FraudFlag[]> {
-  const res = await api.get<ApiResponse<FraudFlag[]>>('/admin/fraud-flags')
+  const res = await api.get<ApiResponse<PaginatedResponse<FraudFlag>>>('/admin/fraud-flags')
   if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load fraud flags')
-  return res.data.data
+  return res.data.data.data || []
 }
 
 export async function reviewFraudFlag(id: string): Promise<void> {
@@ -207,9 +207,9 @@ export async function reviewFraudFlag(id: string): Promise<void> {
 
 // Abuse flags (admin)
 export async function getAbuseFlags(): Promise<FraudFlag[]> {
-  const res = await api.get<ApiResponse<FraudFlag[]>>('/admin/abuse-flags')
+  const res = await api.get<ApiResponse<PaginatedResponse<FraudFlag>>>('/admin/abuse-flags')
   if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load abuse flags')
-  return res.data.data
+  return res.data.data.data || []
 }
 
 // Users management (admin)
