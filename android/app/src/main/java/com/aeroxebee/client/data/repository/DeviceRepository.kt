@@ -12,6 +12,7 @@ import android.provider.Settings
 import android.telephony.SubscriptionManager
 import android.telephony.TelephonyManager
 import com.aeroxebee.client.data.remote.api.AeroXeBeeApi
+import com.aeroxebee.client.BuildConfig
 import com.aeroxebee.client.data.remote.model.*
 import com.aeroxebee.client.domain.model.DeviceInfo
 import com.aeroxebee.client.domain.model.SimSlotInfo
@@ -66,9 +67,9 @@ class DeviceRepository @Inject constructor(
             tokenManager.saveAccountName(data.account?.name ?: email)
             tokenManager.saveAccountId(data.account?.id ?: "")
 
-            // Save MQTT connection details
+            // Save MQTT connection details — broker URL from BuildConfig, credentials from login response
+            tokenManager.saveMqttBrokerUrl(BuildConfig.MQTT_BROKER_URL)
             data.mqtt?.let { mqtt ->
-                tokenManager.saveMqttBrokerUrl(mqtt.brokerUrl)
                 tokenManager.saveMqttUsername(mqtt.username)
                 tokenManager.saveMqttPassword(mqtt.password)
                 tokenManager.saveMqttCredentialId(mqtt.credentialId)

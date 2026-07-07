@@ -5,6 +5,7 @@ import android.os.Build
 import android.provider.Settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aeroxebee.client.BuildConfig
 import com.aeroxebee.client.data.remote.api.AeroXeBeeApi
 import com.aeroxebee.client.data.remote.model.QRLoginRequest
 import com.aeroxebee.client.data.repository.DeviceRepository
@@ -103,8 +104,9 @@ class QrScannerViewModel @Inject constructor(
                     tokenManager.saveAccountName(data.account?.name ?: "")
                     tokenManager.saveAccountId(data.account?.id ?: "")
 
+                    // Broker URL from BuildConfig, credentials from login response
+                    tokenManager.saveMqttBrokerUrl(BuildConfig.MQTT_BROKER_URL)
                     data.mqtt?.let { mqtt ->
-                        tokenManager.saveMqttBrokerUrl(mqtt.brokerUrl)
                         tokenManager.saveMqttUsername(mqtt.username)
                         tokenManager.saveMqttPassword(mqtt.password)
                     }
