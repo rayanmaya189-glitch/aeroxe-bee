@@ -238,9 +238,10 @@ func (h *DeviceHandler) DeviceLogin(w http.ResponseWriter, r *http.Request) {
 	_ = h.mqttCredentialService.RevokeByDeviceID(r.Context(), deviceID)
 
 	// Track credential in DB for audit trail (actual MQTT auth uses shared "devices" credentials)
+	// Use deviceID (composite: androidId-sim1) — must match devices.id for FK constraint
 	if _, _, err := h.mqttCredentialService.CreateWithEncryptedPassword(
 		r.Context(),
-		req.DeviceID,
+		deviceID,
 		h.encryption.Encrypt,
 	); err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to create MQTT credentials"})
