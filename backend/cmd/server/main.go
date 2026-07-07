@@ -260,10 +260,15 @@ func main() {
 	planChangeRequestService := services.NewPlanChangeRequestService(postgres.Pool)
 	planChangeRequestHandler := handlers.NewPlanChangeRequestHandler(planChangeRequestService, svc.Billing)
 
+	aiConfigService := services.NewAIConfigService(postgres.Pool)
+	aiHandler := handlers.NewAIHandler(aiConfigService)
+
 	router := api.NewRouter(authHandler, messageHandler, deviceHandler, accountHandler,
 		adminHandler, userHandler, templateHandler, webhookHandler, otpHandler, billingHandler,
 		fraudHandler, memberHandler, twoFAHandler, paymentConfigHandler, paymentRequestHandler,
-		subscriptionRequestHandler, planChangeRequestHandler, sessionHandler, kycAdminHandler, qrPairingHandler, releaseHandler, firebaseConfigHandler, svc.Billing, svc.PaymentConfigs, authMiddleware, planMiddleware, metrics, postgres, redisDB, mqttClient, cfg, sseHandler)
+		subscriptionRequestHandler, planChangeRequestHandler, sessionHandler,
+		aiHandler,
+		kycAdminHandler, qrPairingHandler, releaseHandler, firebaseConfigHandler, svc.Billing, svc.PaymentConfigs, authMiddleware, planMiddleware, metrics, postgres, redisDB, mqttClient, cfg, sseHandler)
 
 	promMux := http.NewServeMux()
 	promMux.Handle("/metrics", promhttp.Handler())
