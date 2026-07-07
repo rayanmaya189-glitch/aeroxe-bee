@@ -1,30 +1,12 @@
 import { motion } from 'framer-motion'
 import { useInView } from 'react-intersection-observer'
 import { 
-  Route, Shield, Smartphone, BarChart3, 
+  BarChart3, 
   MessageSquare, Clock, ArrowRight
 } from 'lucide-react'
 import { staggerContainer, fadeInUp } from '../animations/variants'
 
 const differentiators = [
-  {
-    icon: Route,
-    title: '5 Intelligent Routing Strategies',
-    description: 'Fastest delivery, lowest cost, highest reliability, geo-affinity, or profit-optimized — choose what matters most for each message type.',
-    color: 'from-blue-500 to-cyan-400',
-  },
-  {
-    icon: Smartphone,
-    title: 'Device Fleet Management',
-    description: 'Turn Android phones into SMS-sending nodes with real-time health monitoring, automatic failover, and intelligent load balancing.',
-    color: 'from-purple-500 to-pink-400',
-  },
-  {
-    icon: Shield,
-    title: 'Automatic Failover & Circuit Breakers',
-    description: 'Smart circuit breakers detect issues and automatically reroute traffic. Self-healing system with configurable recovery thresholds.',
-    color: 'from-green-500 to-emerald-400',
-  },
   {
     icon: BarChart3,
     title: 'Delivery Confidence Scoring',
@@ -49,7 +31,6 @@ const stats = [
   { value: '95%+', label: 'Delivery Rate Target' },
   { value: '150ms', label: 'API Latency (p95)' },
   { value: '99.9%', label: 'API Uptime' },
-  { value: '5', label: 'Routing Strategies' },
 ]
 
 export function WhyChooseUs() {
@@ -79,8 +60,8 @@ export function WhyChooseUs() {
               </span>
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-lg text-gray-400">
-              Enterprise-grade SMS infrastructure with smart routing, device fleet management, 
-              and real-time visibility — all from a single platform.
+              Enterprise-grade SMS infrastructure with real-time analytics, confidence scoring,
+              and priority messaging — all from a single platform.
             </p>
           </motion.div>
 

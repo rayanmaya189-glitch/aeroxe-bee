@@ -2,8 +2,7 @@ import { AnnouncementBar } from '../components/AnnouncementBar'
 import { Navbar } from '../components/Navbar'
 import { Hero } from '../components/Hero'
 import { Features } from '../components/Features'
-import { ProductEcosystem } from '../components/ProductEcosystem'
-import { SmartRouting } from '../components/SmartRouting'
+
 import { Statistics } from '../components/Statistics'
 import { Integrations } from '../components/Integrations'
 import { SecurityCompliance } from '../components/SecurityCompliance'
@@ -50,8 +49,7 @@ export function LandingPage() {
       <main>
         <Hero />
         <Features />
-        <ProductEcosystem />
-        <SmartRouting />
+
         <Statistics />
         <Integrations />
         <SecurityCompliance />

@@ -10,10 +10,7 @@ const FOOTER_LINKS = {
   ],
   Solutions: [
     { label: 'Enterprise', href: '/contact-sales' },
-    { label: 'SMS Gateway', href: '#ecosystem' },
-    { label: 'Fleet Management', href: '#ecosystem' },
     { label: 'Analytics', href: '#features' },
-    { label: 'AI Routing', href: '#routing' },
   ],
   Resources: [
     { label: 'Documentation', href: '#' },

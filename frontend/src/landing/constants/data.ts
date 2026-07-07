@@ -1,15 +1,13 @@
 import {
-  Zap, Shield, Globe, BarChart3,
-  Smartphone, Lock, Users,
-  Settings, Workflow,
+  Shield, BarChart3,
+  Lock,
   Cloud, Code, Terminal, GitBranch, Cpu, Eye,
-  Route, MessageSquare, Server, CreditCard,
+  MessageSquare, CreditCard,
   ShieldCheck, FileCheck, Key,
 } from 'lucide-react'
 
 export const NAV_LINKS = [
   { label: 'Features', href: '#features' },
-  { label: 'Ecosystem', href: '#ecosystem' },
   { label: 'Pricing', href: '#pricing' },
   { label: 'Developers', href: '#developers' },
   { label: 'Contact Sales', href: '/contact-sales' },
@@ -31,20 +29,6 @@ export const FEATURES = [
     span: 'col-span-1',
   },
   {
-    icon: Route,
-    title: 'Smart Routing',
-    description: '5 intelligent routing strategies optimized for speed, cost, reliability, geography, or profitability — choose what matters most.',
-    color: 'from-purple-500 to-pink-400',
-    span: 'col-span-1',
-  },
-  {
-    icon: Smartphone,
-    title: 'Device Fleet Management',
-    description: 'Turn phones into SMS-sending nodes. Real-time health monitoring, automatic failover, and intelligent load balancing across your fleet.',
-    color: 'from-rose-500 to-pink-400',
-    span: 'col-span-1',
-  },
-  {
     icon: BarChart3,
     title: 'Real-Time Analytics',
     description: 'Delivery confidence scores, success rates, queue monitoring, and cost tracking across your entire device fleet.',
@@ -58,70 +42,9 @@ export const FEATURES = [
     color: 'from-orange-500 to-amber-400',
     span: 'col-span-1',
   },
-  {
-    icon: ShieldCheck,
-    title: 'Automatic Failover',
-    description: 'Smart circuit breakers detect issues and automatically reroute traffic. Self-healing system with configurable recovery.',
-    color: 'from-cyan-500 to-blue-400',
-    span: 'col-span-1',
-  },
 ] as const
 
-// ── Ecosystem: the 4 real products ──
-export const ECOSYSTEM = [
-  {
-    icon: Settings,
-    title: 'Admin Dashboard',
-    description: 'Full control panel for account management, template approvals, fraud review, billing oversight, and platform-wide analytics.',
-    color: 'from-blue-500 to-indigo-500',
-    badge: 'Web App',
-  },
-  {
-    icon: Users,
-    title: 'Member Portal',
-    description: 'Self-service portal for device management, message history, analytics, templates, webhooks, and subscription management.',
-    color: 'from-purple-500 to-violet-500',
-    badge: 'Web App',
-  },
-  {
-    icon: Smartphone,
-    title: 'Mobile Client',
-    description: 'Turn any Android phone into an SMS-sending node. Real-time health monitoring, automatic failover, and intelligent load balancing.',
-    color: 'from-green-500 to-emerald-500',
-    badge: 'Android',
-  },
-  {
-    icon: Server,
-    title: 'Core Platform',
-    description: 'Intelligent message routing, delivery confidence scoring, fraud detection, and webhook dispatch across your entire device fleet.',
-    color: 'from-amber-500 to-orange-500',
-    badge: 'Cloud Service',
-  },
-] as const
 
-// ── Smart Routing: real routing strategies from the backend ──
-export const ROUTING_STRATEGIES = [
-  {
-    icon: Zap,
-    title: 'Fastest Delivery',
-    description: 'Optimized for speed. Ideal for time-sensitive messages that need instant delivery.',
-  },
-  {
-    icon: CreditCard,
-    title: 'Lowest Cost',
-    description: 'Optimized for cost efficiency. Best for marketing and bulk message campaigns.',
-  },
-  {
-    icon: Shield,
-    title: 'Highest Reliability',
-    description: 'Optimized for delivery success. Ideal for OTP and critical transactional messages.',
-  },
-  {
-    icon: Globe,
-    title: 'Geo-Affinity',
-    description: 'Matches messages to devices in the same region as the recipient for better local delivery.',
-  },
-] as const
 
 // ── Security: user-facing security features ──
 export const SECURITY_FEATURES = [
@@ -145,24 +68,9 @@ export const INTEGRATIONS = [
 
 export const CREDIBILITY_POINTS = [
   {
-    icon: Route,
-    title: "Multi-Strategy Routing",
-    description: "5 intelligent routing strategies that automatically select the best device for each message based on your chosen priority.",
-  },
-  {
-    icon: Shield,
-    title: "Predictive Health Monitoring",
-    description: "Proactive device health tracking that detects issues early and automatically adjusts load before problems impact delivery.",
-  },
-  {
     icon: Eye,
     title: "Honest Delivery Reporting",
     description: "Accurate delivery visibility using multiple signal sources to give you a true picture of message delivery status.",
-  },
-  {
-    icon: Workflow,
-    title: "Automatic Failover",
-    description: "Smart circuit breakers at multiple levels that detect issues and automatically reroute traffic to healthy paths.",
   },
 ] as const
 
@@ -209,14 +117,6 @@ export const PRICING_PLANS = [
 
 export const FAQ_ITEMS = [
   {
-    question: 'How does the routing strategy system work?',
-    answer: 'AeroXe Bee offers 5 selectable routing strategies optimized for different priorities: fastest delivery, lowest cost, highest reliability, geo-affinity, and profit-optimized. Each strategy intelligently selects the best device for each message based on your chosen priority.',
-  },
-  {
-    question: 'How does device fleet management work?',
-    answer: 'Install the mobile app on phones with SIM cards, pair them via QR code, and they become SMS-sending nodes. Each device is continuously monitored for health, battery, network quality, and risk state. The platform automatically manages device selection and load balancing.',
-  },
-  {
     question: 'What is delivery confidence scoring?',
     answer: 'Mobile SMS delivery reports are not always reliable. Our confidence model combines multiple signals to produce an honest delivery confidence score, giving you accurate visibility into message delivery status.',
   },
@@ -239,6 +139,5 @@ export const STATS = [
   { value: 95, label: 'Delivery Rate Target', suffix: '%+' },
   { value: 150, label: 'API Latency (p95)', suffix: 'ms' },
   { value: 99.5, label: 'API Uptime', suffix: '%+' },
-  { value: 5, label: 'Routing Strategies', suffix: '' },
 ] as const
 
