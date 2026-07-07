@@ -62,13 +62,6 @@ func (s *SubscriptionService) GetDefaultRoutingStrategy(ctx context.Context, acc
 	return models.RoutingStrategyFIFO, nil
 }
 
-func (s *SubscriptionService) UpdateRoutingStrategy(ctx context.Context, accountID string, strategy models.RoutingStrategy) error {
-	_, err := s.db.Exec(ctx,
-		`UPDATE subscriptions SET default_routing_strategy=$1, updated_at=NOW()
-		 WHERE account_id=$2`, strategy, accountID)
-	return err
-}
-
 func (s *SubscriptionService) GetMaxQueueDepth(ctx context.Context, accountID string) (int, error) {
 	sub, err := s.GetByAccountID(ctx, accountID)
 	if err != nil {

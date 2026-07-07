@@ -177,11 +177,6 @@ func (h *AccountHandler) GetSubscription(w http.ResponseWriter, r *http.Request)
 	})
 }
 
-func (h *AccountHandler) UpdateRoutingStrategy(w http.ResponseWriter, r *http.Request) {
-	// Routing strategy is now standardized to FIFO for all accounts.
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: map[string]string{"strategy": "fifo"}})
-}
-
 func (h *AccountHandler) GetUsage(w http.ResponseWriter, r *http.Request) {
 	accountID := middleware.GetAccountID(r.Context())
 	usage, err := h.billingService.GetUsage(r.Context(), accountID, time.Now().Format("2006-01-02"))

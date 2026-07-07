@@ -1710,47 +1710,7 @@
         }
       }
     },
-    "/api/v1/account/routing-strategy": {
-      "put": {
-        "tags": [
-          "Account"
-        ],
-        "summary": "Update routing strategy",
-        "operationId": "updateRoutingStrategy",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "routing_strategy"
-                ],
-                "properties": {
-                  "routing_strategy": {
-                    "type": "string",
-                    "description": "Routing is now standardized to FIFO",
-                    "enum": [
-                      "fifo"
-                    ]
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Strategy updated"
-          }
-        }
-      }
-    },
+
     "/api/v1/account/subscription": {
       "get": {
         "tags": [

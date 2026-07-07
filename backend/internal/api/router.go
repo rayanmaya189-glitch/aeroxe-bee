@@ -196,7 +196,6 @@ func NewRouter(
 	mux.Handle("GET /api/v1/account/api-keys", authMiddleware.JWTAuth(http.HandlerFunc(accountHandler.ListAPIKeys)))
 	mux.Handle("POST /api/v1/account/api-keys", authMiddleware.JWTAuth(http.HandlerFunc(accountHandler.CreateAPIKey)))
 	mux.Handle("DELETE /api/v1/account/api-keys/{id}", authMiddleware.JWTAuth(http.HandlerFunc(accountHandler.RevokeAPIKey)))
-	mux.Handle("PUT /api/v1/account/routing-strategy", authMiddleware.JWTAuth(http.HandlerFunc(accountHandler.UpdateRoutingStrategy)))
 	mux.Handle("GET /api/v1/account/subscription", authMiddleware.JWTAuth(http.HandlerFunc(accountHandler.GetSubscription)))
 	mux.Handle("GET /api/v1/account/usage", authMiddleware.JWTAuth(http.HandlerFunc(accountHandler.GetUsage)))
 
