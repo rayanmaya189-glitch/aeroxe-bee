@@ -146,8 +146,9 @@ func (h *MemberHandler) GetDashboard(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GetDevices returns all devices for the member's account
-// Joins with physical_devices to include name, model, and os_version
+// GetDevices returns devices for the member's account
+// Supports ?online_only=true to filter only online devices
+// Includes device name, phone number, carrier, and SIM slot
 func (h *MemberHandler) GetDevices(w http.ResponseWriter, r *http.Request) {
 	accountID := middleware.GetAccountID(r.Context())
 
@@ -157,13 +158,17 @@ func (h *MemberHandler) GetDevices(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	onlineOnly := r.URL.Query().Get("online_only") == "true"
+
 	// Build response with enriched device info
 	type DeviceResponse struct {
 		ID              string  `json:"id"`
 		Name            string  `json:"name"`
+		PhoneNumber     string  `json:"phone_number"`
 		Model           string  `json:"model"`
 		OSVersion       string  `json:"os_version"`
 		Status          string  `json:"status"`
+		Online          bool    `json:"online"`
 		LastSeen        *string `json:"last_seen"`
 		SIMSlot         int     `json:"sim_slot"`
 		Carrier         string  `json:"carrier"`
@@ -172,6 +177,9 @@ func (h *MemberHandler) GetDevices(w http.ResponseWriter, r *http.Request) {
 
 	result := make([]DeviceResponse, 0, len(devices))
 	for _, d := range devices {
+		if onlineOnly && d.Status != models.DeviceStatusOnline {
+			continue
+		}
 		name := d.Name
 		if name == "" {
 			name = d.PhysicalDeviceID
@@ -184,9 +192,11 @@ func (h *MemberHandler) GetDevices(w http.ResponseWriter, r *http.Request) {
 		result = append(result, DeviceResponse{
 			ID:             d.ID,
 			Name:           name,
+			PhoneNumber:    d.PhoneNumber,
 			Model:          "Android",
 			OSVersion:      "",
 			Status:         string(d.Status),
+			Online:         d.Status == models.DeviceStatusOnline,
 			LastSeen:       lastSeen,
 			SIMSlot:        d.SIMSlot,
 			Carrier:        d.Carrier,

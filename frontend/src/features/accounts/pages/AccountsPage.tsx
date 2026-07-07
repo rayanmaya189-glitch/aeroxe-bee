@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { PageTransition } from '@/components/ui/PageTransition'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getAccounts, suspendAccount, activateAccount, deleteAccount } from '@/services/dashboard'
 import type { Account } from '@/types/models'
 import { DataTable, type Column } from '@/components/ui/DataTable'
@@ -11,6 +12,7 @@ import { useDebounce } from '@/hooks/useDebounce'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
 import { Search, Users } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 const statusVariant: Record<string, 'success' | 'warning' | 'danger'> = {
   active: 'success',
@@ -26,49 +28,45 @@ const planVariant: Record<string, 'primary' | 'info' | 'success' | 'warning'> = 
 }
 
 export function AccountsPage() {
+  const queryClient = useQueryClient()
   const { addToast } = useToast()
-  const [accounts, setAccounts] = useState<Account[]>([])
-  const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [pageSize] = useState(20)
-  const [, setTotalPages] = useState(1)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
-  const [loading, setLoading] = useState(true)
   const [sortBy, setSortBy] = useState('created_at')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const debouncedSearch = useDebounce(search, 300)
 
   const [error, setError] = useState('')
+  const [suspendTarget, setSuspendTarget] = useState<Account | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Account | null>(null)
 
-  const load = useCallback(async () => {
-    try {
-      setLoading(true)
-      setError('')
-      const result = await getAccounts({ page, pageSize, search: debouncedSearch, status: statusFilter })
-      setAccounts(Array.isArray(result.data) ? result.data : [])
-      setTotal(result.total ?? 0)
-      setTotalPages(result.total_pages ?? 0)
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load accounts')
-    } finally {
-      setLoading(false)
-    }
-  }, [page, pageSize, debouncedSearch, statusFilter])
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin-accounts', page, debouncedSearch, statusFilter],
+    queryFn: () => getAccounts({ page, pageSize, search: debouncedSearch, status: statusFilter }),
+    staleTime: 60_000,
+  })
+  const accounts = data?.data ?? []
+  const total = data?.total ?? 0
 
-  useEffect(() => { load() }, [load])
+  const suspendMutation = useMutation({
+    mutationFn: suspendAccount,
+    onSuccess: () => { setError(''); queryClient.invalidateQueries({ queryKey: ['admin-accounts'] }); setSuspendTarget(null); addToast('Account suspended', 'success') },
+    onError: (err: Error) => { addToast(err.message || 'Failed to suspend account', 'error'); setError(err.message || 'Failed to suspend account') },
+  })
 
-  async function handleSuspend(id: string) {
-    try { await suspendAccount(id); load(); addToast('Account suspended', 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to suspend account', 'error'); setError(err instanceof Error ? err.message : 'Failed to suspend account') }
-  }
+  const activateMutation = useMutation({
+    mutationFn: activateAccount,
+    onSuccess: () => { setError(''); queryClient.invalidateQueries({ queryKey: ['admin-accounts'] }); addToast('Account activated', 'success') },
+    onError: (err: Error) => { addToast(err.message || 'Failed to activate account', 'error'); setError(err.message || 'Failed to activate account') },
+  })
 
-  async function handleActivate(id: string) {
-    try { await activateAccount(id); load(); addToast('Account activated', 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to activate account', 'error'); setError(err instanceof Error ? err.message : 'Failed to activate account') }
-  }
-
-  async function handleDelete(id: string) {
-    try { await deleteAccount(id); load(); addToast('Account deleted', 'success') } catch (err: unknown) { addToast(err instanceof Error ? err.message : 'Failed to delete account', 'error'); setError(err instanceof Error ? err.message : 'Failed to delete account') }
-  }
+  const deleteMutation = useMutation({
+    mutationFn: deleteAccount,
+    onSuccess: () => { setError(''); queryClient.invalidateQueries({ queryKey: ['admin-accounts'] }); setDeleteTarget(null); addToast('Account deleted', 'success') },
+    onError: (err: Error) => { addToast(err.message || 'Failed to delete account', 'error'); setError(err.message || 'Failed to delete account') },
+  })
 
   const columns: Column<Account>[] = [
     { key: 'name', header: 'Name', sortable: true, className: 'font-medium text-gray-100' },
@@ -97,11 +95,11 @@ export function AccountsPage() {
       render: (row) => (
         <div className="flex gap-1">
           {row.status === 'active' ? (
-            <Button variant="ghost" size="xs" onClick={() => handleSuspend(row.id)}>Suspend</Button>
+            <Button variant="ghost" size="xs" onClick={() => setSuspendTarget(row)}>Suspend</Button>
           ) : (
-            <Button variant="ghost" size="xs" onClick={() => handleActivate(row.id)}>Activate</Button>
+            <Button variant="ghost" size="xs" onClick={() => activateMutation.mutate(row.id)} loading={activateMutation.isPending}>Activate</Button>
           )}
-          <Button variant="ghost" size="xs" className="text-red-400" onClick={() => handleDelete(row.id)}>Delete</Button>
+          <Button variant="ghost" size="xs" className="text-red-400" onClick={() => setDeleteTarget(row)}>Delete</Button>
         </div>
       ),
     },
@@ -161,11 +159,15 @@ export function AccountsPage() {
         </select>
       </motion.div>
 
+      <ConfirmDialog open={!!suspendTarget} onClose={() => setSuspendTarget(null)} onConfirm={() => { if (suspendTarget) suspendMutation.mutate(suspendTarget.id) }} title="Suspend account" description={`Are you sure you want to suspend "${suspendTarget?.name}"? They will be unable to send messages until their account is reactivated.`} confirmLabel="Suspend" loading={suspendMutation.isPending} />
+
+      <ConfirmDialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={() => { if (deleteTarget) deleteMutation.mutate(deleteTarget.id) }} title="Delete account" description={`Are you sure you want to delete "${deleteTarget?.name}"? This will permanently remove their account and all associated data.`} confirmLabel="Delete" loading={deleteMutation.isPending} />
+
       <motion.div variants={itemVariants}>
         <DataTable
           data={accounts}
           columns={columns}
-          loading={loading}
+          loading={isLoading}
           totalItems={total}
           page={page}
           pageSize={pageSize}

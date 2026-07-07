@@ -197,9 +197,9 @@ export async function retryDeadLetter(id: string): Promise<void> {
 // ─── Member Send SMS ──────────────────────────────────────────
 
 export async function sendSMS(data: {
+  device_id: string
   recipient: string
   message: string
-  sender?: string
   message_type?: string
 }): Promise<{ message_id: string; status: string; created_at: string }> {
   const res = await api.post<ApiResponse<{ message_id: string; status: string; created_at: string }>>('/member/send', data)
@@ -224,9 +224,9 @@ export interface BulkSendResponse {
 }
 
 export async function bulkSendSMS(data: {
+  device_id: string
   recipients: string[]
   message: string
-  sender?: string
   message_type?: string
 }): Promise<BulkSendResponse> {
   const res = await api.post<ApiResponse<BulkSendResponse>>('/send/bulk', data)
@@ -235,10 +235,10 @@ export async function bulkSendSMS(data: {
 }
 
 export async function scheduleSendSMS(data: {
+  device_id: string
   recipient: string
   message: string
   scheduled_at: string
-  sender?: string
   message_type?: string
 }): Promise<{ message_id: string; status: string; scheduled_at: string }> {
   const res = await api.post<ApiResponse<{ message_id: string; status: string; scheduled_at: string }>>('/send/schedule', data)

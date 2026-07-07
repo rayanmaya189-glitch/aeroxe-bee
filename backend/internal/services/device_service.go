@@ -19,13 +19,13 @@ func NewDeviceService(db DatabaseQuerier) *DeviceService {
 
 func (s *DeviceService) Create(ctx context.Context, device *models.Device) error {
 	_, err := s.db.Exec(ctx,
-		`INSERT INTO devices (id, physical_device_id, account_id, sim_slot, carrier, status, sim_health_status,
+		`INSERT INTO devices (id, physical_device_id, account_id, sim_slot, carrier, phone_number, status, sim_health_status,
 		 health_trend_slope, reliability_score, reputation_score, country_code, region, max_per_minute, max_per_hour,
 		 circuit_breaker_state, created_at, updated_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW(), NOW())
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW(), NOW())
 		 ON CONFLICT (physical_device_id, sim_slot) DO UPDATE SET
-		 status = EXCLUDED.status, updated_at = NOW()`,
-		device.ID, device.PhysicalDeviceID, device.AccountID, device.SIMSlot, device.Carrier,
+		 status = EXCLUDED.status, phone_number = COALESCE(EXCLUDED.phone_number, devices.phone_number), updated_at = NOW()`,
+		device.ID, device.PhysicalDeviceID, device.AccountID, device.SIMSlot, device.Carrier, device.PhoneNumber,
 		device.Status, device.SIMHealthStatus, device.HealthTrendSlope, device.ReliabilityScore,
 		device.ReputationScore, device.CountryCode, device.Region, device.MaxPerMinute,
 		device.MaxPerHour, device.CircuitBreakerState)
@@ -35,13 +35,13 @@ func (s *DeviceService) Create(ctx context.Context, device *models.Device) error
 func (s *DeviceService) GetByID(ctx context.Context, id string) (*models.Device, error) {
 	device := &models.Device{}
 	err := s.db.QueryRow(ctx,
-		`SELECT id, physical_device_id, account_id, sim_slot, carrier, status, sim_health_status,
+		`SELECT id, physical_device_id, account_id, sim_slot, carrier, phone_number, status, sim_health_status,
 		        health_trend_slope, last_seen, last_ping_at, last_pong_at, messages_sent_count, last_used_at,
 		        mqtt_credential_id, reliability_score, reputation_score, complaint_count, block_event_count,
 		        fraud_flag_weight, name, success_rate_24h, uptime_ratio_24h, avg_latency_ms, country_code, region,
 		        max_per_minute, max_per_hour, isolated_pool_id, circuit_breaker_state, created_at, updated_at
 		 FROM devices WHERE id = $1`, id,
-	).Scan(&device.ID, &device.PhysicalDeviceID, &device.AccountID, &device.SIMSlot, &device.Carrier,
+	).Scan(&device.ID, &device.PhysicalDeviceID, &device.AccountID, &device.SIMSlot, &device.Carrier, &device.PhoneNumber,
 		&device.Status, &device.SIMHealthStatus, &device.HealthTrendSlope, &device.LastSeen,
 		&device.LastPingAt, &device.LastPongAt, &device.MessagesSentCount, &device.LastUsedAt,
 		&device.MQTTCredentialID, &device.ReliabilityScore, &device.ReputationScore,
@@ -60,7 +60,7 @@ func (s *DeviceService) GetByID(ctx context.Context, id string) (*models.Device,
 
 func (s *DeviceService) ListByAccount(ctx context.Context, accountID string) ([]models.Device, error) {
 	rows, err := s.db.Query(ctx,
-		`SELECT id, physical_device_id, account_id, sim_slot, carrier, status, sim_health_status,
+		`SELECT id, physical_device_id, account_id, sim_slot, carrier, phone_number, status, sim_health_status,
 		        health_trend_slope, last_seen, last_ping_at, last_pong_at, messages_sent_count, last_used_at,
 		        mqtt_credential_id, reliability_score, reputation_score, complaint_count, block_event_count,
 		        fraud_flag_weight, name, success_rate_24h, uptime_ratio_24h, avg_latency_ms, country_code, region,
@@ -74,7 +74,7 @@ func (s *DeviceService) ListByAccount(ctx context.Context, accountID string) ([]
 	var devices []models.Device
 	for rows.Next() {
 		var d models.Device
-		if err := rows.Scan(&d.ID, &d.PhysicalDeviceID, &d.AccountID, &d.SIMSlot, &d.Carrier,
+		if err := rows.Scan(&d.ID, &d.PhysicalDeviceID, &d.AccountID, &d.SIMSlot, &d.Carrier, &d.PhoneNumber,
 			&d.Status, &d.SIMHealthStatus, &d.HealthTrendSlope, &d.LastSeen,
 			&d.LastPingAt, &d.LastPongAt, &d.MessagesSentCount, &d.LastUsedAt,
 			&d.MQTTCredentialID, &d.ReliabilityScore, &d.ReputationScore,
@@ -92,7 +92,7 @@ func (s *DeviceService) ListByAccount(ctx context.Context, accountID string) ([]
 
 func (s *DeviceService) ListAll(ctx context.Context) ([]models.Device, error) {
 	rows, err := s.db.Query(ctx,
-		`SELECT id, physical_device_id, account_id, sim_slot, carrier, status, sim_health_status,
+		`SELECT id, physical_device_id, account_id, sim_slot, carrier, phone_number, status, sim_health_status,
 		        health_trend_slope, last_seen, last_ping_at, last_pong_at, messages_sent_count, last_used_at,
 		        mqtt_credential_id, reliability_score, reputation_score, complaint_count, block_event_count,
 		        fraud_flag_weight, name, success_rate_24h, uptime_ratio_24h, avg_latency_ms, country_code, region,
@@ -106,7 +106,7 @@ func (s *DeviceService) ListAll(ctx context.Context) ([]models.Device, error) {
 	var devices []models.Device
 	for rows.Next() {
 		var d models.Device
-		if err := rows.Scan(&d.ID, &d.PhysicalDeviceID, &d.AccountID, &d.SIMSlot, &d.Carrier,
+		if err := rows.Scan(&d.ID, &d.PhysicalDeviceID, &d.AccountID, &d.SIMSlot, &d.Carrier, &d.PhoneNumber,
 			&d.Status, &d.SIMHealthStatus, &d.HealthTrendSlope, &d.LastSeen,
 			&d.LastPingAt, &d.LastPongAt, &d.MessagesSentCount, &d.LastUsedAt,
 			&d.MQTTCredentialID, &d.ReliabilityScore, &d.ReputationScore,
@@ -123,7 +123,7 @@ func (s *DeviceService) ListAll(ctx context.Context) ([]models.Device, error) {
 }
 
 func (s *DeviceService) GetEligibleDevices(ctx context.Context, opts DeviceFilterOptions) ([]models.Device, error) {
-	query := `SELECT id, physical_device_id, account_id, sim_slot, carrier, status, sim_health_status,
+	query := `SELECT id, physical_device_id, account_id, sim_slot, carrier, phone_number, status, sim_health_status,
 		health_trend_slope, last_seen, last_ping_at, last_pong_at, messages_sent_count, last_used_at,
 		mqtt_credential_id, reliability_score, reputation_score, complaint_count, block_event_count,
 		fraud_flag_weight, name, success_rate_24h, uptime_ratio_24h, avg_latency_ms, country_code, region,
@@ -176,7 +176,7 @@ func (s *DeviceService) GetEligibleDevices(ctx context.Context, opts DeviceFilte
 	var devices []models.Device
 	for rows.Next() {
 		var d models.Device
-		if err := rows.Scan(&d.ID, &d.PhysicalDeviceID, &d.AccountID, &d.SIMSlot, &d.Carrier,
+		if err := rows.Scan(&d.ID, &d.PhysicalDeviceID, &d.AccountID, &d.SIMSlot, &d.Carrier, &d.PhoneNumber,
 			&d.Status, &d.SIMHealthStatus, &d.HealthTrendSlope, &d.LastSeen,
 			&d.LastPingAt, &d.LastPongAt, &d.MessagesSentCount, &d.LastUsedAt,
 			&d.MQTTCredentialID, &d.ReliabilityScore, &d.ReputationScore,
@@ -190,6 +190,12 @@ func (s *DeviceService) GetEligibleDevices(ctx context.Context, opts DeviceFilte
 		devices = append(devices, d)
 	}
 	return devices, nil
+}
+
+func (s *DeviceService) UpdatePhoneNumber(ctx context.Context, id, phoneNumber string) error {
+	_, err := s.db.Exec(ctx,
+		`UPDATE devices SET phone_number=$1, updated_at=NOW() WHERE id=$2`, phoneNumber, id)
+	return err
 }
 
 func (s *DeviceService) UpdateStatus(ctx context.Context, id string, status models.DeviceStatus) error {

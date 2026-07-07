@@ -1,39 +1,49 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { PageTransition } from '@/components/ui/PageTransition'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { sendSMS } from '@/services/dashboard'
+import { getOnlineDevices } from '@/services/api'
+import type { OnlineDevice } from '@/services/api'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { Badge } from '@/components/ui/Badge'
 import { staggerContainer, fadeInUp } from '@/components/animations/variants'
-import { Send, Phone, MessageSquare, CheckCircle, AlertCircle } from 'lucide-react'
+import { Send, Phone, MessageSquare, CheckCircle, AlertCircle, Smartphone } from 'lucide-react'
 
 export function SendSmsPage() {
   const [recipient, setRecipient] = useState('')
-  const [sender, setSender] = useState('')
+  const [selectedDeviceId, setSelectedDeviceId] = useState('')
   const [message, setMessage] = useState('')
   const [messageType, setMessageType] = useState('transactional')
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
 
+  const { data: devices = [] } = useQuery({
+    queryKey: ['member-devices-online'],
+    queryFn: getOnlineDevices,
+    staleTime: 30_000,
+  })
+
   const sendMutation = useMutation({
     mutationFn: () =>
       sendSMS({
+        device_id: selectedDeviceId,
         recipient,
         message,
-        sender: sender || undefined,
         message_type: messageType,
       }),
     onSuccess: (data) => {
       setResult({ success: true, message: `Message queued (${data.message_id.slice(0, 8)}…)` })
       setRecipient('')
       setMessage('')
-      setSender('')
       setMessageType('transactional')
     },
     onError: (err: Error) => {
       setResult({ success: false, message: err.message })
     },
   })
+
+  const selectedDevice = devices.find((d) => d.id === selectedDeviceId)
 
   return (
     <PageTransition>
@@ -54,7 +64,7 @@ export function SendSmsPage() {
                 </span>
               </h1>
               <p className="mt-1 text-sm text-gray-400">
-                Send a test message through your devices
+                Send a test message through your online devices
               </p>
             </div>
           </div>
@@ -63,6 +73,39 @@ export function SendSmsPage() {
 
       {/* Form */}
       <motion.div variants={fadeInUp} className="space-y-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 max-w-xl">
+        {/* Device selector */}
+        <div>
+          <label className="mb-1.5 flex items-center gap-2 text-sm font-medium text-gray-300">
+            <Smartphone className="h-4 w-4" />
+            Device
+          </label>
+          {devices.length === 0 ? (
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-sm text-amber-400">
+              No online devices available. Make sure your device is connected and online.
+            </div>
+          ) : (
+            <select
+              value={selectedDeviceId}
+              onChange={(e) => setSelectedDeviceId(e.target.value)}
+              className="block w-full rounded-xl border border-white/[0.08] bg-white/[0.05] px-3.5 py-2.5 text-sm text-gray-100 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
+              required
+            >
+              <option value="">Select a device...</option>
+              {devices.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name} {d.phone_number ? `(${d.phone_number})` : ''} · {d.carrier}
+                </option>
+              ))}
+            </select>
+          )}
+          {selectedDevice && (
+            <div className="mt-2 flex items-center gap-2">
+              <Badge variant="success" dot size="sm">Online</Badge>
+              <span className="text-xs text-gray-500">{selectedDevice.carrier} · SIM {selectedDevice.sim_slot}</span>
+            </div>
+          )}
+        </div>
+
         <Input
           label="Recipient"
           value={recipient}
@@ -70,13 +113,6 @@ export function SendSmsPage() {
           placeholder="+1234567890"
           icon={<Phone className="h-4 w-4" />}
           required
-        />
-
-        <Input
-          label="Sender"
-          value={sender}
-          onChange={(e) => setSender(e.target.value)}
-          placeholder="AeroXe Bee (default)"
         />
 
         {/* Message */}
@@ -125,9 +161,9 @@ export function SendSmsPage() {
               sendMutation.mutate()
             }}
             loading={sendMutation.isPending}
-            disabled={!recipient.trim() || !message.trim()}
+            disabled={!selectedDeviceId || !recipient.trim() || !message.trim()}
           >
-            Send
+            Send{selectedDevice ? ` via ${selectedDevice.name}` : ''}
           </Button>
         </div>
       </motion.div>

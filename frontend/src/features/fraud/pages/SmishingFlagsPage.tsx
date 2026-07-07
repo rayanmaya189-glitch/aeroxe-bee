@@ -11,12 +11,12 @@ import { FilterPanel } from '@/components/ui/FilterPanel'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useToast } from '@/components/ui/Toast'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
-import { CheckCircle, MessageCircleAlert, ShieldAlert, Siren, PhoneOff, UserX, CheckSquare, Square } from 'lucide-react'
+import { CheckCircle, MessageCircleWarning, ShieldAlert, Siren, PhoneOff, UserX, CheckSquare, Square } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import type { FraudFlag } from '@/types/models'
 
 const categoryThemes: Record<string, { label: string; variant: 'danger' | 'warning' | 'info'; icon: React.ReactNode }> = {
-  smishing: { label: 'Smishing', variant: 'danger', icon: <MessageCircleAlert className="h-3 w-3" /> },
+  smishing: { label: 'Smishing', variant: 'danger', icon: <MessageCircleWarning className="h-3 w-3" /> },
   phishing: { label: 'Phishing', variant: 'danger', icon: <Siren className="h-3 w-3" /> },
   scam: { label: 'Scam', variant: 'warning', icon: <ShieldAlert className="h-3 w-3" /> },
   suspicious_sender: { label: 'Suspicious Sender', variant: 'warning', icon: <UserX className="h-3 w-3" /> },
@@ -177,7 +177,7 @@ export function SmishingFlagsPage() {
           <div className="pointer-events-none absolute right-1/3 top-1/2 h-24 w-24 rounded-full bg-purple-600/10 blur-[50px]" />
           <div className="relative flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 to-amber-600 shadow-lg shadow-rose-500/25">
-              <MessageCircleAlert className="h-6 w-6 text-white" />
+              <MessageCircleWarning className="h-6 w-6 text-white" />
             </div>
             <div>
               <h1 className="text-3xl font-extrabold tracking-tight text-white lg:text-4xl">
@@ -212,7 +212,7 @@ export function SmishingFlagsPage() {
                 ? 'Try adjusting your filters to see more results.'
                 : 'Social engineering and phishing attempts flagged by the content filter will appear here for review.'
             }
-            icon={<MessageCircleAlert className="h-12 w-12 text-gray-500" />}
+            icon={<MessageCircleWarning className="h-12 w-12 text-gray-500" />}
           />
         </motion.div>
       ) : (
@@ -281,7 +281,6 @@ export function SmishingFlagsPage() {
             </thead>
             <tbody className="divide-y divide-white/[0.04]">
               {filteredFlags.map((f) => {
-                const category = extractCategory(f.flag_type)
                 const theme = getCategoryTheme(f.flag_type)
                 const isSelected = selectedIds.has(f.id)
                 return (

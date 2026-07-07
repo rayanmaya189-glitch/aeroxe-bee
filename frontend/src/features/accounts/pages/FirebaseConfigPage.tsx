@@ -65,6 +65,7 @@ export function FirebaseConfigPage() {
   async function handleSaveAll() {
     try {
       setSaving(true)
+      setError('')
       const entriesToUpdate = Object.entries(editedValues).map(([key, value]) => {
         const original = entries.find((e) => e.config_key === key)
         return {

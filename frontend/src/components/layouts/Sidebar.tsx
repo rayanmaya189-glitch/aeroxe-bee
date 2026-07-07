@@ -11,7 +11,7 @@ import { useToast } from '@/components/ui/Toast'
 import {
   LayoutDashboard, TrendingUp, Users, BarChart3, FileText, Webhook,
   CreditCard, Settings, Zap, ChevronLeft, ChevronDown,
-  MessageSquare, MessageCircleAlert, AlertTriangle, BrainCircuit, UserCog,
+  MessageSquare, MessageCircleWarning, AlertTriangle, BrainCircuit, UserCog,
   Receipt, Crown, FileCheck, Shield, Tags, AppWindow, Settings2, Send,
 } from 'lucide-react'
 
@@ -72,7 +72,7 @@ const adminNavGroups: NavGroup[] = [
       { label: 'Circuit Breakers', path: '/circuit-breakers', icon: <BrainCircuit className="h-[14px] w-[14px]" /> },
       { label: 'Dead Letters', path: '/dead-letters', icon: <MessageSquare className="h-[14px] w-[14px]" /> },
       { label: 'Fraud Flags', path: '/fraud-flags', icon: <AlertTriangle className="h-[14px] w-[14px]" /> },
-      { label: 'Smishing Flags', path: '/smishing-flags', icon: <MessageCircleAlert className="h-[14px] w-[14px]" /> },
+      { label: 'Smishing Flags', path: '/smishing-flags', icon: <MessageCircleWarning className="h-[14px] w-[14px]" /> },
       { label: 'KYC Reviews', path: '/kyc-reviews', icon: <FileCheck className="h-[14px] w-[14px]" /> },
       { label: 'App Releases', path: '/app-releases', icon: <AppWindow className="h-[14px] w-[14px]" /> },
       { label: 'Firebase Config', path: '/firebase-config', icon: <Settings2 className="h-[14px] w-[14px]" /> },

@@ -1,24 +1,32 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { PageTransition } from '@/components/ui/PageTransition'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { bulkSendSMS, scheduleSendSMS } from '@/services/dashboard'
+import { getOnlineDevices } from '@/services/api'
+import type { OnlineDevice } from '@/services/api'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Badge } from '@/components/ui/Badge'
 import { staggerContainer, fadeInUp } from '@/components/animations/variants'
-import { Send, CalendarClock, Users, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import { Send, CalendarClock, Users, CheckCircle, AlertCircle, Smartphone } from 'lucide-react'
 
 type SendMode = 'now' | 'schedule'
 
 export function BulkSmsPage() {
   const [mode, setMode] = useState<SendMode>('now')
+  const [selectedDeviceId, setSelectedDeviceId] = useState('')
   const [recipients, setRecipients] = useState('')
-  const [sender, setSender] = useState('')
   const [message, setMessage] = useState('')
   const [scheduledAt, setScheduledAt] = useState('')
   const [messageType, setMessageType] = useState('transactional')
   const [result, setResult] = useState<{ success: boolean; summary: string } | null>(null)
+
+  const { data: devices = [] } = useQuery({
+    queryKey: ['member-devices-online'],
+    queryFn: getOnlineDevices,
+    staleTime: 30_000,
+  })
 
   const bulkMutation = useMutation({
     mutationFn: () => {
@@ -27,9 +35,9 @@ export function BulkSmsPage() {
         .map((r) => r.trim())
         .filter(Boolean)
       return bulkSendSMS({
+        device_id: selectedDeviceId,
         recipients: recipientList,
         message,
-        sender: sender || undefined,
         message_type: messageType,
       })
     },
@@ -49,10 +57,10 @@ export function BulkSmsPage() {
   const scheduleMutation = useMutation({
     mutationFn: () =>
       scheduleSendSMS({
+        device_id: selectedDeviceId,
         recipient: recipients.split(/[\n,]+/).map((r) => r.trim()).filter(Boolean)[0] || '',
         message,
         scheduled_at: new Date(scheduledAt).toISOString(),
-        sender: sender || undefined,
         message_type: messageType,
       }),
     onSuccess: (data) => {
@@ -68,6 +76,7 @@ export function BulkSmsPage() {
 
   const recipientList = recipients.split(/[\n,]+/).map((r) => r.trim()).filter(Boolean)
   const isLoading = bulkMutation.isPending || scheduleMutation.isPending
+  const selectedDevice = devices.find((d) => d.id === selectedDeviceId)
 
   return (
     <PageTransition>
@@ -118,6 +127,39 @@ export function BulkSmsPage() {
 
       {/* Form */}
       <motion.div variants={fadeInUp} className="space-y-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
+        {/* Device selector */}
+        <div>
+          <label className="mb-1.5 flex items-center gap-2 text-sm font-medium text-gray-300">
+            <Smartphone className="h-4 w-4" />
+            Device
+          </label>
+          {devices.length === 0 ? (
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-sm text-amber-400">
+              No online devices available. Make sure your device is connected and online.
+            </div>
+          ) : (
+            <select
+              value={selectedDeviceId}
+              onChange={(e) => setSelectedDeviceId(e.target.value)}
+              className="block w-full rounded-xl border border-white/[0.08] bg-white/[0.05] px-3.5 py-2.5 text-sm text-gray-100 shadow-sm focus:border-violet-500 focus:outline-none focus:ring-4 focus:ring-violet-500/10"
+              required
+            >
+              <option value="">Select a device...</option>
+              {devices.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name} {d.phone_number ? `(${d.phone_number})` : ''} · {d.carrier}
+                </option>
+              ))}
+            </select>
+          )}
+          {selectedDevice && (
+            <div className="mt-2 flex items-center gap-2">
+              <Badge variant="success" dot size="sm">Online</Badge>
+              <span className="text-xs text-gray-500">{selectedDevice.carrier} · SIM {selectedDevice.sim_slot}</span>
+            </div>
+          )}
+        </div>
+
         {/* Recipients */}
         <div>
           <label className="mb-1.5 flex items-center gap-2 text-sm font-medium text-gray-300">
@@ -145,14 +187,6 @@ export function BulkSmsPage() {
             <p className="mt-1.5 text-xs text-gray-500">Enter a single recipient for scheduled messages</p>
           )}
         </div>
-
-        {/* Sender */}
-        <Input
-          label="Sender"
-          value={sender}
-          onChange={(e) => setSender(e.target.value)}
-          placeholder="AeroXe Bee (default)"
-        />
 
         {/* Message */}
         <div>
@@ -208,12 +242,15 @@ export function BulkSmsPage() {
             }}
             loading={isLoading}
             disabled={
-              !recipients.trim() || !message.trim() ||
+              !selectedDeviceId || !recipients.trim() || !message.trim() ||
               (mode === 'schedule' && !scheduledAt)
             }
           >
             {mode === 'now' ? `Send to ${recipientList.length} recipient${recipientList.length !== 1 ? 's' : ''}` : 'Schedule message'}
           </Button>
+          {selectedDevice && (
+            <span className="text-xs text-gray-500">via {selectedDevice.name}</span>
+          )}
         </div>
       </motion.div>
 
