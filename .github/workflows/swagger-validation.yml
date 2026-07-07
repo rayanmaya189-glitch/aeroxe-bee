@@ -1,0 +1,48 @@
+name: Swagger Validation
+
+on:
+  push:
+    branches: [main, dev, staging]
+    paths:
+      - 'backend/internal/api/router.go'
+      - 'backend/internal/api/docs/swagger.json'
+      - 'backend/scripts/validate-swagger.py'
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - 'backend/internal/api/router.go'
+      - 'backend/internal/api/docs/swagger.json'
+      - 'backend/scripts/validate-swagger.py'
+  # Allow manual trigger from GitHub UI
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Validate swagger.json is valid JSON
+        run: python3 -c "import json; json.load(open('internal/api/docs/swagger.json')); print('✅ Valid JSON')"
+
+      - name: Check swagger.json against router.go
+        run: python3 scripts/validate-swagger.py
+
+      - name: Upload swagger spec as artifact (for reference)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: swagger-spec
+          path: backend/internal/api/docs/swagger.json
+          retention-days: 7
