@@ -66,8 +66,8 @@ class TokenManager @Inject constructor(
     fun saveMqttPassword(password: String) = prefs.edit().putString(KEY_MQTT_PASSWORD, password).apply()
     fun getMqttPassword(): String? = prefs.getString(KEY_MQTT_PASSWORD, null)
 
-    fun saveMqttCredentialId(id: String) = prefs.edit().putString(KEY_MQTT_CREDENTIAL_ID, id).apply()
-    fun getMqttCredentialId(): String? = prefs.getString(KEY_MQTT_CREDENTIAL_ID, null)
+//    fun saveMqttCredentialId(id: String) = prefs.edit().putString(KEY_MQTT_CREDENTIAL_ID, id).apply()
+//    fun getMqttCredentialId(): String? = prefs.getString(KEY_MQTT_CREDENTIAL_ID, null)
 
     fun clear() = prefs.edit().clear().apply()
 

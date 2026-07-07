@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/aeroxe-bee/backend/internal/models"
@@ -77,6 +78,12 @@ func (s *MQTTCredentialService) CreateWithEncryptedPassword(ctx context.Context,
 		 VALUES ($1, $2, $3, $4, $5, $6)`,
 		cred.ID, cred.DeviceID, cred.Username, cred.CredentialHash, cred.EncryptedPassword, cred.IssuedAt)
 	if err != nil {
+		slog.Error("mqtt credential db insert failed",
+			"device_id", deviceID,
+			"username", username,
+			"credential_id", id,
+			"error", err,
+		)
 		return nil, "", fmt.Errorf("create mqtt credential: %w", err)
 	}
 

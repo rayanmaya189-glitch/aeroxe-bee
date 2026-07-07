@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
@@ -232,7 +233,12 @@ func (h *QRPairingHandler) QRLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Revoke any existing active MQTT credentials for this device
-	_ = h.mqttCredentialService.RevokeByDeviceID(r.Context(), deviceID)
+	if err := h.mqttCredentialService.RevokeByDeviceID(r.Context(), deviceID); err != nil {
+		slog.Error("failed to revoke old MQTT credentials",
+			"device_id", deviceID,
+			"error", err,
+		)
+	}
 
 	// Create MQTT credentials with encrypted password
 	// Use deviceID (composite: androidId-sim1) — must match devices.id for FK constraint
@@ -241,6 +247,11 @@ func (h *QRPairingHandler) QRLogin(w http.ResponseWriter, r *http.Request) {
 		deviceID,
 		h.encryption.Encrypt,
 	); err != nil {
+		slog.Error("failed to create MQTT credentials during QR login",
+			"device_id", deviceID,
+			"account_id", accountID,
+			"error", err,
+		)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to create MQTT credentials"})
 		return
 	}

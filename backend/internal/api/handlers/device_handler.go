@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -235,7 +236,12 @@ func (h *DeviceHandler) DeviceLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 	// Revoke any existing active MQTT credentials for this device
-	_ = h.mqttCredentialService.RevokeByDeviceID(r.Context(), deviceID)
+	if err := h.mqttCredentialService.RevokeByDeviceID(r.Context(), deviceID); err != nil {
+		slog.Error("failed to revoke old MQTT credentials",
+			"device_id", deviceID,
+			"error", err,
+		)
+	}
 
 	// Track credential in DB for audit trail (actual MQTT auth uses shared "devices" credentials)
 	// Use deviceID (composite: androidId-sim1) — must match devices.id for FK constraint
@@ -244,6 +250,11 @@ func (h *DeviceHandler) DeviceLogin(w http.ResponseWriter, r *http.Request) {
 		deviceID,
 		h.encryption.Encrypt,
 	); err != nil {
+		slog.Error("failed to create MQTT credentials during login",
+			"device_id", deviceID,
+			"account_id", account.ID,
+			"error", err,
+		)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to create MQTT credentials"})
 		return
 	}

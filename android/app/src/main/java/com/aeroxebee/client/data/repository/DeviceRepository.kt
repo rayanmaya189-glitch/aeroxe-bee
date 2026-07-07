@@ -72,7 +72,6 @@ class DeviceRepository @Inject constructor(
             data.mqtt?.let { mqtt ->
                 tokenManager.saveMqttUsername(mqtt.username)
                 tokenManager.saveMqttPassword(mqtt.password)
-                tokenManager.saveMqttCredentialId(mqtt.credentialId)
             }
 
             // Mark as registered

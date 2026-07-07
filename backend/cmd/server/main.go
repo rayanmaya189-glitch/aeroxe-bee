@@ -61,6 +61,9 @@ func main() {
 	defer postgres.Close()
 	logger.Info("postgres connected", "pool_size", cfg.Database.MaxOpenConns)
 
+	// Ensure critical schema changes exist (defensive migration for non-Docker setups)
+	ensureMQTTCredentialsMigration(context.Background(), postgres.Pool, logger)
+
 	redisDB, err := database.NewRedis(cfg.Redis)
 	if err != nil {
 		logger.Error("redis connection failed", "error", err)
@@ -1026,4 +1029,34 @@ func seedAdminUser(ctx context.Context, pool *pgxpool.Pool, logger *telemetry.Lo
 		return
 	}
 	logger.Info("seed: admin user ready", "email", adminEmail)
+}
+
+// ensureMQTTCredentialsMigration applies critical schema changes to mqtt_credentials
+// at startup. This is a safety net for environments where Docker-based migrations
+// (mounted into /docker-entrypoint-initdb.d/) may not have been applied.
+func ensureMQTTCredentialsMigration(ctx context.Context, pool *pgxpool.Pool, logger *telemetry.Logger) {
+	migrations := []struct {
+		name string
+		sql  string
+	}{
+		{
+			name: "add encrypted_password column",
+			sql:  `ALTER TABLE mqtt_credentials ADD COLUMN IF NOT EXISTS encrypted_password TEXT NOT NULL DEFAULT ''`,
+		},
+		{
+			name: "drop username UNIQUE constraint",
+			sql:  `ALTER TABLE mqtt_credentials DROP CONSTRAINT IF EXISTS mqtt_credentials_username_key`,
+		},
+		{
+			name: "recreate partial unique index on active credentials",
+			sql:  `DROP INDEX IF EXISTS idx_mqtt_credentials_username_active; CREATE UNIQUE INDEX idx_mqtt_credentials_username_active ON mqtt_credentials (username) WHERE revoked_at IS NULL`,
+		},
+	}
+
+	for _, m := range migrations {
+		if _, err := pool.Exec(ctx, m.sql); err != nil {
+			logger.Warn("auto-migration failed", "step", m.name, "error", err)
+		}
+	}
+	logger.Debug("mqtt_credentials schema check complete")
 }

@@ -93,7 +93,7 @@ data class MqttConnectionInfo(
     @SerializedName("broker_url") val brokerUrl: String,
     @SerializedName("username") val username: String,
     @SerializedName("password") val password: String,
-    @SerializedName("credential_id") val credentialId: String,
+    @SerializedName("credential_id") val credentialId: String? = null,
 )
 
 data class DeviceInfoData(
