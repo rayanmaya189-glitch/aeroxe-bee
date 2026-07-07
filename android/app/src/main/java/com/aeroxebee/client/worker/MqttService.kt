@@ -195,18 +195,23 @@ class MqttService : Service() {
 
     @Suppress("DEPRECATION")
     private fun getWifiSignalStrength(): Pair<Int, Int> {
-        val wm = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
-        val wifiInfo: WifiInfo = wm.connectionInfo
-        val rssi = wifiInfo.rssi
-        // Map RSSI to level 0-4 (same as WifiManager.calculateSignalLevel)
-        val level = when {
-            rssi <= -100 -> 0
-            rssi <= -80 -> 1
-            rssi <= -67 -> 2
-            rssi <= -55 -> 3
-            else -> 4
+        return try {
+            val wm = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
+            val wifiInfo: WifiInfo = wm.connectionInfo
+            val rssi = wifiInfo.rssi
+            // Map RSSI to level 0-4 (same as WifiManager.calculateSignalLevel)
+            val level = when {
+                rssi <= -100 -> 0
+                rssi <= -80 -> 1
+                rssi <= -67 -> 2
+                rssi <= -55 -> 3
+                else -> 4
+            }
+            rssi to level
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to get WiFi signal strength: ${e.message}")
+            0 to 0
         }
-        return rssi to level
     }
 
     @Suppress("DEPRECATION")
