@@ -108,7 +108,7 @@ func main() {
 
 	simHealthEngine := simhealth.NewEngine(cfg.SIMHealth)
 	deliveryEngine := deliveryconf.NewEngine(cfg.Delivery)
-	routingSelector := routing.NewSelector(models.RoutingStrategyHighestReliability)
+	routingSelector := routing.NewSelector()
 	cbManager := circuitbreaker.NewStateManager(redisDB.Client, cfg.CircuitBreaker)
 	fraudDetector := fraud.NewDetector(redisDB.Client)
 	webhookDispatcher := webhook.NewDispatcher(cfg.Webhook)
@@ -420,7 +420,6 @@ func processMessage(
 
 	recipientCountry := detectCountryFromPhone(msg.Recipient)
 	opts := routing.DeviceOptions{
-		Strategy:         msg.RoutingStrategy,
 		RecipientCountry: recipientCountry,
 		MaxResults:       3,
 		ExcludeBlocked:   true,
@@ -533,8 +532,7 @@ func processMessage(
 			"carrier", device.Carrier,
 			"status", confidenceResult.DeliveryStatus,
 			"confidence", fmt.Sprintf("%.2f", confidenceResult.Score),
-			"latency", telemetry.FormatDuration(latency),
-			"routing_strategy", msg.RoutingStrategy,
+			"latency", telemetry.FormatDuration(latency),				"lane", string(lane),
 		)
 
 		go dispatchWebhooks(ctx, svc, webhookDispatcher, msg, device, confidenceResult, logger)

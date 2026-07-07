@@ -61,7 +61,7 @@ export function Footer() {
               <span className="text-lg font-bold tracking-tight text-white">AeroXe Bee</span>
             </a>
             <p className="mt-4 text-sm leading-relaxed text-gray-400">
-              Distributed SMS gateway platform with intelligent routing.
+              Distributed SMS gateway platform for reliable SMS delivery.
             </p>
             <div className="mt-6 flex gap-3">
               {['X', 'GH', 'LI', 'YT'].map((s) => (

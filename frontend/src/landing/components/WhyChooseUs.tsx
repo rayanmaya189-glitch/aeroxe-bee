@@ -2,7 +2,7 @@ import { motion } from 'framer-motion'
 import { useInView } from 'react-intersection-observer'
 import { 
   BarChart3, 
-  MessageSquare, ArrowRight,
+  ArrowRight,
   Brain, CalendarClock, ShieldBan, Mic
 } from 'lucide-react'
 import { staggerContainer, fadeInUp } from '../animations/variants'
@@ -37,12 +37,6 @@ const differentiators = [
     title: 'Voice-to-Text Input',
     description: 'Dictate messages and templates hands-free with built-in speech recognition. Perfect for quick composition and accessibility.',
     color: 'from-rose-500 to-pink-400',
-  },
-  {
-    icon: MessageSquare,
-    title: 'Priority Messaging Lanes',
-    description: 'Three dedicated lanes for OTP, transactional, and marketing messages — ensuring critical messages always get delivered first.',
-    color: 'from-cyan-500 to-blue-400',
   },
 ]
 

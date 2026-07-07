@@ -179,13 +179,8 @@ func (h *BillingHandler) CreatePlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if plan.DefaultRoutingStrategy != "" &&
-		plan.DefaultRoutingStrategy != models.RoutingStrategyFastest &&
-		plan.DefaultRoutingStrategy != models.RoutingStrategyLowestCost &&
-		plan.DefaultRoutingStrategy != models.RoutingStrategyHighestReliability &&
-		plan.DefaultRoutingStrategy != models.RoutingStrategyGeoAffinity &&
-		plan.DefaultRoutingStrategy != models.RoutingStrategyProfitOptimized {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "default_routing_strategy must be fastest_delivery, lowest_cost, highest_reliability, geo_affinity, or profit_optimized"})
-		return
+		plan.DefaultRoutingStrategy != models.RoutingStrategyFIFO {
+		plan.DefaultRoutingStrategy = models.RoutingStrategyFIFO
 	}
 	if err := h.billingService.CreatePlan(r.Context(), &plan); err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to create plan"})
@@ -236,13 +231,8 @@ func (h *BillingHandler) UpdatePlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if plan.DefaultRoutingStrategy != "" &&
-		plan.DefaultRoutingStrategy != models.RoutingStrategyFastest &&
-		plan.DefaultRoutingStrategy != models.RoutingStrategyLowestCost &&
-		plan.DefaultRoutingStrategy != models.RoutingStrategyHighestReliability &&
-		plan.DefaultRoutingStrategy != models.RoutingStrategyGeoAffinity &&
-		plan.DefaultRoutingStrategy != models.RoutingStrategyProfitOptimized {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "default_routing_strategy must be fastest_delivery, lowest_cost, highest_reliability, geo_affinity, or profit_optimized"})
-		return
+		plan.DefaultRoutingStrategy != models.RoutingStrategyFIFO {
+		plan.DefaultRoutingStrategy = models.RoutingStrategyFIFO
 	}
 	if err := h.billingService.UpdatePlan(r.Context(), &plan); err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to update plan"})

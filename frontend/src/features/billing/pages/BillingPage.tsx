@@ -75,9 +75,9 @@ export function BillingPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Check className="h-3.5 w-3.5 text-emerald-400" />
-                      <span className="text-gray-400">Routing strategy</span>
+                      <span className="text-gray-400">Routing</span>
                     </div>
-                    <Badge size="sm">{plan.default_routing_strategy}</Badge>
+                    <Badge size="sm">Standard</Badge>
                   </div>
                 </div>
               </Card>

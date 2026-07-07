@@ -35,7 +35,7 @@ export function PlansPage() {
   const [pricePerSms, setPricePerSms] = useState('')
   const [overageBuffer, setOverageBuffer] = useState('')
   const [maxQueueDepth, setMaxQueueDepth] = useState('')
-  const [routingStrategy, setRoutingStrategy] = useState('fastest_delivery')
+  const [routingStrategy] = useState('fifo')
   const [dedicatedPool, setDedicatedPool] = useState(false)
   const [visibility, setVisibility] = useState<'public' | 'private' | 'custom'>('public')
   const [maxDevices, setMaxDevices] = useState('')
@@ -73,7 +73,6 @@ export function PlansPage() {
     setDailyQuota(String(plan?.daily_quota ?? '')); setMonthlyQuota(String(plan?.monthly_quota ?? ''))
     setMonthlyPrice(String(plan?.monthly_price ?? '')); setPricePerSms(String(plan?.price_per_sms ?? ''))
     setOverageBuffer(String(plan?.overage_buffer_pct ?? '')); setMaxQueueDepth(String(plan?.max_queue_depth ?? ''))
-    setRoutingStrategy(plan?.default_routing_strategy || 'fastest_delivery')
     setDedicatedPool(plan?.dedicated_pool || false); setVisibility(plan?.visibility || 'public')
     setMaxDevices(String(plan?.max_devices ?? '')); setMaxTemplates(String(plan?.max_templates ?? '')); setIsPopular(plan?.is_popular || false)
     setCtaText(plan?.cta_text || '')
@@ -137,7 +136,7 @@ export function PlansPage() {
                   ))}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-emerald-400" /><span className="text-gray-400">Routing</span></div>
-                    <Badge size="sm">{plan.default_routing_strategy}</Badge>
+                    <Badge size="sm">Standard</Badge>
                   </div>
                   {(plan.features || []).length > 0 && (
                     <div className="pt-2">
@@ -283,11 +282,10 @@ export function PlansPage() {
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-300">Routing strategy</label>
-              <select value={routingStrategy} onChange={(e) => setRoutingStrategy(e.target.value)} className={selCls}>
-                <option value="fastest_delivery">Fastest delivery</option><option value="lowest_cost">Lowest cost</option>
-                <option value="highest_reliability">Highest reliability</option><option value="geo_affinity">Geo affinity</option>
-                <option value="profit_optimized">Profit optimized</option>
+              <select value={routingStrategy} onChange={() => {}} disabled className={selCls}>
+                <option value="highest_reliability">Highest reliability (default)</option>
               </select>
+              <p className="mt-1 text-xs text-gray-500">Routing is now standardized across all plans</p>
             </div>
           </div>
           <label className="flex items-center gap-3 cursor-pointer">

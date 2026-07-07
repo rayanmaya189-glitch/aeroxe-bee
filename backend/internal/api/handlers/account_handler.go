@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/aeroxe-bee/backend/internal/api/middleware"
-	"github.com/aeroxe-bee/backend/internal/models"
 	"github.com/aeroxe-bee/backend/internal/services"
 )
 
@@ -179,32 +178,8 @@ func (h *AccountHandler) GetSubscription(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *AccountHandler) UpdateRoutingStrategy(w http.ResponseWriter, r *http.Request) {
-	accountID := middleware.GetAccountID(r.Context())
-	var req struct {
-		Strategy models.RoutingStrategy `json:"strategy"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid request"})
-		return
-	}
-
-	if _, ok := map[models.RoutingStrategy]bool{
-		models.RoutingStrategyFastest: true,
-		models.RoutingStrategyLowestCost: true,
-		models.RoutingStrategyHighestReliability: true,
-		models.RoutingStrategyGeoAffinity: true,
-		models.RoutingStrategyProfitOptimized: true,
-	}[req.Strategy]; !ok {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid strategy"})
-		return
-	}
-
-	if err := h.subscriptionService.UpdateRoutingStrategy(r.Context(), accountID, req.Strategy); err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to update strategy"})
-		return
-	}
-
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: map[string]string{"strategy": string(req.Strategy)}})
+	// Routing strategy is now standardized to FIFO for all accounts.
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: map[string]string{"strategy": "fifo"}})
 }
 
 func (h *AccountHandler) GetUsage(w http.ResponseWriter, r *http.Request) {

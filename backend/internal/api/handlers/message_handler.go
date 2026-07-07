@@ -52,14 +52,13 @@ func NewMessageHandler(
 }
 
 type SendSMSRequest struct {
-	Recipient       string                  `json:"recipient"`
-	Sender          string                  `json:"sender"`
-	Message         string                  `json:"message"`
-	MessageType     models.MessageType      `json:"message_type"`
-	IdempotencyKey  string                  `json:"idempotency_key"`
-	TemplateID      string                  `json:"template_id,omitempty"`
-	DeviceID        string                  `json:"device_id,omitempty"`
-	RoutingStrategy models.RoutingStrategy  `json:"routing_strategy,omitempty"`
+	Recipient      string             `json:"recipient"`
+	Sender         string             `json:"sender"`
+	Message        string             `json:"message"`
+	MessageType    models.MessageType `json:"message_type"`
+	IdempotencyKey string             `json:"idempotency_key"`
+	TemplateID     string             `json:"template_id,omitempty"`
+	DeviceID       string             `json:"device_id,omitempty"`
 }
 
 func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
@@ -103,13 +102,6 @@ func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
 	if req.MessageType == "" {
 		req.MessageType = models.MessageTypeTransactional
 	}
-	if req.RoutingStrategy == "" {
-		req.RoutingStrategy = models.RoutingStrategyHighestReliability
-		if req.MessageType == models.MessageTypeMarketing {
-			req.RoutingStrategy = models.RoutingStrategyLowestCost
-		}
-	}
-
 	// Validate device ownership and online status
 	if req.DeviceID != "" {
 		device, err := h.deviceService.GetByID(r.Context(), req.DeviceID)
@@ -193,7 +185,7 @@ func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
 		CreatedAt:           now,
 		PurgeAfter:          now.Add(h.cfg.MessageRetention),
 		IdempotencyKey:      req.IdempotencyKey,
-		RoutingStrategyUsed: req.RoutingStrategy,
+		RoutingStrategyUsed: models.RoutingStrategyFIFO,
 	}
 
 	if req.TemplateID != "" {
@@ -218,7 +210,6 @@ func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
 		Priority:        worker.PriorityLane(priorityLane),
 		IdempotencyKey:  req.IdempotencyKey,
 		CreatedAt:       now,
-		RoutingStrategy: req.RoutingStrategy,
 		MaxAge:          maxAge,
 	}
 
@@ -343,25 +334,23 @@ func (h *MessageHandler) GetConfidence(w http.ResponseWriter, r *http.Request) {
 
 // BulkSendRequest allows sending the same message to multiple recipients.
 type BulkSendRequest struct {
-	Recipients      []string                `json:"recipients"`
-	Sender          string                  `json:"sender"`
-	Message         string                  `json:"message"`
-	MessageType     models.MessageType      `json:"message_type"`
-	TemplateID      string                  `json:"template_id,omitempty"`
-	DeviceID        string                  `json:"device_id,omitempty"`
-	RoutingStrategy models.RoutingStrategy  `json:"routing_strategy,omitempty"`
+	Recipients  []string            `json:"recipients"`
+	Sender      string              `json:"sender"`
+	Message     string              `json:"message"`
+	MessageType models.MessageType  `json:"message_type"`
+	TemplateID  string              `json:"template_id,omitempty"`
+	DeviceID    string              `json:"device_id,omitempty"`
 }
 
 // ScheduleSendRequest allows scheduling a message for future delivery.
 type ScheduleSendRequest struct {
-	Recipient       string                  `json:"recipient"`
-	Sender          string                  `json:"sender"`
-	Message         string                  `json:"message"`
-	MessageType     models.MessageType      `json:"message_type"`
-	ScheduledAt     time.Time               `json:"scheduled_at"`
-	TemplateID      string                  `json:"template_id,omitempty"`
-	DeviceID        string                  `json:"device_id,omitempty"`
-	RoutingStrategy models.RoutingStrategy  `json:"routing_strategy,omitempty"`
+	Recipient   string             `json:"recipient"`
+	Sender      string             `json:"sender"`
+	Message     string             `json:"message"`
+	MessageType models.MessageType `json:"message_type"`
+	ScheduledAt time.Time          `json:"scheduled_at"`
+	TemplateID  string             `json:"template_id,omitempty"`
+	DeviceID    string             `json:"device_id,omitempty"`
 }
 
 func (h *MessageHandler) BulkSend(w http.ResponseWriter, r *http.Request) {
@@ -404,13 +393,6 @@ func (h *MessageHandler) BulkSend(w http.ResponseWriter, r *http.Request) {
 	if req.MessageType == "" {
 		req.MessageType = models.MessageTypeTransactional
 	}
-	if req.RoutingStrategy == "" {
-		req.RoutingStrategy = models.RoutingStrategyHighestReliability
-		if req.MessageType == models.MessageTypeMarketing {
-			req.RoutingStrategy = models.RoutingStrategyLowestCost
-		}
-	}
-
 	// Validate device ownership and online status
 	if req.DeviceID != "" {
 		device, err := h.deviceService.GetByID(r.Context(), req.DeviceID)
@@ -487,7 +469,7 @@ func (h *MessageHandler) BulkSend(w http.ResponseWriter, r *http.Request) {
 			CreatedAt:           now,
 			PurgeAfter:          now.Add(h.cfg.MessageRetention),
 			IdempotencyKey:      fmt.Sprintf("bulk-%s-%s", msgID, recipient),
-			RoutingStrategyUsed: req.RoutingStrategy,
+			RoutingStrategyUsed: models.RoutingStrategyFIFO,
 		}
 		if req.TemplateID != "" {
 			msg.TemplateID = &req.TemplateID
@@ -515,7 +497,6 @@ func (h *MessageHandler) BulkSend(w http.ResponseWriter, r *http.Request) {
 			Priority:        priorityLane,
 			IdempotencyKey:  msg.IdempotencyKey,
 			CreatedAt:       now,
-			RoutingStrategy: req.RoutingStrategy,
 			MaxAge:          maxAge,
 		}
 
@@ -593,13 +574,6 @@ func (h *MessageHandler) ScheduleSend(w http.ResponseWriter, r *http.Request) {
 	if req.MessageType == "" {
 		req.MessageType = models.MessageTypeTransactional
 	}
-	if req.RoutingStrategy == "" {
-		req.RoutingStrategy = models.RoutingStrategyHighestReliability
-		if req.MessageType == models.MessageTypeMarketing {
-			req.RoutingStrategy = models.RoutingStrategyLowestCost
-		}
-	}
-
 	// Validate device ownership and online status
 	if req.DeviceID != "" {
 		device, err := h.deviceService.GetByID(r.Context(), req.DeviceID)
@@ -658,7 +632,7 @@ func (h *MessageHandler) ScheduleSend(w http.ResponseWriter, r *http.Request) {
 		CreatedAt:           now,
 		PurgeAfter:          req.ScheduledAt.Add(h.cfg.MessageRetention),
 		IdempotencyKey:      fmt.Sprintf("sched-%s-%s", msgID, req.Recipient),
-		RoutingStrategyUsed: req.RoutingStrategy,
+		RoutingStrategyUsed: models.RoutingStrategyFIFO,
 	}
 	if req.TemplateID != "" {
 		msg.TemplateID = &req.TemplateID
@@ -718,13 +692,6 @@ func (h *MessageHandler) MemberSend(w http.ResponseWriter, r *http.Request) {
 	if req.MessageType == "" {
 		req.MessageType = models.MessageTypeTransactional
 	}
-	if req.RoutingStrategy == "" {
-		req.RoutingStrategy = models.RoutingStrategyHighestReliability
-		if req.MessageType == models.MessageTypeMarketing {
-			req.RoutingStrategy = models.RoutingStrategyLowestCost
-		}
-	}
-
 	// Validate device ownership and online status
 	if req.DeviceID == "" {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "device_id is required"})
@@ -827,7 +794,7 @@ func (h *MessageHandler) MemberSend(w http.ResponseWriter, r *http.Request) {
 		CreatedAt:           now,
 		PurgeAfter:          now.Add(h.cfg.MessageRetention),
 		IdempotencyKey:      req.IdempotencyKey,
-		RoutingStrategyUsed: req.RoutingStrategy,
+		RoutingStrategyUsed: models.RoutingStrategyFIFO,
 	}
 
 	if req.TemplateID != "" {
@@ -853,7 +820,6 @@ func (h *MessageHandler) MemberSend(w http.ResponseWriter, r *http.Request) {
 		Priority:        worker.PriorityLane(priorityLane),
 		IdempotencyKey:  req.IdempotencyKey,
 		CreatedAt:       now,
-		RoutingStrategy: req.RoutingStrategy,
 		MaxAge:          maxAge,
 	}
 

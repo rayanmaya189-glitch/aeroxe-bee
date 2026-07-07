@@ -11,7 +11,7 @@ interface SEOData {
 const DEFAULTS = {
   title: 'AeroXe Bee \u2014 Distributed SMS Gateway Platform',
   description:
-    'Enterprise SMS delivery platform with intelligent multi-strategy routing, real-time analytics, and device fleet management. Self-hostable or managed SaaS.',
+    'Enterprise SMS delivery platform with real-time analytics and reliable message delivery. Self-hostable or managed SaaS.',
   ogImage: '/og-image.png',
   ogUrl: 'https://aeroxbee.com',
 }

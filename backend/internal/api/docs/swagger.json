@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "AeroXe Bee API",
-    "description": "Distributed SMS gateway platform with intelligent routing, device fleet management, delivery confidence scoring, and AI-powered template generation.",
+    "description": "Distributed SMS gateway platform with delivery confidence scoring and AI-powered template generation.",
     "version": "1.0.0",
     "contact": {
       "name": "Aeroxe Enterprises Pvt. Ltd.",
@@ -1734,12 +1734,9 @@
                 "properties": {
                   "routing_strategy": {
                     "type": "string",
+                    "description": "Routing is now standardized to FIFO",
                     "enum": [
-                      "fastest_delivery",
-                      "lowest_cost",
-                      "highest_reliability",
-                      "geo_affinity",
-                      "profit_optimized"
+                      "fifo"
                     ]
                   }
                 }

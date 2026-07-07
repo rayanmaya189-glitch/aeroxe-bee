@@ -2,7 +2,7 @@ import {
   Shield, BarChart3,
   Lock,
   Cloud, Code, Terminal, GitBranch, Cpu, Eye,
-  MessageSquare, CreditCard,
+  CreditCard,
   ShieldCheck, FileCheck, Key,
   Brain, Mic, CalendarClock, Users, ShieldBan,
 } from 'lucide-react'
@@ -67,15 +67,8 @@ export const FEATURES = [
   {
     icon: BarChart3,
     title: 'Real-Time Analytics',
-    description: 'Delivery confidence scores, success rates, queue monitoring, and cost tracking across your entire device fleet.',
+    description: 'Delivery confidence scores, success rates, queue monitoring, and cost tracking for your messaging infrastructure.',
     color: 'from-blue-500 to-cyan-400',
-    span: 'col-span-1',
-  },
-  {
-    icon: MessageSquare,
-    title: 'Priority Messaging',
-    description: 'Three priority lanes for OTP, transactional, and marketing messages — ensuring critical messages always get delivered first.',
-    color: 'from-orange-500 to-amber-400',
     span: 'col-span-1',
   },
 ] as const

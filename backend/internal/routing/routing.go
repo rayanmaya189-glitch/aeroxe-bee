@@ -2,62 +2,18 @@ package routing
 
 import (
 	"math"
-	"math/rand"
 	"sort"
 
 	"github.com/aeroxe-bee/backend/internal/models"
 )
 
 type Strategy struct {
-	Name                models.RoutingStrategy
-	ReliabilityWeight   float64
-	ReputationWeight    float64
-	CostWeight          float64
-	LatencyWeight       float64
-	GeoPreferenceWeight float64
+	Name models.RoutingStrategy
 }
 
-var Strategies = map[models.RoutingStrategy]Strategy{
-	models.RoutingStrategyFastest: {
-		Name:                models.RoutingStrategyFastest,
-		LatencyWeight:       0.5,
-		ReliabilityWeight:   0.3,
-		ReputationWeight:    0.1,
-		CostWeight:          0.0,
-		GeoPreferenceWeight: 0.1,
-	},
-	models.RoutingStrategyLowestCost: {
-		Name:                models.RoutingStrategyLowestCost,
-		CostWeight:          0.5,
-		ReliabilityWeight:   0.2,
-		ReputationWeight:    0.1,
-		LatencyWeight:       0.1,
-		GeoPreferenceWeight: 0.1,
-	},
-	models.RoutingStrategyHighestReliability: {
-		Name:                models.RoutingStrategyHighestReliability,
-		ReliabilityWeight:   0.5,
-		ReputationWeight:    0.2,
-		CostWeight:          0.1,
-		LatencyWeight:       0.1,
-		GeoPreferenceWeight: 0.1,
-	},
-	models.RoutingStrategyGeoAffinity: {
-		Name:                models.RoutingStrategyGeoAffinity,
-		GeoPreferenceWeight: 0.5,
-		ReliabilityWeight:   0.2,
-		ReputationWeight:    0.1,
-		CostWeight:          0.1,
-		LatencyWeight:       0.1,
-	},
-	models.RoutingStrategyProfitOptimized: {
-		Name:                models.RoutingStrategyProfitOptimized,
-		CostWeight:          0.3,
-		ReliabilityWeight:   0.2,
-		ReputationWeight:    0.1,
-		LatencyWeight:       0.1,
-		GeoPreferenceWeight: 0.1,
-	},
+// FIFO is the single routing strategy now.
+var FIFO = Strategy{
+	Name: models.RoutingStrategyFIFO,
 }
 
 type ScoredDevice struct {
@@ -71,19 +27,14 @@ type ScoredDevice struct {
 }
 
 type Selector struct {
-	defaultStrategy models.RoutingStrategy
 }
 
-func NewSelector(defaultStrategy models.RoutingStrategy) *Selector {
-	return &Selector{defaultStrategy: defaultStrategy}
+func NewSelector() *Selector {
+	return &Selector{}
 }
 
-func (s *Selector) ScoreDevice(device models.Device, strategy models.RoutingStrategy, costPerSMS float64, recipientCountry string) ScoredDevice {
-	strat, ok := Strategies[strategy]
-	if !ok {
-		strat = Strategies[models.RoutingStrategyHighestReliability]
-	}
-
+func (s *Selector) ScoreDevice(device models.Device, costPerSMS float64, recipientCountry string) ScoredDevice {
+	// FIFO ordering: score by reliability only (higher is better), no strategy weights
 	normalizedLatency := 1.0 - (device.AvgLatencyMs / 10000.0)
 	if normalizedLatency < 0 {
 		normalizedLatency = 0
@@ -103,30 +54,28 @@ func (s *Selector) ScoreDevice(device models.Device, strategy models.RoutingStra
 		}
 	}
 
-	totalScore := (device.ReliabilityScore * strat.ReliabilityWeight) +
-		(device.ReputationScore * strat.ReputationWeight) +
-		(normalizedCost * strat.CostWeight) +
-		(normalizedLatency * strat.LatencyWeight) +
-		(geoScore * strat.GeoPreferenceWeight)
-
-	randomization := 1.0 + (rand.Float64()*0.1 - 0.05)
-	totalScore *= randomization
+	// Simple FIFO: weight by reliability and reputation equally
+	totalScore := (device.ReliabilityScore * 0.4) +
+		(device.ReputationScore * 0.3) +
+		(normalizedCost * 0.1) +
+		(normalizedLatency * 0.1) +
+		(geoScore * 0.1)
 
 	return ScoredDevice{
 		Device:             device,
 		TotalScore:         totalScore,
-		ReliabilityContrib: device.ReliabilityScore * strat.ReliabilityWeight,
-		ReputationContrib:  device.ReputationScore * strat.ReputationWeight,
-		CostContrib:        normalizedCost * strat.CostWeight,
-		LatencyContrib:     normalizedLatency * strat.LatencyWeight,
-		GeoContrib:         geoScore * strat.GeoPreferenceWeight,
+		ReliabilityContrib: device.ReliabilityScore * 0.4,
+		ReputationContrib:  device.ReputationScore * 0.3,
+		CostContrib:        normalizedCost * 0.1,
+		LatencyContrib:     normalizedLatency * 0.1,
+		GeoContrib:         geoScore * 0.1,
 	}
 }
 
-func (s *Selector) SelectDevices(devices []models.Device, strategy models.RoutingStrategy, costMap map[string]float64, recipientCountry string, limit int) []ScoredDevice {
+func (s *Selector) SelectDevices(devices []models.Device, costMap map[string]float64, recipientCountry string, limit int) []ScoredDevice {
 	scored := make([]ScoredDevice, 0, len(devices))
 	for _, d := range devices {
-		scored = append(scored, s.ScoreDevice(d, strategy, costMap[d.ID], recipientCountry))
+		scored = append(scored, s.ScoreDevice(d, costMap[d.ID], recipientCountry))
 	}
 
 	sort.Slice(scored, func(i, j int) bool {
@@ -140,12 +89,11 @@ func (s *Selector) SelectDevices(devices []models.Device, strategy models.Routin
 }
 
 type DeviceOptions struct {
-	Strategy           models.RoutingStrategy
-	RecipientCountry   string
-	MaxResults         int
-	ExcludeBlocked     bool
-	ExcludeDegraded    bool
-	RequireOnline      bool
+	RecipientCountry string
+	MaxResults       int
+	ExcludeBlocked   bool
+	ExcludeDegraded  bool
+	RequireOnline    bool
 }
 
 func (s *Selector) FilterAndScore(devices []models.Device, opts DeviceOptions, costMap map[string]float64) []ScoredDevice {
@@ -167,7 +115,7 @@ func (s *Selector) FilterAndScore(devices []models.Device, opts DeviceOptions, c
 		return nil
 	}
 
-	return s.SelectDevices(eligible, opts.Strategy, costMap, opts.RecipientCountry, opts.MaxResults)
+	return s.SelectDevices(eligible, costMap, opts.RecipientCountry, opts.MaxResults)
 }
 
 func (s *Selector) CalculateReliabilityScore(successRate, uptimeRatio, avgLatencyMs, capacityRatio float64) float64 {
@@ -194,8 +142,4 @@ func (s *Selector) CalculateBlockEventFrequency(blockEventCount int64, totalSent
 		return 0
 	}
 	return math.Min(float64(blockEventCount)/float64(totalSent)*100, 1.0)
-}
-
-func (s *Selector) DefaultStrategy() models.RoutingStrategy {
-	return s.defaultStrategy
 }

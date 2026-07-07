@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/aeroxe-bee/backend/internal/models"
 	"github.com/aeroxe-bee/backend/internal/services"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // --- Mock DatabaseQuerier ---
@@ -42,14 +42,14 @@ type mockRows struct {
 	closed bool
 }
 
-func (r *mockRows) Close()                          { r.closed = true }
-func (r *mockRows) Err() error                      { return nil }
-func (r *mockRows) CommandTag() pgconn.CommandTag   { return pgconn.CommandTag{} }
-func (r *mockRows) Next() bool                      { return r.pos < len(r.data) }
-func (r *mockRows) Values() ([]interface{}, error)   { return nil, nil }
+func (r *mockRows) Close()                                       { r.closed = true }
+func (r *mockRows) Err() error                                   { return nil }
+func (r *mockRows) CommandTag() pgconn.CommandTag                { return pgconn.CommandTag{} }
+func (r *mockRows) Next() bool                                   { return r.pos < len(r.data) }
+func (r *mockRows) Values() ([]interface{}, error)               { return nil, nil }
 func (r *mockRows) FieldDescriptions() []pgconn.FieldDescription { return nil }
-func (r *mockRows) Conn() *pgx.Conn                                  { return nil }
-func (r *mockRows) RawValues() [][]byte                                { return nil }
+func (r *mockRows) Conn() *pgx.Conn                              { return nil }
+func (r *mockRows) RawValues() [][]byte                          { return nil }
 
 func (r *mockRows) Scan(dest ...interface{}) error {
 	if r.pos >= len(r.data) {
@@ -67,11 +67,11 @@ func (r *mockRows) Scan(dest ...interface{}) error {
 }
 
 type mockQuerier struct {
-	accountRow   *mockRow
-	subRow       *mockRow
-	usageRow     *mockRow
-	execErr      error
-	lastQuery    string
+	accountRow    *mockRow
+	subRow        *mockRow
+	usageRow      *mockRow
+	execErr       error
+	lastQuery     string
 	subQueryCount int // tracks how many times subscription was queried
 }
 
@@ -123,21 +123,20 @@ func newAccountRow(status string) *mockRow {
 func newSubscriptionRow(status string) *mockRow {
 	return &mockRow{
 		values: []interface{}{
-			"sub-123",                             // id
-			"acct-123",                            // account_id
-			models.PlanTypeFree,                   // plan_type
-			string(models.BillingCycleMonthly),    // billing_cycle
-			status,                                // status
-			time.Now().AddDate(0, 1, 0),           // renewal_date
-			nil,                                   // stripe_customer_id
-			int64(100),                            // quota_daily
-			int64(3000),                           // quota_monthly
-			10.0,                                  // overage_buffer_pct
-			100,                                   // max_queue_depth
-			false,                                 // dedicated_pool
-			string(models.RoutingStrategyFastest), // default_routing_strategy
-			time.Now(),                            // created_at
-			time.Now(),                            // updated_at
+			"sub-123",                          // id
+			"acct-123",                         // account_id
+			models.PlanTypeFree,                // plan_type
+			string(models.BillingCycleMonthly), // billing_cycle
+			status,                             // status
+			time.Now().AddDate(0, 1, 0),        // renewal_date
+			nil,                                // stripe_customer_id
+			int64(100),                         // quota_daily
+			int64(3000),                        // quota_monthly
+			10.0,                               // overage_buffer_pct
+			100,                                // max_queue_depth
+			false,                              // dedicated_pool
+			time.Now(),                         // created_at
+			time.Now(),                         // updated_at
 		},
 	}
 }
@@ -145,10 +144,10 @@ func newSubscriptionRow(status string) *mockRow {
 func newUsageRow(count int64) *mockRow {
 	return &mockRow{
 		values: []interface{}{
-			"usage-123",                          // id
-			"acct-123",                           // account_id
-			time.Now().Format("2006-01-02"),       // date
-			count,                                // count
+			"usage-123",                     // id
+			"acct-123",                      // account_id
+			time.Now().Format("2006-01-02"), // date
+			count,                           // count
 		},
 	}
 }

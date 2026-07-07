@@ -58,14 +58,8 @@ func (s *SubscriptionService) Update(ctx context.Context, sub *models.Subscripti
 }
 
 func (s *SubscriptionService) GetDefaultRoutingStrategy(ctx context.Context, accountID string) (models.RoutingStrategy, error) {
-	sub, err := s.GetByAccountID(ctx, accountID)
-	if err != nil {
-		return "", err
-	}
-	if sub == nil {
-		return models.RoutingStrategyHighestReliability, nil
-	}
-	return sub.DefaultRoutingStrategy, nil
+	// Routing is now standardized to FIFO for all accounts
+	return models.RoutingStrategyFIFO, nil
 }
 
 func (s *SubscriptionService) UpdateRoutingStrategy(ctx context.Context, accountID string, strategy models.RoutingStrategy) error {

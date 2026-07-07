@@ -123,12 +123,10 @@ const (
 
 type RoutingStrategy string
 
+// RoutingStrategy is kept as a type for backward compatibility but all
+// messages now use FIFO ordering. The default value is "fifo".
 const (
-	RoutingStrategyFastest         RoutingStrategy = "fastest_delivery"
-	RoutingStrategyLowestCost      RoutingStrategy = "lowest_cost"
-	RoutingStrategyHighestReliability RoutingStrategy = "highest_reliability"
-	RoutingStrategyGeoAffinity     RoutingStrategy = "geo_affinity"
-	RoutingStrategyProfitOptimized RoutingStrategy = "profit_optimized"
+	RoutingStrategyFIFO RoutingStrategy = "fifo"
 )
 
 type CircuitBreakerScope string

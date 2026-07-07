@@ -10,7 +10,7 @@ const TESTIMONIALS = [
     company: 'FinServe India',
     avatar: 'PS',
     rating: 5,
-    text: 'AeroXe Bee cut our OTP delivery costs by 40% while improving reliability. The smart routing alone paid for the entire platform in the first month.',
+    text: 'AeroXe Bee cut our OTP delivery costs by 40% while improving reliability. The queuing system alone paid for the entire platform in the first month.',
     color: 'from-blue-500 to-cyan-400',
   },
   {
@@ -19,7 +19,7 @@ const TESTIMONIALS = [
     company: 'CloudBase',
     avatar: 'MC',
     rating: 5,
-    text: 'We migrated from Twilio to AeroXe Bee for our transactional messaging. The device fleet management and circuit breaker system give us visibility we never had before.',
+    text: 'We migrated from Twilio to AeroXe Bee for our transactional messaging. The real-time analytics and delivery confidence scoring give us visibility we never had before.',
     color: 'from-purple-500 to-pink-400',
   },
   {
@@ -28,7 +28,7 @@ const TESTIMONIALS = [
     company: 'HealthConnect',
     avatar: 'SM',
     rating: 5,
-    text: 'The delivery confidence scoring changed how we think about SMS reliability. We can now make data-driven decisions about message routing strategies.',
+    text: 'The delivery confidence scoring changed how we think about SMS reliability. We can now make data-driven decisions about our messaging strategy.',
     color: 'from-emerald-500 to-green-400',
   },
   {
@@ -46,7 +46,7 @@ const TESTIMONIALS = [
     company: 'RetailFlow',
     avatar: 'ER',
     rating: 5,
-    text: 'The priority messaging lanes ensure our OTP messages always get through, even during peak marketing campaigns. Game changer for customer experience.',
+    text: 'The message queuing ensures our OTP messages always get through, even during peak marketing campaigns. Game changer for customer experience.',
     color: 'from-rose-500 to-pink-400',
   },
   {
@@ -81,7 +81,7 @@ export function Testimonials() {
               <span className="bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">engineering teams worldwide</span>
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-lg text-gray-400">
-              Teams choose AeroXe Bee for reliable SMS delivery, smart routing, and complete control over their messaging infrastructure.
+              Teams choose AeroXe Bee for reliable SMS delivery, real-time analytics, and complete control over their messaging infrastructure.
             </p>
           </motion.div>
 

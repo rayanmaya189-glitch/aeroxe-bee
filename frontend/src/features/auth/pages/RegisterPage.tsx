@@ -9,8 +9,8 @@ import { Zap, Mail, Lock, User, MessageSquare, Smartphone, Shield, ArrowRight, C
 import { containerVariants, itemVariants } from '@/landing/animations/onboardingVariants'
 
 const features = [
-  { icon: MessageSquare, label: 'Smart routing strategies', color: 'text-blue-400' },
-  { icon: Smartphone, label: 'Device fleet management', color: 'text-emerald-400' },
+  { icon: MessageSquare, label: 'AI-powered template generation', color: 'text-blue-400' },
+  { icon: Smartphone, label: 'Multi-device SMS delivery', color: 'text-emerald-400' },
   { icon: Shield, label: 'End-to-end encryption', color: 'text-purple-400' },
 ]
 
@@ -95,7 +95,7 @@ export function RegisterPage() {
             </span>
           </h1>
           <p className="mt-4 max-w-md text-lg text-gray-400 lg:mx-0">
-            Join thousands of businesses using intelligent routing, real-time analytics, and device fleet management to deliver messages at scale.
+            Join thousands of businesses using real-time analytics and reliable multi-device SMS delivery at scale.
           </p>
 
           {/* Stats */}

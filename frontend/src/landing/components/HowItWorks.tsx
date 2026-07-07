@@ -1,39 +1,31 @@
 import { motion } from 'framer-motion'
 import { useInView } from 'react-intersection-observer'
 import { staggerContainer, fadeInUp } from '../animations/variants'
-import { Smartphone, Route, BarChart3, Zap, ArrowRight, CheckCircle2 } from 'lucide-react'
+import { Smartphone, BarChart3, Zap, ArrowRight, CheckCircle2 } from 'lucide-react'
 
 const STEPS = [
   {
     number: '01',
     icon: Smartphone,
     title: 'Connect your devices',
-    description: 'Install the Android app on phones with SIM cards. Pair them via QR code and they become SMS-sending nodes in your fleet.',
-    details: ['QR code pairing', 'Real-time health monitoring', 'Automatic failover'],
+    description: 'Install the Android app on phones with SIM cards. Pair them via QR code and they become SMS-sending nodes in your network.',
+    details: ['QR code pairing', 'Real-time health monitoring', 'Automatic message queuing'],
     color: 'from-blue-500 to-cyan-400',
   },
   {
     number: '02',
-    icon: Route,
-    title: 'Configure routing strategy',
-    description: 'Choose from 5 intelligent routing strategies — fastest delivery, lowest cost, highest reliability, geo-affinity, or profit-optimized.',
-    details: ['Per-message strategy', 'Dynamic device selection', 'Cost optimization'],
+    icon: Zap,
+    title: 'Send messages via API',
+    description: 'Use our REST API or SDK to send SMS. Messages are automatically queued and delivered through available devices.',
+    details: ['REST API', 'Webhook callbacks', 'Idempotent sends'],
     color: 'from-purple-500 to-pink-400',
   },
   {
     number: '03',
-    icon: Zap,
-    title: 'Send messages via API',
-    description: 'Use our REST API or SDK to send SMS. Messages are automatically routed through the optimal device based on your strategy.',
-    details: ['REST API', 'Webhook callbacks', 'Idempotent sends'],
-    color: 'from-amber-500 to-orange-400',
-  },
-  {
-    number: '04',
     icon: BarChart3,
     title: 'Monitor and optimize',
     description: 'Track delivery confidence scores, device health, cost efficiency, and analytics in real-time through the dashboard.',
-    details: ['Delivery confidence', 'Cost tracking', 'Fleet analytics'],
+    details: ['Delivery confidence', 'Cost tracking', 'Queue analytics'],
     color: 'from-emerald-500 to-green-400',
   },
 ]
@@ -59,11 +51,11 @@ export function HowItWorks() {
               <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">first message in minutes</span>
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-lg text-gray-400">
-              Four simple steps to transform your Android phones into a reliable, intelligent SMS delivery network.
+              Three simple steps to transform your Android phones into a reliable SMS delivery network.
             </p>
           </motion.div>
 
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {STEPS.map((step, idx) => (
               <motion.div
                 key={step.number}

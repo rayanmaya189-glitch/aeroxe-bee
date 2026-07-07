@@ -85,7 +85,7 @@ export function MemberUpgradePage() {
               <CardContent>
                 <ul className="space-y-2 text-sm text-gray-400">
                   {[`${plan.daily_quota.toLocaleString()} SMS/day`, `${plan.monthly_quota.toLocaleString()} SMS/month`, `${plan.max_queue_depth.toLocaleString()} queue depth`,
-                    ...(plan.dedicated_pool ? ['Dedicated pool'] : []), plan.default_routing_strategy.replace(/_/g, ' '),
+                    ...(plan.dedicated_pool ? ['Dedicated pool'] : []),
                     ...(plan.price_per_sms > 0 ? [`$${plan.price_per_sms}/SMS overage`] : [])
                   ].map((f) => <li key={f} className="flex items-center gap-1.5"><Check className="h-3 w-3 text-emerald-400" />{f}</li>)}
                 </ul>

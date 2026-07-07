@@ -451,7 +451,7 @@ func (h *MemberHandler) GetPlan(w http.ResponseWriter, r *http.Request) {
 		planInfo["price_per_sms"] = plan.PricePerSMS
 		planInfo["monthly_price"] = plan.MonthlyPrice
 		planInfo["features"] = plan.Features
-		planInfo["routing_strategy"] = plan.DefaultRoutingStrategy
+		planInfo["routing_strategy"] = "fifo"
 
 		// Calculate remaining
 		if dailyUsage != nil {

@@ -44,15 +44,8 @@ function formatQuota(n: number): string {
   return String(n)
 }
 
-function formatRoutingStrategy(strategy: string): string {
-  const map: Record<string, string> = {
-    fastest_delivery: 'Fastest delivery routing',
-    lowest_cost: 'Lowest-cost routing',
-    highest_reliability: 'Highest-reliability routing',
-    geo_affinity: 'Geo-affinity routing',
-    profit_optimized: 'Profit-optimized routing',
-  }
-  return map[strategy] ?? strategy.replace(/_/g, ' ') + ' routing'
+function formatRoutingStrategy(_strategy: string): string {
+  return 'Standard routing'
 }
 
 /**

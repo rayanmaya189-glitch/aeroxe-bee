@@ -22,19 +22,18 @@ const (
 )
 
 type QueueMessage struct {
-	ID          string            `json:"id"`
-	AccountID   string            `json:"account_id"`
-	APIKeyID    string            `json:"api_key_id"`
-	Recipient   string            `json:"recipient"`
-	Sender      string            `json:"sender"`
-	Message     string            `json:"message"`
-	MessageType models.MessageType `json:"message_type"`
-	Priority    PriorityLane      `json:"priority"`
-	IdempotencyKey string         `json:"idempotency_key"`
-	CreatedAt   time.Time         `json:"created_at"`
-	RoutingStrategy models.RoutingStrategy `json:"routing_strategy"`
-	MaxAge      time.Duration     `json:"max_age"`
-	Attempts    int               `json:"attempts"`
+	ID              string            `json:"id"`
+	AccountID       string            `json:"account_id"`
+	APIKeyID        string            `json:"api_key_id"`
+	Recipient       string            `json:"recipient"`
+	Sender          string            `json:"sender"`
+	Message         string            `json:"message"`
+	MessageType     models.MessageType `json:"message_type"`
+	Priority        PriorityLane      `json:"priority"`
+	IdempotencyKey  string            `json:"idempotency_key"`
+	CreatedAt       time.Time         `json:"created_at"`
+	MaxAge          time.Duration     `json:"max_age"`
+	Attempts        int               `json:"attempts"`
 }
 
 type PriorityLane string

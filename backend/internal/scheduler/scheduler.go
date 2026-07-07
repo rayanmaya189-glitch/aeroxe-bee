@@ -140,7 +140,6 @@ func (s *Scheduler) processDue(ctx context.Context) {
 			Priority:        lane,
 			IdempotencyKey:  msg.IdempotencyKey,
 			CreatedAt:       msg.CreatedAt,
-			RoutingStrategy: msg.RoutingStrategyUsed,
 			MaxAge:          maxAge,
 		}
 
