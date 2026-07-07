@@ -151,18 +151,47 @@ class DeviceRepository @Inject constructor(
 
         val subManager = context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as SubscriptionManager
         val subs = subManager.activeSubscriptionInfoList ?: emptyList()
-        for (i in 0 until tm.activeModemCount) {
-            try {
-                val info = subs.find { it.simSlotIndex == i }
+        val modemCount = tm.activeModemCount
+
+        if (modemCount > 0) {
+            for (i in 0 until modemCount) {
+                try {
+                    val info = subs.find { it.simSlotIndex == i }
+                    slots.add(
+                        SimSlotInfo(
+                            slot = i, carrier = info?.carrierName?.toString() ?: "",
+                            phoneNumber = info?.number ?: "", isAvailable = info != null,
+                        )
+                    )
+                } catch (_: Exception) {
+                    slots.add(SimSlotInfo(slot = i, isAvailable = false))
+                }
+            }
+        } else {
+            // Fallback for devices that don't report activeModemCount (e.g. some tablets/emulators).
+            // Use active subscriptions directly, or create a single placeholder slot.
+            for (sub in subs) {
                 slots.add(
                     SimSlotInfo(
-                        slot = i, carrier = info?.carrierName?.toString() ?: "",
-                        phoneNumber = info?.number ?: "", isAvailable = info != null,
+                        slot = sub.simSlotIndex,
+                        carrier = sub.carrierName?.toString() ?: "",
+                        phoneNumber = sub.number ?: "",
+                        isAvailable = true,
                     )
                 )
-            } catch (_: Exception) {
-                slots.add(SimSlotInfo(slot = i, isAvailable = false))
             }
+        }
+
+        // If still empty, create a single fallback slot so the UI never shows "No SIM slots detected"
+        // on a device that clearly has telephony capability.
+        if (slots.isEmpty()) {
+            slots.add(
+                SimSlotInfo(
+                    slot = 0,
+                    carrier = tm.networkOperatorName?.takeIf { it.isNotBlank() } ?: "Unknown",
+                    isAvailable = false,
+                )
+            )
         }
 
         val androidId = Settings.Secure.getString(

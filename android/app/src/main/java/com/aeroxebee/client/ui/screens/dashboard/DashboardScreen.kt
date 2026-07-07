@@ -5,6 +5,8 @@ import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -66,6 +68,8 @@ fun DashboardScreen(
                 ConnectionStatusCard(
                     accountName = state.accountName,
                     isConnected = state.isNetworkConnected,
+                    mqttConnected = state.mqttConnected,
+                    onToggleMqtt = viewModel::toggleMqtt,
                 )
 
                 Spacer(Modifier.height(AppSpacing.XXXL))
@@ -157,6 +161,8 @@ fun DashboardScreen(
 private fun ConnectionStatusCard(
     accountName: String,
     isConnected: Boolean,
+    mqttConnected: Boolean,
+    onToggleMqtt: () -> Unit,
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseAlpha by infiniteTransition.animateFloat(
@@ -182,10 +188,58 @@ private fun ConnectionStatusCard(
                         .background(if (isConnected) AppColors.Success.copy(alpha = pulseAlpha) else AppColors.Error.copy(alpha = pulseAlpha))
                 )
                 Text(
-                    text = if (isConnected) "Connected" else "Disconnected",
+                    text = if (isConnected) "Network Connected" else "Network Disconnected",
                     style = AppTypography.Label,
                     color = AppColors.TextPrimary.copy(alpha = 0.9f),
                 )
+            }
+
+            Spacer(Modifier.height(AppSpacing.SM))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(AppSpacing.SM),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(if (mqttConnected) AppColors.Success.copy(alpha = pulseAlpha) else AppColors.Error.copy(alpha = pulseAlpha))
+                    )
+                    Text(
+                        text = if (mqttConnected) "MQTT Connected" else "MQTT Disconnected",
+                        style = AppTypography.Label,
+                        color = AppColors.TextPrimary.copy(alpha = 0.9f),
+                    )
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(AppSpacing.SM),
+                ) {
+                    Icon(
+                        imageVector = if (mqttConnected) Icons.Filled.CloudQueue else Icons.Filled.CloudOff,
+                        contentDescription = null,
+                        tint = if (mqttConnected) AppColors.Success else AppColors.Error,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Text(
+                        text = if (mqttConnected) "Disconnect" else "Reconnect",
+                        style = AppTypography.Small,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (mqttConnected) AppColors.Error else AppColors.Success,
+                        modifier = Modifier.clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onToggleMqtt,
+                        ),
+                    )
+                }
             }
 
             Spacer(Modifier.height(AppSpacing.MD))

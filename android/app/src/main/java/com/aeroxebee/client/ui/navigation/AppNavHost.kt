@@ -32,7 +32,6 @@ import com.aeroxebee.client.ui.screens.onboarding.OnboardingScreen
 import com.aeroxebee.client.ui.screens.profile.ProfileScreen
 import com.aeroxebee.client.ui.screens.qrscanner.QrScannerScreen
 import com.aeroxebee.client.ui.screens.registration.RegistrationScreen
-import com.aeroxebee.client.ui.screens.settings.SettingsScreen
 import com.aeroxebee.client.ui.screens.splash.SplashScreen
 import com.aeroxebee.client.ui.screens.update.UpdateCheckerViewModel
 import com.aeroxebee.client.ui.screens.update.UpdateDialog
@@ -52,13 +51,12 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector,
     data object Dashboard : Screen("dashboard", "Dashboard", Icons.Outlined.Home, Icons.Filled.Home)
     data object Logs : Screen("logs", "SMS Logs", Icons.Outlined.MailOutline, Icons.Filled.Mail)
     data object Device : Screen("device", "Device", Icons.Outlined.PhoneAndroid, Icons.Filled.PhoneAndroid)
-    data object Settings : Screen("settings", "Settings", Icons.Outlined.Settings, Icons.Filled.Settings)
     data object Profile : Screen("profile", "Profile", Icons.Outlined.Person, Icons.Filled.Person)
     data object Notifications : Screen("notifications", "Alerts", Icons.Outlined.Notifications, Icons.Filled.Notifications)
 }
 
 private val bottomNavItems = listOf(
-    Screen.Dashboard, Screen.Logs, Screen.Device, Screen.Settings,
+    Screen.Dashboard, Screen.Logs, Screen.Device, Screen.Profile,
 )
 
 /**
@@ -71,7 +69,7 @@ interface NavAnalyticsEntryPoint {
 }
 
 private val routeOrder = listOf(
-    Screen.Dashboard.route, Screen.Logs.route, Screen.Device.route, Screen.Settings.route,
+    Screen.Dashboard.route, Screen.Logs.route, Screen.Device.route, Screen.Profile.route,
 )
 
 private fun slideTransitionForRoute(targetRoute: String, initialRoute: String?): EnterTransition {
@@ -124,7 +122,6 @@ fun AppNavHost() {
                 Screen.Dashboard.route -> "Dashboard"
                 Screen.Logs.route -> "SMS Logs"
                 Screen.Device.route -> "Device"
-                Screen.Settings.route -> "Settings"
                 Screen.Profile.route -> "Profile"
                 Screen.Notifications.route -> "Notifications"
                 "splash" -> "Splash"
@@ -203,7 +200,6 @@ fun AppNavHost() {
             composable(Screen.Dashboard.route) { DashboardScreen() }
             composable(Screen.Logs.route) { LogsScreen() }
             composable(Screen.Device.route) { DeviceScreen() }
-            composable(Screen.Settings.route) { SettingsScreen() }
             composable(Screen.Profile.route) {
                 ProfileScreen(
                     onLoggedOut = {

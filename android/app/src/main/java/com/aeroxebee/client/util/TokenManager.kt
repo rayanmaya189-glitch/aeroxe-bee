@@ -78,6 +78,9 @@ class TokenManager @Inject constructor(
     fun saveFCMToken(token: String) = prefs.edit().putString(KEY_FCM_TOKEN, token).apply()
     fun getFCMToken(): String? = prefs.getString(KEY_FCM_TOKEN, null)
 
+    fun saveDeviceName(name: String) = prefs.edit().putString(KEY_DEVICE_NAME, name).apply()
+    fun getDeviceName(): String? = prefs.getString(KEY_DEVICE_NAME, null)
+
     companion object {
         private const val KEY_TOKEN = "auth_token"
         private const val KEY_REFRESH_TOKEN = "refresh_token"
@@ -95,5 +98,6 @@ class TokenManager @Inject constructor(
         private const val KEY_ACCOUNT_NAME = "account_name"
         private const val KEY_ACCOUNT_ID = "account_id"
         private const val KEY_FCM_TOKEN = "fcm_token"
+        private const val KEY_DEVICE_NAME = "device_name"
     }
 }

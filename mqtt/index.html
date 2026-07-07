@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MQTT Web Client</title>
+  <script src="https://unpkg.com/paho-mqtt/mqttws31.min.js"></script>
+  <style>
+    body {
+      font-family: Arial;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    input, button {
+      margin: 5px;
+      padding: 8px;
+    }
+    #log {
+      margin-top: 20px;
+      padding: 10px;
+      background: #000;
+      color: #0f0;
+      height: 200px;
+      overflow-y: auto;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>MQTT WebSocket Client</h2>
+
+  <div>
+    <input id="host" placeholder="Broker URL (e.g. test.mosquitto.org)" />
+    <input id="port" placeholder="Port (e.g. 8081)" />
+    <input id="username" placeholder="Username" />
+    <input id="password" type="password" placeholder="Password" />
+    <button onclick="connect()">Connect</button>
+  </div>
+
+  <div>
+    <input id="topic" placeholder="Topic" />
+    <button onclick="subscribe()">Subscribe</button>
+  </div>
+
+  <div>
+    <input id="pubTopic" placeholder="Publish Topic" />
+    <input id="message" placeholder="Message" />
+    <button onclick="publish()">Publish</button>
+  </div>
+
+  <div id="log"></div>
+
+  <script>
+    let client;
+
+    function log(msg) {
+      const logDiv = document.getElementById("log");
+      logDiv.innerHTML += msg + "<br/>";
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function connect() {
+      const host = document.getElementById("host").value;
+      const port = Number(document.getElementById("port").value);
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+
+      const clientId = "client_" + Math.random().toString(16).substr(2, 8);
+
+      client = new Paho.MQTT.Client(host, port, clientId);
+
+      client.onConnectionLost = (response) => {
+        log("Connection lost: " + response.errorMessage);
+      };
+
+      client.onMessageArrived = (message) => {
+        log("Received → [" + message.destinationName + "]: " + message.payloadString);
+      };
+
+      client.connect({
+        userName: username,
+        password: password,
+        useSSL: true, // set false if not using SSL
+        onSuccess: () => {
+          log("✅ Connected to broker");
+        },
+        onFailure: (err) => {
+          log("❌ Connection failed: " + err.errorMessage);
+        }
+      });
+    }
+
+    function subscribe() {
+      const topic = document.getElementById("topic").value;
+      if (client && client.isConnected()) {
+        client.subscribe(topic);
+        log("📡 Subscribed to " + topic);
+      } else {
+        log("⚠️ Not connected");
+      }
+    }
+
+    function publish() {
+      const topic = document.getElementById("pubTopic").value;
+      const msg = document.getElementById("message").value;
+
+      if (client && client.isConnected()) {
+        const message = new Paho.MQTT.Message(msg);
+        message.destinationName = topic;
+        client.send(message);
+        log("📤 Sent → [" + topic + "]: " + msg);
+      } else {
+        log("⚠️ Not connected");
+      }
+    }
+  </script>
+
+</body>
+</html>

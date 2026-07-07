@@ -13,6 +13,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aeroxebee.client.data.remote.api.AeroXeBeeApi
 import com.aeroxebee.client.data.remote.model.MemberMessage
+import com.aeroxebee.client.data.remote.mqtt.MqttManager
 import com.aeroxebee.client.data.repository.SMSTaskRepository
 import com.aeroxebee.client.domain.model.Stats
 import com.aeroxebee.client.util.TokenManager
@@ -51,6 +52,8 @@ data class DashboardState(
     val accountName: String = "",
     val totalDevices: Int = 0,
     val onlineDevices: Int = 0,
+    // MQTT connection
+    val mqttConnected: Boolean = false,
 )
 
 @HiltViewModel
@@ -59,6 +62,7 @@ class DashboardViewModel @Inject constructor(
     private val repository: SMSTaskRepository,
     private val api: AeroXeBeeApi,
     private val tokenManager: TokenManager,
+    private val mqttManager: MqttManager,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(DashboardState())
@@ -66,6 +70,16 @@ class DashboardViewModel @Inject constructor(
 
     init {
         loadAllData()
+        observeMqttConnection()
+    }
+
+    private fun observeMqttConnection() {
+        _state.update { it.copy(mqttConnected = mqttManager.isConnected()) }
+        viewModelScope.launch {
+            mqttManager.connectionState.collect { connected ->
+                _state.update { it.copy(mqttConnected = connected) }
+            }
+        }
     }
 
     fun loadAllData() {
@@ -197,6 +211,23 @@ class DashboardViewModel @Inject constructor(
             }
         } catch (_: Exception) { }
         return 0 to 0
+    }
+
+    fun toggleMqtt() {
+        viewModelScope.launch {
+            if (mqttManager.isConnected()) {
+                mqttManager.disconnect()
+            } else {
+                val brokerUrl = tokenManager.getMqttBrokerUrl() ?: return@launch
+                val deviceId = tokenManager.getDeviceId() ?: return@launch
+                val username = tokenManager.getMqttUsername()
+                val password = tokenManager.getMqttPassword()
+                val clientId = "aeroxebee_android_$deviceId"
+                mqttManager.connect(brokerUrl, clientId, username, password)
+                mqttManager.subscribe("devices/$deviceId/commands")
+                mqttManager.subscribe("devices/$deviceId/pong")
+            }
+        }
     }
 
     fun refresh() {
