@@ -57,11 +57,6 @@ func (s *SubscriptionService) Update(ctx context.Context, sub *models.Subscripti
 	return err
 }
 
-func (s *SubscriptionService) GetDefaultRoutingStrategy(ctx context.Context, accountID string) (models.RoutingStrategy, error) {
-	// Routing is now standardized to FIFO for all accounts
-	return models.RoutingStrategyFIFO, nil
-}
-
 func (s *SubscriptionService) GetMaxQueueDepth(ctx context.Context, accountID string) (int, error) {
 	sub, err := s.GetByAccountID(ctx, accountID)
 	if err != nil {
