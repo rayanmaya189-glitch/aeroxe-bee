@@ -53,6 +53,7 @@ class MqttService : Service() {
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     private var isReconnecting = false
     private var wakeLock: PowerManager.WakeLock? = null
+    private var wakeLockRenewalJob: Job? = null
     private var connectivityManager: ConnectivityManager? = null
 
     override fun onCreate() {
@@ -261,7 +262,32 @@ class MqttService : Service() {
             PowerManager.PARTIAL_WAKE_LOCK,
             "aeroxebee:mqtt_service"
         ).apply {
-            acquire() // No timeout — released in onDestroy when service stops
+            acquire() // Released in onDestroy when service stops
+        }
+        startWakeLockRenewal()
+    }
+
+    /**
+     * Periodically renew the WakeLock to survive aggressive OEM battery managers.
+     * Some devices forcibly release WakeLocks after extended periods. By releasing
+     * and re-acquiring every 3 hours, we reset the OS timer and stay alive.
+     */
+    private fun startWakeLockRenewal() {
+        wakeLockRenewalJob = scope.launch {
+            while (isActive) {
+                delay(WAKELOCK_RENEWAL_INTERVAL_MS)
+                try {
+                    wakeLock?.let {
+                        if (it.isHeld) {
+                            it.release()
+                            it.acquire()
+                            Log.d(TAG, "WakeLock renewed")
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "WakeLock renewal failed: ${e.message}")
+                }
+            }
         }
     }
 
@@ -284,6 +310,7 @@ class MqttService : Service() {
         connectionMonitorJob?.cancel()
         heartbeatJob?.cancel()
         retryJob?.cancel()
+        wakeLockRenewalJob?.cancel()
         unregisterNetworkCallback()
         wakeLock?.let { if (it.isHeld) it.release() }
         scope.cancel()
@@ -456,6 +483,7 @@ class MqttService : Service() {
         const val CHANNEL_MQTT = "aeroxebee_mqtt_service"
         private const val HEARTBEAT_INTERVAL_MS = 30_000L
         private const val RETRY_INTERVAL_MS = 60_000L
+        private const val WAKELOCK_RENEWAL_INTERVAL_MS = 3 * 60 * 60 * 1000L // 3 hours
 
         fun start(context: Context) {
             val intent = Intent(context, MqttService::class.java)
