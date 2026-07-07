@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "AeroXe Bee API",
-    "description": "Distributed SMS gateway platform with intelligent routing, device fleet management, and delivery confidence scoring.",
+    "description": "Distributed SMS gateway platform with intelligent routing, device fleet management, delivery confidence scoring, and AI-powered template generation.",
     "version": "1.0.0",
     "contact": {
       "name": "Aeroxe Enterprises Pvt. Ltd.",
@@ -20,20 +20,29 @@
   ],
   "tags": [
     { "name": "Health", "description": "Health check endpoints" },
-    { "name": "Auth", "description": "Authentication and account management" },
-    { "name": "Messages", "description": "SMS message sending and retrieval" },
+    { "name": "Auth", "description": "Authentication, 2FA, session management" },
+    { "name": "Messages", "description": "SMS message sending, bulk, scheduling, and retrieval" },
     { "name": "OTP", "description": "One-time password generation and verification" },
-    { "name": "Devices", "description": "Physical device registration and management" },
+    { "name": "Devices", "description": "Physical device registration, login, and management" },
     { "name": "QR Pairing", "description": "QR code-based device pairing" },
-    { "name": "Account", "description": "Account profile, API keys, and usage" },
-    { "name": "Templates", "description": "SMS template management" },
-    { "name": "Webhooks", "description": "Webhook endpoint configuration" },
-    { "name": "Billing", "description": "Plans, billing, and invoicing" },
-    { "name": "Admin", "description": "Admin-only dashboard and management endpoints" },
+    { "name": "Account", "description": "Account profile, API keys, subscription, and usage" },
+    { "name": "Templates", "description": "SMS template management and approval" },
+    { "name": "Webhooks", "description": "Webhook endpoint configuration and delivery logs" },
+    { "name": "Billing", "description": "Plans, billing settings, invoices, and usage" },
+    { "name": "Payment Requests", "description": "Payment and recharge request maker-checker flow" },
+    { "name": "Subscription Requests", "description": "Member upgrade/downgrade request flow" },
+    { "name": "Plan Change Requests", "description": "Staff-initiated plan change maker-checker flow" },
+    { "name": "Admin", "description": "Admin dashboard, account management, analytics" },
+    { "name": "Admin Users", "description": "Staff/admin user management" },
     { "name": "Member", "description": "Member portal endpoints" },
-    { "name": "Fraud", "description": "Fraud detection and abuse flagging" },
+    { "name": "Fraud", "description": "Fraud detection and abuse/smishing flagging" },
     { "name": "App Releases", "description": "App version management, in-app updates, and maker-checker release flow" },
     { "name": "Firebase Config", "description": "Firebase Remote Config key-value management for feature flags and app settings" },
+    { "name": "AI Config", "description": "AI provider configuration and template generation" },
+    { "name": "Feature Catalog", "description": "Global feature catalog for plan features" },
+    { "name": "KYC", "description": "Know Your Customer verification" },
+    { "name": "FCM", "description": "Firebase Cloud Messaging token registration" },
+    { "name": "SSE", "description": "Server-Sent Events for real-time updates" },
     { "name": "Public", "description": "Public endpoints (no auth required)" }
   ],
   "paths": {
@@ -78,8 +87,46 @@
         "operationId": "mqttHealthCheck",
         "security": [],
         "responses": {
-          "200": { "description": "MQTT broker status" },
-          "503": { "description": "MQTT broker is not connected" }
+          "200": { "description": "MQTT broker connected" },
+          "503": { "description": "MQTT broker not connected" }
+        }
+      }
+    },
+    "/api/v1/docs": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "OpenAPI spec as JSON",
+        "operationId": "getOpenApiSpec",
+        "security": [],
+        "responses": {
+          "200": { "description": "OpenAPI JSON specification" }
+        }
+      }
+    },
+    "/api/v1/events": {
+      "get": {
+        "tags": ["SSE"],
+        "summary": "Server-Sent Events stream (JWT auth)",
+        "operationId": "sseStream",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "SSE event stream" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/events/stream": {
+      "get": {
+        "tags": ["SSE"],
+        "summary": "Server-Sent Events stream (token query param)",
+        "operationId": "sseStreamToken",
+        "security": [],
+        "parameters": [
+          { "name": "token", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "SSE event stream" },
+          "401": { "description": "Missing token" }
         }
       }
     },
@@ -139,6 +186,271 @@
         }
       }
     },
+    "/api/v1/auth/login/2fa": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Complete 2FA login",
+        "operationId": "login2fa",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "code"],
+                "properties": {
+                  "email": { "type": "string" },
+                  "code": { "type": "string", "description": "2FA code" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "2FA verified, logged in" },
+          "401": { "description": "Invalid code" }
+        }
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Refresh JWT token",
+        "operationId": "refreshToken",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["refresh_token"],
+                "properties": {
+                  "refresh_token": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "New tokens issued" },
+          "401": { "description": "Invalid refresh token" }
+        }
+      }
+    },
+    "/api/v1/auth/profile": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Get authenticated user profile",
+        "operationId": "getProfile",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Profile data" },
+          "401": { "description": "Unauthorized" }
+        }
+      },
+      "put": {
+        "tags": ["Auth"],
+        "summary": "Update profile",
+        "operationId": "updateProfile",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "email": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Profile updated" }
+        }
+      }
+    },
+    "/api/v1/auth/change-password": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Change password",
+        "operationId": "changePassword",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["current_password", "new_password"],
+                "properties": {
+                  "current_password": { "type": "string" },
+                  "new_password": { "type": "string", "minLength": 8 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Password changed" },
+          "400": { "description": "Invalid current password" }
+        }
+      }
+    },
+    "/api/v1/auth/2fa/setup": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Setup 2FA",
+        "operationId": "setup2fa",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "2FA setup data (secret + URL)" }
+        }
+      }
+    },
+    "/api/v1/auth/2fa/verify": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Verify 2FA code to enable",
+        "operationId": "verify2fa",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["code"],
+                "properties": { "code": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "2FA enabled" },
+          "400": { "description": "Invalid code" }
+        }
+      }
+    },
+    "/api/v1/auth/2fa/status": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Get 2FA status",
+        "operationId": "get2faStatus",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "2FA status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/APIResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "enabled": { "type": "boolean" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/2fa/disable": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Disable 2FA",
+        "operationId": "disable2fa",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["code"],
+                "properties": { "code": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "2FA disabled" }
+        }
+      }
+    },
+    "/api/v1/auth/sessions": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "List active sessions",
+        "operationId": "listSessions",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "List of active sessions" }
+        }
+      },
+      "delete": {
+        "tags": ["Auth"],
+        "summary": "Revoke all sessions",
+        "operationId": "revokeAllSessions",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "All sessions revoked" }
+        }
+      }
+    },
+    "/api/v1/auth/sessions/{id}": {
+      "delete": {
+        "tags": ["Auth"],
+        "summary": "Revoke a specific session",
+        "operationId": "revokeSession",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Session revoked" }
+        }
+      }
+    },
+    "/api/v1/auth/fcm-token": {
+      "post": {
+        "tags": ["FCM"],
+        "summary": "Register FCM push notification token",
+        "operationId": "registerFcmToken",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["fcm_token", "device_id"],
+                "properties": {
+                  "fcm_token": { "type": "string" },
+                  "device_id": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "FCM token registered" }
+        }
+      }
+    },
     "/api/v1/send": {
       "post": {
         "tags": ["Messages"],
@@ -151,12 +463,14 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["recipient", "message"],
+                "required": ["recipient", "message", "idempotency_key"],
                 "properties": {
                   "recipient": { "type": "string", "example": "+1234567890" },
-                  "message": { "type": "string" },
-                  "sender": { "type": "string" },
-                  "message_type": { "type": "string", "enum": ["otp", "transactional", "marketing"] }
+                  "message": { "type": "string", "maxLength": 160 },
+                  "sender": { "type": "string", "default": "AeroXe Bee" },
+                  "message_type": { "type": "string", "enum": ["otp", "transactional", "marketing"] },
+                  "idempotency_key": { "type": "string" },
+                  "device_id": { "type": "string", "description": "Optional device ID for pinning to a specific device" }
                 }
               }
             }
@@ -166,7 +480,168 @@
           "202": { "description": "Message queued" },
           "400": { "description": "Validation error" },
           "401": { "description": "Invalid API key" },
-          "429": { "description": "Rate limited" }
+          "429": { "description": "Rate limited or quota exceeded" }
+        }
+      }
+    },
+    "/api/v1/send/bulk": {
+      "post": {
+        "tags": ["Messages"],
+        "summary": "Bulk send SMS to multiple recipients",
+        "operationId": "bulkSend",
+        "security": [{ "APIKeyAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["recipients", "message"],
+                "properties": {
+                  "recipients": { "type": "array", "items": { "type": "string" }, "maxItems": 1000 },
+                  "message": { "type": "string", "maxLength": 160 },
+                  "sender": { "type": "string" },
+                  "message_type": { "type": "string", "enum": ["otp", "transactional", "marketing"] },
+                  "device_id": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": { "description": "Bulk send results (per-recipient status)" },
+          "400": { "description": "Validation error" }
+        }
+      }
+    },
+    "/api/v1/send/schedule": {
+      "post": {
+        "tags": ["Messages"],
+        "summary": "Schedule a message for future delivery",
+        "operationId": "scheduleSend",
+        "security": [{ "APIKeyAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["recipient", "message", "scheduled_at"],
+                "properties": {
+                  "recipient": { "type": "string" },
+                  "message": { "type": "string", "maxLength": 160 },
+                  "sender": { "type": "string" },
+                  "message_type": { "type": "string", "enum": ["otp", "transactional", "marketing"] },
+                  "scheduled_at": { "type": "string", "format": "date-time" },
+                  "device_id": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": { "description": "Message scheduled" },
+          "400": { "description": "Validation error" }
+        }
+      }
+    },
+    "/api/v1/messages": {
+      "get": {
+        "tags": ["Messages"],
+        "summary": "List messages (API key)",
+        "operationId": "listMessages",
+        "security": [{ "APIKeyAuth": [] }],
+        "parameters": [
+          { "name": "status", "in": "query", "schema": { "type": "string" } },
+          { "name": "message_type", "in": "query", "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "pageSize", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": {
+          "200": { "description": "Paginated messages" }
+        }
+      }
+    },
+    "/api/v1/messages/{id}": {
+      "get": {
+        "tags": ["Messages"],
+        "summary": "Get message by ID",
+        "operationId": "getMessage",
+        "security": [{ "APIKeyAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Message with decrypted content" },
+          "404": { "description": "Message not found" }
+        }
+      }
+    },
+    "/api/v1/messages/{id}/confidence": {
+      "get": {
+        "tags": ["Messages"],
+        "summary": "Get delivery confidence for a message",
+        "operationId": "getMessageConfidence",
+        "security": [{ "APIKeyAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Delivery status and confidence score" }
+        }
+      }
+    },
+    "/api/v1/otp/send": {
+      "post": {
+        "tags": ["OTP"],
+        "summary": "Send an OTP message",
+        "operationId": "sendOtp",
+        "security": [{ "APIKeyAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["recipient"],
+                "properties": {
+                  "recipient": { "type": "string" },
+                  "message": { "type": "string", "description": "Optional custom template. Default: 'Your OTP is {{otp}}'" },
+                  "expiry_minutes": { "type": "integer", "default": 5 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": { "description": "OTP sent" }
+        }
+      }
+    },
+    "/api/v1/otp/verify": {
+      "post": {
+        "tags": ["OTP"],
+        "summary": "Verify an OTP",
+        "operationId": "verifyOtp",
+        "security": [{ "APIKeyAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["message_id", "otp"],
+                "properties": {
+                  "message_id": { "type": "string" },
+                  "otp": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OTP verified" },
+          "400": { "description": "Invalid OTP" }
         }
       }
     },
@@ -196,6 +671,35 @@
         "responses": {
           "200": { "description": "Login successful, returns JWT + MQTT credentials" },
           "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/api/v1/devices/register": {
+      "post": {
+        "tags": ["Devices"],
+        "summary": "Register a physical device",
+        "operationId": "deviceRegister",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["device_id", "account_token"],
+                "properties": {
+                  "device_id": { "type": "string" },
+                  "account_token": { "type": "string" },
+                  "phone_number": { "type": "string" },
+                  "carrier": { "type": "string" },
+                  "sim_slot": { "type": "integer", "default": 1 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Device registered" }
         }
       }
     },
@@ -231,6 +735,127 @@
         }
       }
     },
+    "/api/v1/devices/status": {
+      "post": {
+        "tags": ["Devices"],
+        "summary": "Update device status",
+        "operationId": "updateDeviceStatus",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "device_id": { "type": "string" },
+                  "status": { "type": "string", "enum": ["ONLINE", "OFFLINE"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Status updated" }
+        }
+      }
+    },
+    "/api/v1/devices": {
+      "get": {
+        "tags": ["Devices"],
+        "summary": "List devices",
+        "operationId": "listDevices",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "List of devices" }
+        }
+      },
+      "post": {
+        "tags": ["Devices"],
+        "summary": "Register device (deprecated, use POST /api/v1/devices/register)",
+        "operationId": "registerDeviceDeprecated",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "device_id": { "type": "string" },
+                  "phone_number": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Device registered" } }
+      }
+    },
+    "/api/v1/devices/{id}": {
+      "get": {
+        "tags": ["Devices"],
+        "summary": "Get device by ID",
+        "operationId": "getDevice",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Device details" },
+          "404": { "description": "Device not found" }
+        }
+      }
+    },
+    "/api/v1/devices/deregister": {
+      "post": {
+        "tags": ["Devices"],
+        "summary": "Deregister a device",
+        "operationId": "deregisterDevice",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["device_id"],
+                "properties": { "device_id": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Device deregistered" }
+        }
+      }
+    },
+    "/api/v1/devices/info": {
+      "post": {
+        "tags": ["Devices"],
+        "summary": "Submit device info (battery, network, etc.)",
+        "operationId": "submitDeviceInfo",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "device_id": { "type": "string" },
+                  "battery_level": { "type": "number" },
+                  "network_type": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Device info updated" }
+        }
+      }
+    },
     "/api/v1/member/devices/qr-code": {
       "post": {
         "tags": ["QR Pairing"],
@@ -255,13 +880,1285 @@
         }
       }
     },
+    "/api/v1/account/profile": {
+      "get": {
+        "tags": ["Account"],
+        "summary": "Get account profile",
+        "operationId": "getAccountProfile",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Account profile" }
+        }
+      },
+      "put": {
+        "tags": ["Account"],
+        "summary": "Update account profile",
+        "operationId": "updateAccountProfile",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "company": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Profile updated" }
+        }
+      }
+    },
+    "/api/v1/account/api-keys": {
+      "get": {
+        "tags": ["Account"],
+        "summary": "List API keys",
+        "operationId": "listApiKeys",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "List of API keys" }
+        }
+      },
+      "post": {
+        "tags": ["Account"],
+        "summary": "Create an API key",
+        "operationId": "createApiKey",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["label"],
+                "properties": {
+                  "label": { "type": "string" },
+                  "scopes": { "type": "array", "items": { "type": "string" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "API key created (key returned once)" }
+        }
+      }
+    },
+    "/api/v1/account/api-keys/{id}": {
+      "delete": {
+        "tags": ["Account"],
+        "summary": "Revoke API key",
+        "operationId": "revokeApiKey",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "API key revoked" }
+        }
+      }
+    },
+    "/api/v1/account/routing-strategy": {
+      "put": {
+        "tags": ["Account"],
+        "summary": "Update routing strategy",
+        "operationId": "updateRoutingStrategy",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["routing_strategy"],
+                "properties": {
+                  "routing_strategy": { "type": "string", "enum": ["fastest_delivery", "lowest_cost", "highest_reliability", "geo_affinity", "profit_optimized"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Strategy updated" }
+        }
+      }
+    },
+    "/api/v1/account/subscription": {
+      "get": {
+        "tags": ["Account"],
+        "summary": "Get current subscription",
+        "operationId": "getSubscription",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Subscription details" }
+        }
+      }
+    },
+    "/api/v1/account/usage": {
+      "get": {
+        "tags": ["Account"],
+        "summary": "Get usage statistics",
+        "operationId": "getUsage",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Daily and monthly usage" }
+        }
+      }
+    },
+    "/api/v1/templates": {
+      "get": {
+        "tags": ["Templates"],
+        "summary": "List all templates (admin)",
+        "operationId": "listTemplatesAdmin",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "pageSize", "in": "query", "schema": { "type": "integer", "default": 50 } },
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["pending", "approved", "rejected"] } }
+        ],
+        "responses": {
+          "200": { "description": "Paginated templates with account info" }
+        }
+      },
+      "post": {
+        "tags": ["Templates"],
+        "summary": "Create a template (admin)",
+        "operationId": "createTemplateAdmin",
+        "security": [{ "AdminAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "body"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "body": { "type": "string", "description": "SMS body with {{variable}} placeholders" },
+                  "variables": { "type": "array", "items": { "type": "string" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Template created (pending approval)" }
+        }
+      }
+    },
+    "/api/v1/templates/{id}": {
+      "get": {
+        "tags": ["Templates"],
+        "summary": "Get template by ID",
+        "operationId": "getTemplate",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Template details" },
+          "404": { "description": "Not found" }
+        }
+      },
+      "put": {
+        "tags": ["Templates"],
+        "summary": "Update template",
+        "operationId": "updateTemplate",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "body": { "type": "string" },
+                  "variables": { "type": "array", "items": { "type": "string" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Template updated" }
+        }
+      },
+      "delete": {
+        "tags": ["Templates"],
+        "summary": "Delete template",
+        "operationId": "deleteTemplate",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Template deleted" }
+        }
+      }
+    },
+    "/api/v1/admin/templates/{id}/approve": {
+      "post": {
+        "tags": ["Templates"],
+        "summary": "Approve a pending template",
+        "operationId": "approveTemplate",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Template approved" }
+        }
+      }
+    },
+    "/api/v1/admin/templates/{id}/reject": {
+      "post": {
+        "tags": ["Templates"],
+        "summary": "Reject a pending template",
+        "operationId": "rejectTemplate",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Template rejected" }
+        }
+      }
+    },
+    "/api/v1/admin/templates/bulk-delete": {
+      "post": {
+        "tags": ["Templates"],
+        "summary": "Bulk delete templates",
+        "operationId": "bulkDeleteTemplates",
+        "security": [{ "AdminAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["ids"],
+                "properties": { "ids": { "type": "array", "items": { "type": "string" } } }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Templates deleted" } }
+      }
+    },
+    "/api/v1/admin/templates/bulk-approve": {
+      "post": {
+        "tags": ["Templates"],
+        "summary": "Bulk approve templates",
+        "operationId": "bulkApproveTemplates",
+        "security": [{ "AdminAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["ids"],
+                "properties": { "ids": { "type": "array", "items": { "type": "string" } } }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Templates approved" } }
+      }
+    },
+    "/api/v1/admin/templates/bulk-reject": {
+      "post": {
+        "tags": ["Templates"],
+        "summary": "Bulk reject templates",
+        "operationId": "bulkRejectTemplates",
+        "security": [{ "AdminAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["ids"],
+                "properties": { "ids": { "type": "array", "items": { "type": "string" } } }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Templates rejected" } }
+      }
+    },
+    "/api/v1/webhooks": {
+      "post": {
+        "tags": ["Webhooks"],
+        "summary": "Create a webhook (admin)",
+        "operationId": "createWebhook",
+        "security": [{ "AdminAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["url", "events"],
+                "properties": {
+                  "url": { "type": "string", "format": "uri" },
+                  "events": { "type": "array", "items": { "type": "string" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Webhook created with secret" }
+        }
+      }
+    },
+    "/api/v1/webhooks/{id}": {
+      "get": {
+        "tags": ["Webhooks"],
+        "summary": "Get webhook",
+        "operationId": "getWebhook",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Webhook details" }
+        }
+      },
+      "put": {
+        "tags": ["Webhooks"],
+        "summary": "Update webhook",
+        "operationId": "updateWebhook",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "url": { "type": "string" },
+                  "events": { "type": "array", "items": { "type": "string" } },
+                  "active": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Webhook updated" } }
+      },
+      "delete": {
+        "tags": ["Webhooks"],
+        "summary": "Delete webhook",
+        "operationId": "deleteWebhook",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Webhook deleted" } }
+      }
+    },
+    "/api/v1/webhooks/{id}/rotate-secret": {
+      "post": {
+        "tags": ["Webhooks"],
+        "summary": "Rotate webhook secret",
+        "operationId": "rotateWebhookSecret",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "New secret returned" } }
+      }
+    },
+    "/api/v1/webhooks/{id}/deliveries": {
+      "get": {
+        "tags": ["Webhooks"],
+        "summary": "List webhook delivery logs",
+        "operationId": "listWebhookDeliveries",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Delivery log list" } }
+      }
+    },
+    "/api/v1/webhooks/{id}/test": {
+      "post": {
+        "tags": ["Webhooks"],
+        "summary": "Test webhook delivery",
+        "operationId": "testWebhook",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Test result with status code and body" } }
+      }
+    },
+    "/api/v1/admin/webhooks": {
+      "get": {
+        "tags": ["Webhooks"],
+        "summary": "List all webhooks (admin)",
+        "operationId": "listAllWebhooks",
+        "security": [{ "AdminAuth": [] }],
+        "responses": { "200": { "description": "Paginated webhooks with account info" } }
+      }
+    },
+    "/api/v1/admin/webhooks/bulk-delete": {
+      "post": {
+        "tags": ["Webhooks"],
+        "summary": "Bulk delete webhooks",
+        "operationId": "bulkDeleteWebhooks",
+        "security": [{ "AdminAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["ids"],
+                "properties": { "ids": { "type": "array", "items": { "type": "string" } } }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Webhooks deleted" } }
+      }
+    },
+    "/api/v1/plans": {
+      "get": {
+        "tags": ["Billing"],
+        "summary": "List plans (filtered by role)",
+        "operationId": "listPlans",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "List of plans" }
+        }
+      },
+      "post": {
+        "tags": ["Billing"],
+        "summary": "Create a plan (admin only)",
+        "operationId": "createPlan",
+        "security": [{ "AdminAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/Plan" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Plan created" }
+        }
+      }
+    },
+    "/api/v1/plans/{id}": {
+      "get": {
+        "tags": ["Billing"],
+        "summary": "Get plan by ID",
+        "operationId": "getPlan",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Plan details" }
+        }
+      },
+      "put": {
+        "tags": ["Billing"],
+        "summary": "Update plan (admin only)",
+        "operationId": "updatePlan",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/Plan" }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Plan updated" } }
+      },
+      "delete": {
+        "tags": ["Billing"],
+        "summary": "Delete plan (admin only)",
+        "operationId": "deletePlan",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Plan deleted" } }
+      }
+    },
+    "/api/v1/plan-requests": {
+      "post": {
+        "tags": ["Plan Change Requests"],
+        "summary": "Submit a plan change request (maker-checker)",
+        "operationId": "submitPlanChangeRequest",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["action", "payload"],
+                "properties": {
+                  "action": { "type": "string", "enum": ["create", "update", "delete"] },
+                  "plan_id": { "type": "string" },
+                  "payload": { "type": "object", "description": "Plan data for create/update" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Change request submitted, pending admin review" }
+        }
+      }
+    },
+    "/api/v1/admin/plan-requests": {
+      "get": {
+        "tags": ["Plan Change Requests"],
+        "summary": "List plan change requests (admin)",
+        "operationId": "listPlanChangeRequests",
+        "security": [{ "AdminAuth": [] }],
+        "responses": { "200": { "description": "List of change requests" } }
+      }
+    },
+    "/api/v1/admin/plan-requests/{id}/approve": {
+      "post": {
+        "tags": ["Plan Change Requests"],
+        "summary": "Approve plan change request",
+        "operationId": "approvePlanChange",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": { "notes": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Request approved and plan change applied" } }
+      }
+    },
+    "/api/v1/admin/plan-requests/{id}/reject": {
+      "post": {
+        "tags": ["Plan Change Requests"],
+        "summary": "Reject plan change request",
+        "operationId": "rejectPlanChange",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": { "notes": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Request rejected" } }
+      }
+    },
+    "/api/v1/billing/invoice": {
+      "get": {
+        "tags": ["Billing"],
+        "summary": "Get invoice data",
+        "operationId": "getInvoice",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "year", "in": "query", "schema": { "type": "integer" } },
+          { "name": "month", "in": "query", "schema": { "type": "integer" } }
+        ],
+        "responses": { "200": { "description": "Invoice data" } }
+      }
+    },
+    "/api/v1/billing/usage": {
+      "get": {
+        "tags": ["Billing"],
+        "summary": "Get billing usage",
+        "operationId": "getBillingUsage",
+        "security": [{ "BearerAuth": [] }],
+        "responses": { "200": { "description": "Daily and monthly usage with overage" } }
+      }
+    },
+    "/api/v1/admin/stats": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get platform stats",
+        "operationId": "getAdminStats",
+        "security": [{ "AdminAuth": [] }],
+        "responses": {
+          "200": { "description": "Platform statistics (accounts, devices, messages, queue depth)" }
+        }
+      }
+    },
+    "/api/v1/admin/accounts": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "List accounts (paginated)",
+        "operationId": "listAccounts",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "pageSize", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": { "200": { "description": "Paginated account list" } }
+      }
+    },
+    "/api/v1/admin/accounts/{id}": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get account details",
+        "operationId": "getAccount",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Account details" },
+          "404": { "description": "Not found" }
+        }
+      },
+      "delete": {
+        "tags": ["Admin"],
+        "summary": "Delete account",
+        "operationId": "deleteAccount",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Account deleted" } }
+      }
+    },
+    "/api/v1/admin/accounts/{id}/suspend": {
+      "post": {
+        "tags": ["Admin"],
+        "summary": "Suspend an account",
+        "operationId": "suspendAccount",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Account suspended" } }
+      }
+    },
+    "/api/v1/admin/accounts/{id}/activate": {
+      "post": {
+        "tags": ["Admin"],
+        "summary": "Activate a suspended account",
+        "operationId": "activateAccount",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Account activated" } }
+      }
+    },
+    "/api/v1/admin/analytics": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get analytics data",
+        "operationId": "getAnalytics",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "start", "in": "query", "schema": { "type": "string", "format": "date" } },
+          { "name": "end", "in": "query", "schema": { "type": "string", "format": "date" } }
+        ],
+        "responses": { "200": { "description": "Analytics data" } }
+      }
+    },
+    "/api/v1/admin/charts/daily": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get daily chart data (30 days)",
+        "operationId": "getDailyCharts",
+        "security": [{ "AdminAuth": [] }],
+        "responses": { "200": { "description": "Chart-friendly message/user/revenue data" } }
+      }
+    },
+    "/api/v1/admin/activity": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get activity log",
+        "operationId": "getActivityLog",
+        "security": [{ "AdminAuth": [] }],
+        "responses": { "200": { "description": "Paginated activity log" } }
+      }
+    },
+    "/api/v1/admin/circuit-breakers": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "List circuit breaker states",
+        "operationId": "listCircuitBreakers",
+        "security": [{ "AdminAuth": [] }],
+        "responses": { "200": { "description": "All circuit breaker events" } }
+      }
+    },
+    "/api/v1/admin/circuit-breakers/{scope}/{id}/reset": {
+      "post": {
+        "tags": ["Admin"],
+        "summary": "Reset a circuit breaker",
+        "operationId": "resetCircuitBreaker",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "scope", "in": "path", "required": true, "schema": { "type": "string", "enum": ["device", "account", "carrier"] } },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Circuit breaker reset" } }
+      }
+    },
+    "/api/v1/admin/dead-letters": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "List dead letters",
+        "operationId": "listDeadLetters",
+        "security": [{ "AdminAuth": [] }],
+        "responses": { "200": { "description": "Paginated dead letter queue" } }
+      }
+    },
+    "/api/v1/admin/dead-letters/{id}/retry": {
+      "post": {
+        "tags": ["Admin"],
+        "summary": "Retry a dead letter",
+        "operationId": "retryDeadLetter",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Message requeued" } }
+      }
+    },
+    "/api/v1/admin/users": {
+      "get": {
+        "tags": ["Admin Users"],
+        "summary": "List staff users (paginated/filtered)",
+        "operationId": "listUsers",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "pageSize", "in": "query", "schema": { "type": "integer", "default": 20 } },
+          { "name": "search", "in": "query", "schema": { "type": "string" } },
+          { "name": "role", "in": "query", "schema": { "type": "string", "enum": ["admin", "staff", "viewer"] } },
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["active", "inactive"] } }
+        ],
+        "responses": { "200": { "description": "Paginated user list" } }
+      },
+      "post": {
+        "tags": ["Admin Users"],
+        "summary": "Create a staff user",
+        "operationId": "createUser",
+        "security": [{ "AdminAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "email", "password", "role"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string", "minLength": 8 },
+                  "role": { "type": "string", "enum": ["admin", "staff", "viewer"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "User created" } }
+      }
+    },
+    "/api/v1/admin/users/{id}": {
+      "get": {
+        "tags": ["Admin Users"],
+        "summary": "Get user details",
+        "operationId": "getUser",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "User details" } }
+      },
+      "put": {
+        "tags": ["Admin Users"],
+        "summary": "Update a user",
+        "operationId": "updateUser",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "role": { "type": "string", "enum": ["admin", "staff", "viewer"] },
+                  "status": { "type": "string", "enum": ["active", "inactive"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "User updated" } }
+      },
+      "delete": {
+        "tags": ["Admin Users"],
+        "summary": "Delete a user",
+        "operationId": "deleteUser",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "User deleted" } }
+      }
+    },
+    "/api/v1/admin/users/bulk-delete": {
+      "post": {
+        "tags": ["Admin Users"],
+        "summary": "Bulk delete users",
+        "operationId": "bulkDeleteUsers",
+        "security": [{ "AdminAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["ids"],
+                "properties": { "ids": { "type": "array", "items": { "type": "string" } } }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Users deleted" } }
+      }
+    },
+    "/api/v1/admin/users/bulk-update": {
+      "post": {
+        "tags": ["Admin Users"],
+        "summary": "Bulk update users",
+        "operationId": "bulkUpdateUsers",
+        "security": [{ "AdminAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["ids", "data"],
+                "properties": {
+                  "ids": { "type": "array", "items": { "type": "string" } },
+                  "data": { "type": "object", "properties": { "role": { "type": "string" }, "status": { "type": "string" } } }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Users updated" } }
+      }
+    },
+    "/api/v1/admin/payment-configs": {
+      "get": {
+        "tags": ["Billing"],
+        "summary": "List payment configs (admin)",
+        "operationId": "listPaymentConfigs",
+        "security": [{ "AdminAuth": [] }],
+        "responses": { "200": { "description": "All payment configs" } }
+      },
+      "post": {
+        "tags": ["Billing"],
+        "summary": "Upsert a payment config (admin)",
+        "operationId": "upsertPaymentConfig",
+        "security": [{ "AdminAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["method", "label"],
+                "properties": {
+                  "method": { "type": "string" },
+                  "label": { "type": "string" },
+                  "details": { "type": "object" },
+                  "enabled": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Config saved" } }
+      }
+    },
+    "/api/v1/admin/payment-configs/{id}": {
+      "put": {
+        "tags": ["Billing"],
+        "summary": "Update payment config (admin)",
+        "operationId": "updatePaymentConfig",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "label": { "type": "string" },
+                  "details": { "type": "object" },
+                  "enabled": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Config updated" } }
+      }
+    },
+    "/api/v1/payment-configs": {
+      "get": {
+        "tags": ["Billing"],
+        "summary": "List enabled payment methods",
+        "operationId": "listEnabledPaymentConfigs",
+        "security": [{ "BearerAuth": [] }],
+        "responses": { "200": { "description": "Enabled payment methods" } }
+      }
+    },
+    "/api/v1/admin/payment-requests": {
+      "get": {
+        "tags": ["Payment Requests"],
+        "summary": "List payment requests (admin)",
+        "operationId": "listPaymentRequests",
+        "security": [{ "AdminAuth": [] }],
+        "responses": { "200": { "description": "Paginated payment requests" } }
+      }
+    },
+    "/api/v1/admin/payment-requests/{id}": {
+      "get": {
+        "tags": ["Payment Requests"],
+        "summary": "Get payment request details",
+        "operationId": "getPaymentRequest",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Payment request details" } }
+      }
+    },
+    "/api/v1/admin/payment-requests/{id}/approve": {
+      "post": {
+        "tags": ["Payment Requests"],
+        "summary": "Approve a payment request (admin)",
+        "operationId": "approvePaymentRequest",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": { "notes": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Payment approved" } }
+      }
+    },
+    "/api/v1/admin/payment-requests/{id}/reject": {
+      "post": {
+        "tags": ["Payment Requests"],
+        "summary": "Reject a payment request (admin)",
+        "operationId": "rejectPaymentRequest",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": { "notes": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Payment rejected" } }
+      }
+    },
+    "/api/v1/admin/subscription-requests": {
+      "get": {
+        "tags": ["Subscription Requests"],
+        "summary": "List subscription upgrade requests (admin)",
+        "operationId": "listSubscriptionRequests",
+        "security": [{ "AdminAuth": [] }],
+        "responses": { "200": { "description": "Paginated subscription requests" } }
+      }
+    },
+    "/api/v1/admin/subscription-requests/{id}/approve": {
+      "post": {
+        "tags": ["Subscription Requests"],
+        "summary": "Approve subscription request (admin)",
+        "operationId": "approveSubscriptionRequest",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": { "notes": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Subscription updated" } }
+      }
+    },
+    "/api/v1/admin/subscription-requests/{id}/reject": {
+      "post": {
+        "tags": ["Subscription Requests"],
+        "summary": "Reject subscription request (admin)",
+        "operationId": "rejectSubscriptionRequest",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": { "notes": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Request rejected" } }
+      }
+    },
+    "/api/v1/admin/bi": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get BI dashboard data",
+        "operationId": "getBIDashboard",
+        "security": [{ "AdminAuth": [] }],
+        "responses": { "200": { "description": "BI dashboard data" } }
+      }
+    },
+    "/api/v1/admin/kyc": {
+      "get": {
+        "tags": ["KYC"],
+        "summary": "List KYC submissions (admin)",
+        "operationId": "listKycSubmissions",
+        "security": [{ "AdminAuth": [] }],
+        "responses": { "200": { "description": "Paginated KYC submissions" } }
+      }
+    },
+    "/api/v1/admin/kyc/{id}/approve": {
+      "post": {
+        "tags": ["KYC"],
+        "summary": "Approve KYC submission",
+        "operationId": "approveKyc",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "KYC approved" } }
+      }
+    },
+    "/api/v1/admin/kyc/{id}/reject": {
+      "post": {
+        "tags": ["KYC"],
+        "summary": "Reject KYC submission",
+        "operationId": "rejectKyc",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "KYC rejected" } }
+      }
+    },
+    "/api/v1/admin/contact-submissions": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "List contact sales submissions",
+        "operationId": "listContactSubmissions",
+        "security": [{ "AdminAuth": [] }],
+        "responses": { "200": { "description": "List of submissions" } }
+      }
+    },
+    "/api/v1/admin/contact-submissions/{id}": {
+      "put": {
+        "tags": ["Admin"],
+        "summary": "Update contact submission status",
+        "operationId": "updateContactSubmission",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": { "type": "string" },
+                  "notes": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Submission updated" } }
+      }
+    },
+    "/api/v1/member/dashboard": {
+      "get": {
+        "tags": ["Member"],
+        "summary": "Get member dashboard data",
+        "operationId": "getMemberDashboard",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Consolidated dashboard (account, devices, messages, usage, subscription)" }
+        }
+      }
+    },
+    "/api/v1/member/devices": {
+      "get": {
+        "tags": ["Member"],
+        "summary": "List member devices",
+        "operationId": "getMemberDevices",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "online_only", "in": "query", "schema": { "type": "boolean" }, "description": "Filter to only online devices" }
+        ],
+        "responses": { "200": { "description": "Devices with name, phone, carrier, online status" } }
+      }
+    },
+    "/api/v1/member/devices/{id}": {
+      "put": {
+        "tags": ["Member"],
+        "summary": "Update device name/alias",
+        "operationId": "updateMemberDevice",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": { "name": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Device updated" } }
+      },
+      "delete": {
+        "tags": ["Member"],
+        "summary": "Disconnect device",
+        "operationId": "deleteMemberDevice",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Device disconnected" } }
+      }
+    },
+    "/api/v1/member/messages": {
+      "get": {
+        "tags": ["Member"],
+        "summary": "Get member messages (paginated)",
+        "operationId": "getMemberMessages",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "pageSize", "in": "query", "schema": { "type": "integer", "default": 20 } },
+          { "name": "status", "in": "query", "schema": { "type": "string" } },
+          { "name": "type", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Paginated messages" } }
+      }
+    },
+    "/api/v1/member/send": {
+      "post": {
+        "tags": ["Member"],
+        "summary": "Send SMS via member portal",
+        "operationId": "memberSend",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["device_id", "recipient", "message"],
+                "properties": {
+                  "device_id": { "type": "string", "description": "Must belong to the member and be online" },
+                  "recipient": { "type": "string" },
+                  "message": { "type": "string", "maxLength": 160 },
+                  "message_type": { "type": "string", "enum": ["otp", "transactional", "marketing"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": { "description": "Message queued" },
+          "400": { "description": "Validation error or device offline" },
+          "403": { "description": "Device does not belong to account" }
+        }
+      }
+    },
     "/api/v1/member/plan": {
       "get": {
         "tags": ["Member"],
         "summary": "Get current plan and quota details",
         "operationId": "getMemberPlan",
         "security": [{ "BearerAuth": [] }],
-        "description": "Returns the member's current subscription plan details, daily/monthly usage, and remaining quota. Protected by plan middleware — blocks suspended accounts and canceled subscriptions.",
         "responses": {
           "200": {
             "description": "Plan details with usage and quota info",
@@ -278,6 +2175,530 @@
           },
           "403": { "description": "Account suspended/disabled or subscription canceled/past due" }
         }
+      }
+    },
+    "/api/v1/member/analytics": {
+      "get": {
+        "tags": ["Member"],
+        "summary": "Get member analytics (30-day aggregated)",
+        "operationId": "getMemberAnalytics",
+        "security": [{ "BearerAuth": [] }],
+        "responses": { "200": { "description": "Daily aggregated analytics" } }
+      }
+    },
+    "/api/v1/member/stats": {
+      "get": {
+        "tags": ["Member"],
+        "summary": "Get real-time member stats",
+        "operationId": "getMemberStats",
+        "security": [{ "BearerAuth": [] }],
+        "responses": { "200": { "description": "Daily usage, device count, plan info" } }
+      }
+    },
+    "/api/v1/member/templates": {
+      "get": {
+        "tags": ["Member"],
+        "summary": "List member templates",
+        "operationId": "listMemberTemplates",
+        "security": [{ "BearerAuth": [] }],
+        "responses": { "200": { "description": "Paginated templates" } }
+      },
+      "post": {
+        "tags": ["Member"],
+        "summary": "Create a template (member)",
+        "operationId": "createMemberTemplate",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "body"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "body": { "type": "string" },
+                  "variables": { "type": "array", "items": { "type": "string" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Template created (pending approval)" } }
+      }
+    },
+    "/api/v1/member/templates/{id}": {
+      "get": {
+        "tags": ["Member"],
+        "summary": "Get member template",
+        "operationId": "getMemberTemplate",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Template details" } }
+      },
+      "put": {
+        "tags": ["Member"],
+        "summary": "Update member template",
+        "operationId": "updateMemberTemplate",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "body": { "type": "string" },
+                  "variables": { "type": "array", "items": { "type": "string" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Template updated (resets to pending)" } }
+      },
+      "delete": {
+        "tags": ["Member"],
+        "summary": "Delete member template",
+        "operationId": "deleteMemberTemplate",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Template deleted" } }
+      }
+    },
+    "/api/v1/member/webhooks": {
+      "get": {
+        "tags": ["Member"],
+        "summary": "List member webhooks",
+        "operationId": "listMemberWebhooks",
+        "security": [{ "BearerAuth": [] }],
+        "responses": { "200": { "description": "Paginated webhooks" } }
+      },
+      "post": {
+        "tags": ["Member"],
+        "summary": "Create a webhook (member)",
+        "operationId": "createMemberWebhook",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["url", "events"],
+                "properties": {
+                  "url": { "type": "string" },
+                  "events": { "type": "array", "items": { "type": "string" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Webhook created with secret" } }
+      }
+    },
+    "/api/v1/member/webhooks/{id}": {
+      "get": {
+        "tags": ["Member"],
+        "summary": "Get member webhook",
+        "operationId": "getMemberWebhook",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Webhook details" } }
+      },
+      "put": {
+        "tags": ["Member"],
+        "summary": "Update member webhook",
+        "operationId": "updateMemberWebhook",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "url": { "type": "string" },
+                  "events": { "type": "array", "items": { "type": "string" } },
+                  "active": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Webhook updated" } }
+      },
+      "delete": {
+        "tags": ["Member"],
+        "summary": "Delete member webhook",
+        "operationId": "deleteMemberWebhook",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Webhook deleted" } }
+      }
+    },
+    "/api/v1/member/webhooks/{id}/rotate-secret": {
+      "post": {
+        "tags": ["Member"],
+        "summary": "Rotate webhook secret (member)",
+        "operationId": "rotateMemberWebhookSecret",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "New secret returned" } }
+      }
+    },
+    "/api/v1/member/webhooks/{id}/deliveries": {
+      "get": {
+        "tags": ["Member"],
+        "summary": "List webhook delivery logs (member)",
+        "operationId": "listMemberWebhookDeliveries",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Delivery logs" } }
+      }
+    },
+    "/api/v1/member/webhooks/{id}/test": {
+      "post": {
+        "tags": ["Member"],
+        "summary": "Test webhook (member)",
+        "operationId": "testMemberWebhook",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Test result" } }
+      }
+    },
+    "/api/v1/member/preferences": {
+      "get": {
+        "tags": ["Member"],
+        "summary": "Get member notification preferences",
+        "operationId": "getMemberPreferences",
+        "security": [{ "BearerAuth": [] }],
+        "responses": { "200": { "description": "Preference settings" } }
+      },
+      "put": {
+        "tags": ["Member"],
+        "summary": "Update notification preferences",
+        "operationId": "updateMemberPreferences",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email_notifications": { "type": "boolean" },
+                  "sms_notifications": { "type": "boolean" },
+                  "webhook_notifications": { "type": "boolean" },
+                  "billing_alerts": { "type": "boolean" },
+                  "security_alerts": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Preferences updated" } }
+      }
+    },
+    "/api/v1/member/kyc": {
+      "get": {
+        "tags": ["Member"],
+        "summary": "Get KYC status",
+        "operationId": "getMemberKyc",
+        "security": [{ "BearerAuth": [] }],
+        "responses": { "200": { "description": "KYC status" } }
+      },
+      "post": {
+        "tags": ["Member"],
+        "summary": "Submit KYC information",
+        "operationId": "submitMemberKyc",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["full_name", "document_type"],
+                "properties": {
+                  "full_name": { "type": "string" },
+                  "document_type": { "type": "string" },
+                  "document_number": { "type": "string" },
+                  "document_url": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "KYC submitted, pending review" } }
+      }
+    },
+    "/api/v1/member/payment-requests": {
+      "get": {
+        "tags": ["Payment Requests"],
+        "summary": "List my payment requests (member)",
+        "operationId": "listMyPaymentRequests",
+        "security": [{ "BearerAuth": [] }],
+        "responses": { "200": { "description": "Paginated payment requests" } }
+      },
+      "post": {
+        "tags": ["Payment Requests"],
+        "summary": "Create a payment request (member)",
+        "operationId": "createPaymentRequest",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["plan_id", "billing_cycle", "payment_method", "amount"],
+                "properties": {
+                  "plan_id": { "type": "string" },
+                  "billing_cycle": { "type": "string", "enum": ["monthly", "yearly"] },
+                  "payment_method": { "type": "string" },
+                  "amount": { "type": "number" },
+                  "proof_url": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Payment request created" } }
+      }
+    },
+    "/api/v1/member/subscription-requests": {
+      "get": {
+        "tags": ["Subscription Requests"],
+        "summary": "List my subscription requests (member)",
+        "operationId": "listMySubscriptionRequests",
+        "security": [{ "BearerAuth": [] }],
+        "responses": { "200": { "description": "Paginated subscription requests" } }
+      },
+      "post": {
+        "tags": ["Subscription Requests"],
+        "summary": "Create a subscription change request (member)",
+        "operationId": "createSubscriptionRequest",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["requested_plan", "requested_billing_cycle", "reason"],
+                "properties": {
+                  "requested_plan": { "type": "string" },
+                  "requested_billing_cycle": { "type": "string", "enum": ["monthly", "yearly"] },
+                  "reason": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Subscription request created" } }
+      }
+    },
+    "/api/v1/fraud/check": {
+      "post": {
+        "tags": ["Fraud"],
+        "summary": "Check a message for fraud",
+        "operationId": "fraudCheck",
+        "security": [{ "APIKeyAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "recipient": { "type": "string" },
+                  "message": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Fraud analysis result" } }
+      }
+    },
+    "/api/v1/admin/fraud-flags": {
+      "get": {
+        "tags": ["Fraud"],
+        "summary": "List fraud flags (admin)",
+        "operationId": "listFraudFlags",
+        "security": [{ "AdminAuth": [] }],
+        "responses": { "200": { "description": "Paginated fraud flags" } }
+      }
+    },
+    "/api/v1/admin/fraud-flags/{id}/review": {
+      "post": {
+        "tags": ["Fraud"],
+        "summary": "Review a fraud flag",
+        "operationId": "reviewFraudFlag",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Flag reviewed" } }
+      }
+    },
+    "/api/v1/admin/abuse-flags": {
+      "get": {
+        "tags": ["Fraud"],
+        "summary": "List abuse flags (admin)",
+        "operationId": "listAbuseFlags",
+        "security": [{ "AdminAuth": [] }],
+        "responses": { "200": { "description": "Paginated abuse flags" } }
+      }
+    },
+    "/api/v1/admin/smishing-flags": {
+      "get": {
+        "tags": ["Fraud"],
+        "summary": "List smishing flags (admin)",
+        "operationId": "listSmishingFlags",
+        "security": [{ "AdminAuth": [] }],
+        "responses": { "200": { "description": "Paginated smishing flags" } }
+      }
+    },
+    "/api/v1/admin/smishing-flags/count": {
+      "get": {
+        "tags": ["Fraud"],
+        "summary": "Get pending smishing flag count",
+        "operationId": "smishingFlagsCount",
+        "security": [{ "AdminAuth": [] }],
+        "responses": { "200": { "description": "Count of pending flags" } }
+      }
+    },
+    "/api/v1/admin/smishing-flags/bulk-review": {
+      "post": {
+        "tags": ["Fraud"],
+        "summary": "Bulk review smishing flags",
+        "operationId": "bulkReviewSmishingFlags",
+        "security": [{ "AdminAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["ids"],
+                "properties": { "ids": { "type": "array", "items": { "type": "string" } } }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Flags reviewed" } }
+      }
+    },
+    "/api/v1/feature-catalog": {
+      "get": {
+        "tags": ["Feature Catalog"],
+        "summary": "List feature catalog",
+        "operationId": "listFeatureCatalog",
+        "security": [],
+        "responses": { "200": { "description": "List of features" } }
+      }
+    },
+    "/api/v1/admin/feature-catalog": {
+      "post": {
+        "tags": ["Feature Catalog"],
+        "summary": "Create feature catalog item (admin)",
+        "operationId": "createFeatureCatalogItem",
+        "security": [{ "AdminAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "category"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "category": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Feature created" } }
+      }
+    },
+    "/api/v1/admin/feature-catalog/{id}": {
+      "put": {
+        "tags": ["Feature Catalog"],
+        "summary": "Toggle feature status (admin)",
+        "operationId": "toggleFeatureCatalogItem",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": { "active": { "type": "boolean" } }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Feature updated" } }
+      },
+      "delete": {
+        "tags": ["Feature Catalog"],
+        "summary": "Delete feature catalog item (admin)",
+        "operationId": "deleteFeatureCatalogItem",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Feature deleted" } }
+      }
+    },
+    "/api/v1/admin/feature-catalog/{id}/reorder": {
+      "post": {
+        "tags": ["Feature Catalog"],
+        "summary": "Reorder feature (admin)",
+        "operationId": "reorderFeatureCatalogItem",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": { "sort_order": { "type": "integer" } }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Feature reordered" } }
       }
     },
     "/api/v1/public/plans": {
@@ -317,7 +2738,9 @@
                 "schema": {
                   "allOf": [
                     { "$ref": "#/components/schemas/APIResponse" },
-                    { "type": "object", "properties": { "data": { "type": "array", "items": { "type": "object", "properties": { "method": { "type": "string" }, "label": { "type": "string" } } } } } }
+                    { "type": "object", "properties": {
+                      "data": { "type": "array", "items": { "type": "object", "properties": { "method": { "type": "string" }, "label": { "type": "string" } } } }
+                    } }
                   ]
                 }
               }
@@ -326,21 +2749,42 @@
         }
       }
     },
+    "/api/v1/public/contact-sales": {
+      "post": {
+        "tags": ["Public"],
+        "summary": "Submit contact sales inquiry",
+        "operationId": "contactSales",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "email", "message"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "email": { "type": "string", "format": "email" },
+                  "company": { "type": "string" },
+                  "phone": { "type": "string" },
+                  "plan_interest": { "type": "string" },
+                  "message": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Inquiry submitted" } }
+      }
+    },
     "/api/v1/version-check": {
       "get": {
         "tags": ["App Releases"],
         "summary": "Check for app updates (Android client)",
         "operationId": "versionCheck",
         "security": [],
-        "description": "Public endpoint (no auth). Android app calls this on startup to check if a newer version is available.",
         "parameters": [
-          {
-            "name": "version_code",
-            "in": "query",
-            "required": true,
-            "schema": { "type": "integer" },
-            "description": "Current app version code (BuildConfig.VERSION_CODE)"
-          }
+          { "name": "version_code", "in": "query", "required": true, "schema": { "type": "integer" } }
         ],
         "responses": {
           "200": {
@@ -366,26 +2810,13 @@
         "operationId": "listReleases",
         "security": [{ "BearerAuth": [] }],
         "responses": {
-          "200": {
-            "description": "List of releases ordered by version_code desc",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    { "$ref": "#/components/schemas/APIResponse" },
-                    { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/AppRelease" } } } }
-                  ]
-                }
-              }
-            }
-          }
+          "200": { "description": "List of releases" }
         }
       },
       "post": {
         "tags": ["App Releases"],
         "summary": "Create a new app release draft",
         "operationId": "createRelease",
-        "description": "Any authenticated user can create (maker role). The release starts in 'draft' status.",
         "security": [{ "BearerAuth": [] }],
         "requestBody": {
           "required": true,
@@ -395,13 +2826,13 @@
                 "type": "object",
                 "required": ["version_code", "version_name"],
                 "properties": {
-                  "version_code": { "type": "integer", "example": 2 },
-                  "version_name": { "type": "string", "example": "1.1.0" },
-                  "release_type": { "type": "string", "enum": ["force", "normal"], "default": "normal" },
+                  "version_code": { "type": "integer" },
+                  "version_name": { "type": "string" },
+                  "release_type": { "type": "string", "enum": ["force", "normal"] },
                   "title": { "type": "string" },
                   "release_notes": { "type": "string" },
-                  "min_required_version": { "type": "integer", "default": 1 },
-                  "apk_url": { "type": "string", "description": "External APK download URL" }
+                  "min_required_version": { "type": "integer" },
+                  "apk_url": { "type": "string" }
                 }
               }
             }
@@ -409,7 +2840,6 @@
         },
         "responses": {
           "201": { "description": "Release created" },
-          "400": { "description": "Validation error" },
           "409": { "description": "version_code already exists" }
         }
       }
@@ -424,35 +2854,19 @@
           { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "responses": {
-          "200": {
-            "description": "Release details",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    { "$ref": "#/components/schemas/APIResponse" },
-                    { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/AppRelease" } } }
-                  ]
-                }
-              }
-            }
-          },
-          "404": { "description": "Release not found" }
+          "200": { "description": "Release details" },
+          "404": { "description": "Not found" }
         }
       },
       "delete": {
         "tags": ["App Releases"],
         "summary": "Delete a release (admin only)",
         "operationId": "deleteRelease",
-        "description": "Only admin can delete. Only draft or rejected releases can be deleted.",
         "security": [{ "AdminAuth": [] }],
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
-        "responses": {
-          "200": { "description": "Release deleted" },
-          "400": { "description": "Cannot delete released or approved releases" }
-        }
+        "responses": { "200": { "description": "Release deleted" } }
       }
     },
     "/api/v1/admin/releases/{id}/submit": {
@@ -460,16 +2874,11 @@
         "tags": ["App Releases"],
         "summary": "Submit release for approval (maker)",
         "operationId": "submitRelease",
-        "description": "Any authenticated user can submit a draft release for admin approval.",
         "security": [{ "BearerAuth": [] }],
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
-        "responses": {
-          "200": { "description": "Submitted for approval" },
-          "400": { "description": "Release is not in draft status" },
-          "404": { "description": "Release not found" }
-        }
+        "responses": { "200": { "description": "Submitted for approval" } }
       }
     },
     "/api/v1/admin/releases/{id}/approve": {
@@ -477,16 +2886,11 @@
         "tags": ["App Releases"],
         "summary": "Approve release (admin only)",
         "operationId": "approveRelease",
-        "description": "Admin reviews and approves a pending release.",
         "security": [{ "AdminAuth": [] }],
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
-        "responses": {
-          "200": { "description": "Release approved" },
-          "403": { "description": "Only admin can approve" },
-          "404": { "description": "Release not found" }
-        }
+        "responses": { "200": { "description": "Release approved" } }
       }
     },
     "/api/v1/admin/releases/{id}/reject": {
@@ -494,28 +2898,11 @@
         "tags": ["App Releases"],
         "summary": "Reject release (admin only)",
         "operationId": "rejectRelease",
-        "description": "Admin rejects a pending release with a reason.",
         "security": [{ "AdminAuth": [] }],
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "reason": { "type": "string", "description": "Rejection reason" }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": { "description": "Release rejected" },
-          "403": { "description": "Only admin can reject" },
-          "404": { "description": "Release not found" }
-        }
+        "responses": { "200": { "description": "Release rejected" } }
       }
     },
     "/api/v1/admin/releases/{id}/release": {
@@ -523,16 +2910,11 @@
         "tags": ["App Releases"],
         "summary": "Publish release (admin only)",
         "operationId": "publishRelease",
-        "description": "Admin publishes an approved release, making it the active version for all Android clients.",
         "security": [{ "AdminAuth": [] }],
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
-        "responses": {
-          "200": { "description": "Release published" },
-          "403": { "description": "Only admin can publish" },
-          "404": { "description": "Release not found" }
-        }
+        "responses": { "200": { "description": "Release published" } }
       }
     },
     "/api/v1/admin/releases/{id}/upload": {
@@ -540,7 +2922,6 @@
         "tags": ["App Releases"],
         "summary": "Upload APK file for a release",
         "operationId": "uploadAPK",
-        "description": "Upload an APK file (max 100MB) and associate it with a draft release.",
         "security": [{ "BearerAuth": [] }],
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
@@ -552,27 +2933,13 @@
               "schema": {
                 "type": "object",
                 "required": ["apk"],
-                "properties": {
-                  "apk": { "type": "string", "format": "binary", "description": "APK file" }
-                }
+                "properties": { "apk": { "type": "string", "format": "binary" } }
               }
             }
           }
         },
         "responses": {
-          "200": {
-            "description": "APK uploaded and associated with release",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    { "$ref": "#/components/schemas/APIResponse" },
-                    { "type": "object", "properties": { "data": { "type": "object", "properties": { "filename": { "type": "string" }, "file_path": { "type": "string" }, "size_bytes": { "type": "integer" }, "download_url": { "type": "string" } } } } }
-                  ]
-                }
-              }
-            }
-          },
+          "200": { "description": "APK uploaded" },
           "400": { "description": "File too large or not an APK" }
         }
       }
@@ -583,21 +2950,7 @@
         "summary": "List all Firebase config entries (admin)",
         "operationId": "listFirebaseConfig",
         "security": [{ "BearerAuth": [] }],
-        "responses": {
-          "200": {
-            "description": "All config entries including sensitive ones",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    { "$ref": "#/components/schemas/APIResponse" },
-                    { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/FirebaseConfigEntry" } } } }
-                  ]
-                }
-              }
-            }
-          }
-        }
+        "responses": { "200": { "description": "All config entries" } }
       },
       "put": {
         "tags": ["Firebase Config"],
@@ -611,25 +2964,19 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "entries": {
-                    "type": "array",
-                    "items": { "$ref": "#/components/schemas/FirebaseConfigEntry" }
-                  }
+                  "entries": { "type": "array", "items": { "$ref": "#/components/schemas/FirebaseConfigEntry" } }
                 }
               }
             }
           }
         },
-        "responses": {
-          "200": { "description": "Config updated" },
-          "403": { "description": "Only admin can bulk update" }
-        }
+        "responses": { "200": { "description": "Config updated" } }
       }
     },
     "/api/v1/admin/firebase-config/{key}": {
       "put": {
         "tags": ["Firebase Config"],
-        "summary": "Upsert a single Firebase config entry (admin only)",
+        "summary": "Upsert a single config entry (admin only)",
         "operationId": "upsertFirebaseConfig",
         "security": [{ "AdminAuth": [] }],
         "parameters": [
@@ -652,23 +2999,17 @@
             }
           }
         },
-        "responses": {
-          "200": { "description": "Config entry created or updated" },
-          "403": { "description": "Only admin can update" }
-        }
+        "responses": { "200": { "description": "Config entry upserted" } }
       },
       "delete": {
         "tags": ["Firebase Config"],
-        "summary": "Delete a Firebase config entry (admin only)",
+        "summary": "Delete a config entry (admin only)",
         "operationId": "deleteFirebaseConfig",
         "security": [{ "AdminAuth": [] }],
         "parameters": [
           { "name": "key", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
-        "responses": {
-          "200": { "description": "Config entry deleted" },
-          "403": { "description": "Only admin can delete" }
-        }
+        "responses": { "200": { "description": "Config entry deleted" } }
       }
     },
     "/api/v1/firebase-config": {
@@ -677,10 +3018,18 @@
         "summary": "Get public Firebase config (Android client)",
         "operationId": "getPublicFirebaseConfig",
         "security": [],
-        "description": "Public endpoint (no auth). Returns non-sensitive config entries as a key-value map.",
+        "responses": { "200": { "description": "Public config key-value map" } }
+      }
+    },
+    "/api/v1/admin/ai/configs": {
+      "get": {
+        "tags": ["AI Config"],
+        "summary": "List all AI provider configs",
+        "operationId": "listAiConfigs",
+        "security": [{ "AdminAuth": [] }],
         "responses": {
           "200": {
-            "description": "Public config map",
+            "description": "List of AI provider configs (API keys masked)",
             "content": {
               "application/json": {
                 "schema": {
@@ -690,9 +3039,8 @@
                       "type": "object",
                       "properties": {
                         "data": {
-                          "type": "object",
-                          "description": "Key-value map of non-sensitive config entries",
-                          "additionalProperties": true
+                          "type": "array",
+                          "items": { "$ref": "#/components/schemas/AIConfigResponse" }
                         }
                       }
                     }
@@ -702,6 +3050,276 @@
             }
           }
         }
+      },
+      "post": {
+        "tags": ["AI Config"],
+        "summary": "Create an AI provider config (admin creates directly, staff submits change request)",
+        "operationId": "createAiConfig",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["provider", "label", "endpoint_url", "model"],
+                "properties": {
+                  "provider": { "type": "string", "enum": ["ollama", "openai"] },
+                  "label": { "type": "string", "example": "Local Ollama" },
+                  "endpoint_url": { "type": "string", "format": "uri", "example": "http://localhost:11434" },
+                  "api_key": { "type": "string", "description": "API key (optional for Ollama)" },
+                  "model": { "type": "string", "example": "llama3" },
+                  "is_active": { "type": "boolean", "default": false }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Config created (admin) or change request submitted (staff/viewer)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/APIResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "oneOf": [
+                            { "$ref": "#/components/schemas/AIConfigResponse" },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "status": { "type": "string", "enum": ["pending"] },
+                                "request_id": { "type": "string" }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/ai/configs/{id}": {
+      "get": {
+        "tags": ["AI Config"],
+        "summary": "Get AI provider config by ID",
+        "operationId": "getAiConfig",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "AI config details" },
+          "404": { "description": "Not found" }
+        }
+      },
+      "put": {
+        "tags": ["AI Config"],
+        "summary": "Update an AI provider config",
+        "operationId": "updateAiConfig",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "provider": { "type": "string", "enum": ["ollama", "openai"] },
+                  "label": { "type": "string" },
+                  "endpoint_url": { "type": "string" },
+                  "api_key": { "type": "string" },
+                  "model": { "type": "string" },
+                  "is_active": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Config updated (admin) or change request submitted (staff/viewer)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/APIResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "oneOf": [
+                            { "$ref": "#/components/schemas/AIConfigResponse" },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "status": { "type": "string", "enum": ["pending"] },
+                                "request_id": { "type": "string" }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["AI Config"],
+        "summary": "Delete an AI provider config",
+        "operationId": "deleteAiConfig",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Config deleted or change request submitted" } }
+      }
+    },
+    "/api/v1/admin/ai/change-requests": {
+      "get": {
+        "tags": ["AI Config"],
+        "summary": "List AI config change requests (admin)",
+        "operationId": "listAiChangeRequests",
+        "security": [{ "AdminAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "List of change requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/APIResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": { "$ref": "#/components/schemas/AIChangeRequest" }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/ai/change-requests/{id}/approve": {
+      "post": {
+        "tags": ["AI Config"],
+        "summary": "Approve an AI config change request (admin only)",
+        "operationId": "approveAiChangeRequest",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": { "notes": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Request approved and config change applied" } }
+      }
+    },
+    "/api/v1/admin/ai/change-requests/{id}/reject": {
+      "post": {
+        "tags": ["AI Config"],
+        "summary": "Reject an AI config change request (admin only)",
+        "operationId": "rejectAiChangeRequest",
+        "security": [{ "AdminAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": { "notes": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Request rejected" } }
+      }
+    },
+    "/api/v1/ai/generate-template": {
+      "post": {
+        "tags": ["AI Config"],
+        "summary": "Generate an SMS template using AI",
+        "operationId": "generateTemplateAI",
+        "security": [{ "BearerAuth": [] }],
+        "description": "Uses the active AI provider to generate an SMS template from a natural language prompt. Returns a template name, body (with {{variable}} placeholders), and detected variables.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["prompt"],
+                "properties": {
+                  "prompt": { "type": "string", "example": "A welcome message for new users with their name and account ID" },
+                  "context": { "type": "string", "description": "Optional existing template body to refine" },
+                  "max_length": { "type": "integer", "default": 200 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "AI-generated template",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/APIResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/AIGeneratedTemplate" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": { "description": "No active AI config or invalid prompt" },
+          "500": { "description": "AI generation failed" }
+        }
+      }
+    },
+    "/api/v1/admin/templates/pending": {
+      "get": {
+        "tags": ["Templates"],
+        "summary": "Get pending template approvals (admin)",
+        "operationId": "getPendingTemplates",
+        "security": [{ "AdminAuth": [] }],
+        "responses": { "200": { "description": "Pending templates list" } }
       }
     }
   },
@@ -735,18 +3353,65 @@
           "error": { "type": "string" }
         }
       },
+      "PaginatedResponse": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "array", "items": {} },
+          "total": { "type": "integer" },
+          "page": { "type": "integer" },
+          "page_size": { "type": "integer" },
+          "total_pages": { "type": "integer" }
+        }
+      },
       "QRCodeResponse": {
         "type": "object",
-        "description": "QR pairing token response",
         "properties": {
-          "token": { "type": "string", "description": "Pairing token (64 hex chars)" },
+          "token": { "type": "string" },
           "expires_at": { "type": "string", "format": "date-time" },
-          "qr_data": { "type": "string", "description": "JSON payload for QR code" }
+          "qr_data": { "type": "string" }
+        }
+      },
+      "Plan": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "visibility": { "type": "string", "enum": ["public", "private", "custom"] },
+          "daily_quota": { "type": "integer" },
+          "monthly_quota": { "type": "integer" },
+          "monthly_price": { "type": "number" },
+          "price_per_sms": { "type": "number" },
+          "max_devices": { "type": "integer" },
+          "max_templates": { "type": "integer" },
+          "is_popular": { "type": "boolean" },
+          "cta_text": { "type": "string" },
+          "features": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "MemberPlanResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "status": { "type": "string" },
+          "daily_quota": { "type": "integer" },
+          "monthly_quota": { "type": "integer" },
+          "max_devices": { "type": "integer" },
+          "daily_used": { "type": "integer" },
+          "monthly_used": { "type": "integer" },
+          "daily_remaining": { "type": "integer" },
+          "monthly_remaining": { "type": "integer" },
+          "price_per_sms": { "type": "number" },
+          "monthly_price": { "type": "number" },
+          "features": { "type": "array", "items": { "type": "string" } },
+          "routing_strategy": { "type": "string" },
+          "subscription_status": { "type": "string", "enum": ["active", "past_due", "canceled", "trialing"] },
+          "billing_cycle": { "type": "string", "enum": ["monthly", "yearly"] },
+          "renewal_date": { "type": "string", "format": "date-time" }
         }
       },
       "AppRelease": {
         "type": "object",
-        "description": "App release with version info and approval workflow status",
         "properties": {
           "id": { "type": "string" },
           "version_code": { "type": "integer" },
@@ -785,61 +3450,55 @@
           "config_key": { "type": "string" },
           "config_value": { "type": "string" },
           "value_type": { "type": "string", "enum": ["string", "boolean", "integer"] },
-          "category": { "type": "string", "enum": ["feature_flags", "update", "general", "mqtt"] },
+          "category": { "type": "string" },
           "description": { "type": "string" },
           "is_sensitive": { "type": "boolean" },
           "updated_by_name": { "type": "string" },
           "updated_at": { "type": "string", "format": "date-time" }
         }
       },
-      "Plan": {
+      "AIConfigResponse": {
         "type": "object",
+        "description": "AI provider config (API key masked in responses)",
         "properties": {
           "id": { "type": "string" },
-          "name": { "type": "string" },
-          "visibility": { "type": "string", "enum": ["public", "private", "custom"] },
-          "daily_quota": { "type": "integer" },
-          "monthly_quota": { "type": "integer" },
-          "monthly_price": { "type": "number" },
-          "price_per_sms": { "type": "number" },
-          "max_devices": { "type": "integer" },
-          "is_popular": { "type": "boolean" },
-          "cta_text": { "type": "string" },
-          "features": { "type": "array", "items": { "type": "string" } }
+          "provider": { "type": "string", "enum": ["ollama", "openai"] },
+          "label": { "type": "string" },
+          "endpoint_url": { "type": "string" },
+          "model": { "type": "string" },
+          "has_api_key": { "type": "boolean", "description": "Whether an API key is stored" },
+          "is_active": { "type": "boolean" },
+          "created_by": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
         }
       },
-      "MemberPlanResponse": {
+      "AIChangeRequest": {
         "type": "object",
-        "description": "Current plan details with usage and remaining quota",
+        "description": "Maker-checker change request for AI config modifications",
         "properties": {
-          "id": { "type": "string", "description": "Plan type (e.g. free, pro, scale, enterprise)" },
-          "name": { "type": "string", "description": "Plan display name" },
-          "status": { "type": "string", "description": "Account status" },
-          "daily_quota": { "type": "integer", "description": "Daily SMS quota" },
-          "monthly_quota": { "type": "integer", "description": "Monthly SMS quota" },
-          "max_devices": { "type": "integer", "description": "Maximum allowed devices" },
-          "daily_used": { "type": "integer", "description": "SMS sent today" },
-          "monthly_used": { "type": "integer", "description": "SMS sent this month" },
-          "daily_remaining": { "type": "integer", "description": "Remaining daily quota" },
-          "monthly_remaining": { "type": "integer", "description": "Remaining monthly quota" },
-          "price_per_sms": { "type": "number", "description": "Cost per SMS" },
-          "monthly_price": { "type": "number", "description": "Monthly subscription price" },
-          "features": { "type": "array", "items": { "type": "string" }, "description": "Plan feature list" },
-          "routing_strategy": { "type": "string", "description": "Default routing strategy" },
-          "subscription_status": { "type": "string", "enum": ["active", "past_due", "canceled", "trialing"], "description": "Subscription status" },
-          "billing_cycle": { "type": "string", "enum": ["monthly", "yearly"], "description": "Billing cycle" },
-          "renewal_date": { "type": "string", "format": "date-time", "description": "Next renewal date" }
+          "id": { "type": "string" },
+          "requested_by": { "type": "string" },
+          "requested_by_name": { "type": "string" },
+          "config_type": { "type": "string" },
+          "action": { "type": "string", "enum": ["create", "update", "delete"] },
+          "config_id": { "type": "string" },
+          "payload": { "type": "object" },
+          "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+          "reviewed_by": { "type": "string" },
+          "reviewed_by_name": { "type": "string" },
+          "review_notes": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "reviewed_at": { "type": "string", "format": "date-time" }
         }
       },
-      "PaginatedResponse": {
+      "AIGeneratedTemplate": {
         "type": "object",
-        "description": "Standard envelope for paginated list responses",
+        "description": "AI-generated SMS template",
         "properties": {
-          "data": { "type": "array", "items": {} },
-          "total": { "type": "integer" },
-          "page": { "type": "integer" },
-          "page_size": { "type": "integer" },
-          "total_pages": { "type": "integer" }
+          "name": { "type": "string", "description": "Generated template name" },
+          "body": { "type": "string", "description": "SMS body with {{variable}} placeholders" },
+          "variables": { "type": "array", "items": { "type": "string" }, "description": "Detected variables" }
         }
       }
     }
