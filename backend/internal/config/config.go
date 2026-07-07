@@ -54,17 +54,19 @@ type RedisConfig struct {
 }
 
 type MQTTConfig struct {
-	Broker      string
-	Port        int
-	Username    string
-	Password    string
-	CACert      string
-	ClientID    string
-	QoS         byte
-	UseTLS      bool
-	TLSInsecure bool
-	KeepAlive   time.Duration
-	PingTimeout time.Duration
+	Broker          string
+	Port            int
+	Username        string
+	Password        string
+	DevicePassword  string
+	CACert          string
+	ClientID        string
+	QoS             byte
+	UseTLS          bool
+	TLSInsecure     bool
+	KeepAlive       time.Duration
+	PingTimeout     time.Duration
+	PasswordFilePath string
 }
 
 type JWTConfig struct {
@@ -202,17 +204,19 @@ func Load() *Config {
 			DB:       getEnvInt("REDIS_DB", 0),
 		},
 		MQTT: MQTTConfig{
-			Broker:      getEnv("MQTT_BROKER", "localhost"),
-			Port:        getEnvInt("MQTT_PORT", 1883),
-			Username:    getEnv("MQTT_USERNAME", ""),
-			Password:    getEnv("MQTT_PASSWORD", ""),
-			CACert:      getEnv("MQTT_CA_CERT", ""),
-			ClientID:    getEnv("MQTT_CLIENT_ID", "aeroxebee-backend"),
-			QoS:         byte(getEnvInt("MQTT_QOS", 1)),
-			UseTLS:      getEnvBool("MQTT_USE_TLS", false),
-			TLSInsecure: getEnvBool("MQTT_TLS_INSECURE", false),
-			KeepAlive:   getEnvDuration("MQTT_KEEP_ALIVE", 30*time.Second),
-			PingTimeout: getEnvDuration("MQTT_PING_TIMEOUT", 10*time.Second),
+			Broker:           getEnv("MQTT_BROKER", "localhost"),
+			Port:             getEnvInt("MQTT_PORT", 1883),
+			Username:         getEnv("MQTT_USERNAME", ""),
+			Password:         getEnv("MQTT_PASSWORD", ""),
+			DevicePassword:   getEnv("MQTT_DEVICE_PASSWORD", "dev-device-password"),
+			CACert:           getEnv("MQTT_CA_CERT", ""),
+			ClientID:         getEnv("MQTT_CLIENT_ID", "aeroxebee-backend"),
+			QoS:              byte(getEnvInt("MQTT_QOS", 1)),
+			UseTLS:           getEnvBool("MQTT_USE_TLS", false),
+			TLSInsecure:      getEnvBool("MQTT_TLS_INSECURE", false),
+			KeepAlive:        getEnvDuration("MQTT_KEEP_ALIVE", 30*time.Second),
+			PingTimeout:      getEnvDuration("MQTT_PING_TIMEOUT", 10*time.Second),
+			PasswordFilePath: getEnv("MQTT_PASSWORD_FILE", ""),
 		},
 		JWT: JWTConfig{
 			Secret:          getEnv("JWT_SECRET", "change-me-in-production"),

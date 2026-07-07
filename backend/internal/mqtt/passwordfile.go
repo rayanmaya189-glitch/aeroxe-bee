@@ -11,6 +11,8 @@ import (
 	"sync"
 )
 
+const mosquittoUID = 1883
+
 // PasswordFile manages the Mosquitto password file for dynamic device user creation.
 // It writes entries to the password file and signals Mosquitto to reload via SIGHUP.
 type PasswordFile struct {
@@ -55,7 +57,13 @@ func (pf *PasswordFile) AddDeviceUser(username, password string) error {
 
 	pf.logger.Info("added MQTT user", "username", username)
 
-	// Signal Mosquitto to reload the password file
+	// Fix file permissions for Mosquitto (UID 1883) to read
+	if err := pf.fixPermissions(); err != nil {
+		return fmt.Errorf("fix permissions: %w", err)
+	}
+
+	// Signal Mosquitto to reload the password file (best-effort; in Docker,
+	// an inotify watcher inside the mosquitto container handles reloading)
 	if err := pf.signalReload(); err != nil {
 		pf.logger.Warn("failed to signal Mosquitto reload (may need manual restart)", "error", err)
 	}
@@ -93,6 +101,11 @@ func (pf *PasswordFile) RemoveDeviceUser(username string) error {
 
 	pf.logger.Info("removed MQTT user", "username", username)
 
+	// Fix file permissions for Mosquitto (UID 1883) to read
+	if err := pf.fixPermissions(); err != nil {
+		return fmt.Errorf("fix permissions: %w", err)
+	}
+
 	if err := pf.signalReload(); err != nil {
 		pf.logger.Warn("failed to signal Mosquitto reload", "error", err)
 	}
@@ -123,5 +136,18 @@ func (pf *PasswordFile) signalReload() error {
 	}
 
 	pf.logger.Info("sent SIGHUP to Mosquitto", "pid", pidStr)
+	return nil
+}
+
+// fixPermissions ensures the password file is readable by the mosquitto process
+// (UID 1883) after the backend modifies it. mosquitto_passwd rewrites the file,
+// which can reset permissions and ownership.
+func (pf *PasswordFile) fixPermissions() error {
+	if err := os.Chmod(pf.path, 0644); err != nil {
+		return fmt.Errorf("chmod password file: %w", err)
+	}
+	if err := os.Chown(pf.path, mosquittoUID, mosquittoUID); err != nil {
+		pf.logger.Warn("failed to chown password file to mosquitto UID (may be expected in some environments)", "error", err)
+	}
 	return nil
 }

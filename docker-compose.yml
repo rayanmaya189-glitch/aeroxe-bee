@@ -76,9 +76,12 @@ services:
       MQTT_USERNAME: backend
       MQTT_PASSWORD: dev-backend-password
       MQTT_DEVICE_PASSWORD: dev-device-password
+      MQTT_PASSWORD_FILE: /mosquitto/auth/passwords
       JWT_SECRET: change-jwt-secret-in-production
       ENCRYPTION_MASTER_KEY: change-encryption-key-in-production-32bytes!
       APP_ENV: development
+    volumes:
+      - mqtt_auth:/mosquitto/auth
     depends_on:
       postgres:
         condition: service_healthy

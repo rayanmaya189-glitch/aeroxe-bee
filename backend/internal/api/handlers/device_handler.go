@@ -10,6 +10,7 @@ import (
 	"github.com/aeroxe-bee/backend/internal/api/middleware"
 	"github.com/aeroxe-bee/backend/internal/encryption"
 	"github.com/aeroxe-bee/backend/internal/models"
+	"github.com/aeroxe-bee/backend/internal/mqtt"
 	"github.com/aeroxe-bee/backend/internal/services"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -23,7 +24,11 @@ type DeviceHandler struct {
 	encryption            *encryption.Manager
 	mqttBrokerURL         string
 	authMiddleware        *middleware.AuthMiddleware
+	passwordFile          *mqtt.PasswordFile
+	devicePassword        string
 }
+
+
 
 func NewDeviceHandler(
 	deviceService *services.DeviceService,
@@ -34,6 +39,8 @@ func NewDeviceHandler(
 	encryption *encryption.Manager,
 	mqttBrokerURL string,
 	authMiddleware *middleware.AuthMiddleware,
+	passwordFile *mqtt.PasswordFile,
+	devicePassword string,
 ) *DeviceHandler {
 	return &DeviceHandler{
 		deviceService:         deviceService,
@@ -44,6 +51,8 @@ func NewDeviceHandler(
 		encryption:            encryption,
 		mqttBrokerURL:         mqttBrokerURL,
 		authMiddleware:        authMiddleware,
+		passwordFile:          passwordFile,
+		devicePassword:        devicePassword,
 	}
 }
 
@@ -117,6 +126,18 @@ func (h *DeviceHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Sync device user to Mosquitto password file
+	if h.passwordFile != nil {
+		if err := h.passwordFile.AddDeviceUser(deviceID, h.devicePassword); err != nil {
+			slog.Error("failed to add MQTT user to password file",
+				"device_id", deviceID,
+				"error", err,
+			)
+			writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to configure MQTT auth"})
+			return
+		}
+	}
+
 	token, err := h.authMiddleware.GenerateToken(accountID, "", false, 24*time.Hour)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to generate token"})
@@ -131,7 +152,7 @@ func (h *DeviceHandler) Register(w http.ResponseWriter, r *http.Request) {
 			"mqtt_broker_url": h.mqttBrokerURL,
 			"mqtt": map[string]interface{}{
 				"username": deviceID,
-				"password": getEnvOrDefault("MQTT_DEVICE_PASSWORD", "dev-device-password"),
+				"password": h.devicePassword,
 			},
 		},
 	})
@@ -259,6 +280,19 @@ func (h *DeviceHandler) DeviceLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Sync device user to Mosquitto password file
+	if h.passwordFile != nil {
+		if err := h.passwordFile.AddDeviceUser(deviceID, h.devicePassword); err != nil {
+			slog.Error("failed to add MQTT user to password file during login",
+				"device_id", deviceID,
+				"account_id", account.ID,
+				"error", err,
+			)
+			writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to configure MQTT auth"})
+			return
+		}
+	}
+
 	// Generate a JWT token for subsequent API calls
 	token, err := h.authMiddleware.GenerateToken(account.ID, account.Email, false, 24*time.Hour)
 	if err != nil {
@@ -275,7 +309,7 @@ func (h *DeviceHandler) DeviceLogin(w http.ResponseWriter, r *http.Request) {
 			"mqtt": map[string]interface{}{
 				"broker_url": h.mqttBrokerURL,
 				"username":   deviceID,
-				"password":   getEnvOrDefault("MQTT_DEVICE_PASSWORD", "dev-device-password"),
+				"password":   h.devicePassword,
 			},
 			"device": map[string]interface{}{
 				"id":       device.ID,
@@ -433,6 +467,16 @@ func (h *DeviceHandler) Deregister(w http.ResponseWriter, r *http.Request) {
 	if err := h.mqttCredentialService.RevokeByDeviceID(r.Context(), req.DeviceID); err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to revoke MQTT credentials"})
 		return
+	}
+
+	// Remove device user from Mosquitto password file
+	if h.passwordFile != nil {
+		if err := h.passwordFile.RemoveDeviceUser(req.DeviceID); err != nil {
+			slog.Error("failed to remove MQTT user from password file",
+				"device_id", req.DeviceID,
+				"error", err,
+			)
+		}
 	}
 
 	if err := h.deviceService.UpdateStatus(r.Context(), req.DeviceID, models.DeviceStatusOffline); err != nil {

@@ -6,8 +6,8 @@
 
 FROM eclipse-mosquitto:2
 
-# Install su-exec for privilege dropping (not included in base image)
-RUN apk add --no-cache su-exec
+# Install su-exec for privilege dropping and inotify-tools for password file watch
+RUN apk add --no-cache su-exec inotify-tools
 
 # Create all required directories with correct ownership
 # The mosquitto user in eclipse-mosquitto:2 has UID 1883
