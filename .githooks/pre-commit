@@ -1,0 +1,9 @@
+#!/bin/bash
+# Pre-commit hook: validate Swagger documentation against routes
+set -euo pipefail
+
+echo "🔍 Running pre-commit checks..."
+
+make validate-swagger
+
+echo "✅ Pre-commit checks passed."
