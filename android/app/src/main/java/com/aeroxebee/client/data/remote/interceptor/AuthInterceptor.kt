@@ -1,5 +1,6 @@
 package com.aeroxebee.client.data.remote.interceptor
 
+import com.aeroxebee.client.BuildConfig
 import com.aeroxebee.client.data.remote.model.TokenRefreshRequest
 import com.aeroxebee.client.util.TokenManager
 import com.google.gson.Gson
@@ -57,8 +58,8 @@ class AuthInterceptor(
 
     private fun attemptRefresh(refreshToken: String): String? {
         return try {
-            val baseUrl = tokenManager.getServerUrl() ?: return null
-            val url = baseUrl.trimEnd('/') + "/api/v1/auth/refresh"
+            // Use BuildConfig.BASE_URL directly — it already includes /api/v1
+            val url = BuildConfig.BASE_URL.trimEnd('/') + "/auth/refresh"
             val body = gson.toJson(TokenRefreshRequest(refreshToken))
                 .toRequestBody("application/json".toMediaType())
             val request = Request.Builder()
