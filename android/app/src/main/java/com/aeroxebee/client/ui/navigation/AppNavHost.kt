@@ -204,7 +204,15 @@ fun AppNavHost() {
             composable(Screen.Logs.route) { LogsScreen() }
             composable(Screen.Device.route) { DeviceScreen() }
             composable(Screen.Settings.route) { SettingsScreen() }
-            composable(Screen.Profile.route) { ProfileScreen() }
+            composable(Screen.Profile.route) {
+                ProfileScreen(
+                    onLoggedOut = {
+                        navController.navigate("registration") {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    },
+                )
+            }
             composable(Screen.Notifications.route) { NotificationsScreen() }
         }
     }

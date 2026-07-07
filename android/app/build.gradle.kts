@@ -27,7 +27,7 @@ android {
 
     buildTypes {
         debug {
-            buildConfigField("String", "BASE_URL", "\"http://10.10.13.148:7090/api/v1/\"")
+            buildConfigField("String", "BASE_URL", "\"http://10.10.13.148:8080/api/v1/\"")
             buildConfigField("String", "MQTT_BROKER_URL", "\"tcp://10.10.13.148:1883\"")
         }
         release {

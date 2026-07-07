@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.aeroxebee.client.data.remote.api.AeroXeBeeApi
 import com.aeroxebee.client.data.remote.model.QRLoginRequest
 import com.aeroxebee.client.data.repository.DeviceRepository
+import com.aeroxebee.client.fcm.FCMRegistrar
 import com.aeroxebee.client.util.TokenManager
 import com.aeroxebee.client.worker.MqttService
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -32,6 +33,7 @@ class QrScannerViewModel @Inject constructor(
     private val api: AeroXeBeeApi,
     private val tokenManager: TokenManager,
     private val deviceRepository: DeviceRepository,
+    private val fcmRegistrar: FCMRegistrar,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(QrScannerState())
@@ -109,6 +111,7 @@ class QrScannerViewModel @Inject constructor(
 
                     tokenManager.saveRegistered(true)
                     MqttService.start(app)
+                    fcmRegistrar.registerToken()
 
                     _state.update { it.copy(isLoading = false, isPaired = true) }
                 } else {

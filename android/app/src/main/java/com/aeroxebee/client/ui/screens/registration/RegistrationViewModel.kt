@@ -11,7 +11,9 @@ import com.aeroxebee.client.util.OEMBatteryGuide
 import com.aeroxebee.client.util.OEMBatteryGuideEntry
 import com.aeroxebee.client.util.SimManager
 import com.aeroxebee.client.analytics.AnalyticsHelper
+import com.aeroxebee.client.fcm.FCMRegistrar
 import com.aeroxebee.client.util.TokenManager
+import com.aeroxebee.client.BuildConfig
 import com.aeroxebee.client.worker.MqttService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -23,13 +25,12 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class RegistrationState(
-    val serverUrl: String = "http://10.0.2.2:8080",
+    val serverUrl: String = BuildConfig.BASE_URL,
     val email: String = "",
     val password: String = "",
     val isLoading: Boolean = false,
     val isRegistered: Boolean = false,
     val error: String? = null,
-    val serverUrlError: String? = null,
     val emailError: String? = null,
     val passwordError: String? = null,
 
@@ -55,14 +56,11 @@ class RegistrationViewModel @Inject constructor(
     private val simManager: SimManager,
     private val exactAlarmHandler: ExactAlarmHandler,
     private val analytics: AnalyticsHelper,
+    private val fcmRegistrar: FCMRegistrar,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(RegistrationState())
     val state: StateFlow<RegistrationState> = _state.asStateFlow()
-
-    fun onServerUrlChange(url: String) {
-        _state.update { it.copy(serverUrl = url, serverUrlError = null, error = null) }
-    }
 
     fun onEmailChange(email: String) {
         _state.update { it.copy(email = email, emailError = null, error = null) }
@@ -76,16 +74,23 @@ class RegistrationViewModel @Inject constructor(
         _state.update { it.copy(selectedSlotIndex = index) }
     }
 
+    fun refreshSimSlots() {
+        val slots = simManager.getAvailableSlots()
+        _state.update {
+            it.copy(
+                availableSlots = slots,
+                // Keep selected slot index valid
+                selectedSlotIndex = it.selectedSlotIndex.coerceIn(0, (slots.size - 1).coerceAtLeast(0)),
+            )
+        }
+    }
+
     fun nextStep() {
         val current = _state.value.step
         when (current) {
             RegistrationStep.CREDENTIALS -> {
                 val s = _state.value
                 var hasError = false
-                if (s.serverUrl.isBlank()) {
-                    _state.update { it.copy(serverUrlError = "Server URL is required") }
-                    hasError = true
-                }
                 if (s.email.isBlank()) {
                     _state.update { it.copy(emailError = "Email is required") }
                     hasError = true
@@ -102,7 +107,6 @@ class RegistrationViewModel @Inject constructor(
                         step = RegistrationStep.SIM_SELECTION,
                         availableSlots = slots,
                         error = null,
-                        serverUrlError = null,
                         emailError = null,
                         passwordError = null,
                     )
@@ -176,6 +180,7 @@ class RegistrationViewModel @Inject constructor(
                     simSlot = s.selectedSlotIndex,
                 )
                 MqttService.start(appContext)
+                fcmRegistrar.registerToken()
                 analytics.logLogin("device")
                 _state.update { it.copy(isLoading = false, isRegistered = true) }
             } catch (e: Exception) {

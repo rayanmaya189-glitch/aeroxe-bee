@@ -1,5 +1,7 @@
 package com.aeroxebee.client.data.remote.mqtt
 
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -207,6 +209,13 @@ class MqttManager @Inject constructor(
     private fun scheduleReconnect() {
         if (isConnected) return
         scope.launch {
+            // Wait longer if there's no network — avoid burning battery with pointless retries
+            while (!isNetworkAvailable() && !isConnected) {
+                Log.d(TAG, "No network, waiting before MQTT reconnect...")
+                delay(10_000L)
+            }
+            if (isConnected) return@launch
+
             delay(reconnectDelay)
             reconnectDelay = (reconnectDelay * 2).coerceAtMost(MAX_RECONNECT_DELAY)
             Log.i(TAG, "Reconnecting in ${reconnectDelay}ms...")
@@ -218,6 +227,35 @@ class MqttManager @Inject constructor(
                 username = lastUsername,
                 password = lastPassword,
             )
+        }
+    }
+
+    private fun isNetworkAvailable(): Boolean {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(network) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }
+
+    /**
+     * Called externally when network connectivity returns, to immediately attempt reconnect
+     * instead of waiting for the next scheduled retry.
+     */
+    fun onNetworkAvailable() {
+        if (!isConnected && lastBrokerUrl != null) {
+            Log.i(TAG, "Network available, triggering MQTT reconnect")
+            reconnectDelay = RECONNECT_DELAY_MS // Reset to fast retry
+            scope.launch {
+                val url = lastBrokerUrl ?: return@launch
+                val id = lastClientId ?: return@launch
+                connect(
+                    brokerUrl = url,
+                    clientId = id,
+                    username = lastUsername,
+                    password = lastPassword,
+                )
+            }
         }
     }
 

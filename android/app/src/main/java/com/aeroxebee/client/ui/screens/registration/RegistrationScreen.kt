@@ -32,7 +32,7 @@ import com.aeroxebee.client.ui.components.*
 import com.aeroxebee.client.ui.theme.*
 
 private enum class Step(val index: Int, val label: String, val icon: ImageVector) {
-    CREDENTIALS(0, "Server", Icons.Outlined.Cloud),
+    CREDENTIALS(0, "Account", Icons.Outlined.Person),
     SIM(1, "SIM", Icons.Outlined.SimCard),
     BATTERY(2, "Battery", Icons.Outlined.BatteryFull),
     CONFIRM(3, "Connect", Icons.Outlined.Link),
@@ -78,7 +78,7 @@ fun RegistrationScreen(
         Spacer(Modifier.height(AppSpacing.XS))
 
         Text(
-            text = "Connect to your SMS gateway server",
+            text = "Sign in to pair your device",
             style = AppTypography.BodyLarge,
             color = AppColors.TextMuted,
         )
@@ -188,17 +188,6 @@ private fun StepProgressIndicator(currentStep: Step) {
 private fun CredentialsStep(state: RegistrationState, viewModel: RegistrationViewModel, onScanQr: () -> Unit = {}) {
     Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.LG)) {
         AeroTextField(
-            value = state.serverUrl,
-            onValueChange = viewModel::onServerUrlChange,
-            label = "Server URL",
-            placeholder = "http://10.0.2.2:8080",
-            leadingIcon = Icons.Outlined.Cloud,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
-            isError = state.serverUrlError != null,
-            errorText = state.serverUrlError,
-        )
-
-        AeroTextField(
             value = state.email,
             onValueChange = viewModel::onEmailChange,
             label = "Email",
@@ -248,6 +237,11 @@ private fun CredentialsStep(state: RegistrationState, viewModel: RegistrationVie
 
 @Composable
 private fun SimSelectionStep(state: RegistrationState, viewModel: RegistrationViewModel) {
+    // Re-fetch SIM slots when this step appears (handles late permission grant)
+    LaunchedEffect(Unit) {
+        viewModel.refreshSimSlots()
+    }
+
     Column {
         if (state.availableSlots.isEmpty()) {
             GlassCard {
@@ -393,7 +387,6 @@ private fun ConfirmStep(state: RegistrationState, viewModel: RegistrationViewMod
     Column {
         GlassCard {
             Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.SM)) {
-                ConfirmRow("Server", state.serverUrl)
                 ConfirmRow("Email", state.email)
                 ConfirmRow("SIM Slot", "SIM ${state.selectedSlotIndex + 1}")
                 ConfirmRow("Battery optimization", if (state.isBatteryOptimized) "Disabled ✓" else "Enabled")

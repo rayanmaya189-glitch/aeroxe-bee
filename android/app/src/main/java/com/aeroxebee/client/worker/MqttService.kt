@@ -5,7 +5,18 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.annotation.SuppressLint
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
+import android.net.wifi.WifiInfo
+import android.net.wifi.WifiManager
+import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
+import android.telephony.SignalStrength
+import android.telephony.TelephonyManager
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.aeroxebee.client.MainActivity
 import com.aeroxebee.client.R
@@ -39,16 +50,23 @@ class MqttService : Service() {
     private var heartbeatJob: Job? = null
     private var connectionMonitorJob: Job? = null
     private var retryJob: Job? = null
+    private var networkCallback: ConnectivityManager.NetworkCallback? = null
     private var isReconnecting = false
+    private var wakeLock: PowerManager.WakeLock? = null
+    private var connectivityManager: ConnectivityManager? = null
 
     override fun onCreate() {
         super.onCreate()
         startForeground(NOTIFICATION_ID, createNotification("Connecting..."))
 
+        // Acquire partial WakeLock to keep CPU alive for MQTT processing in Doze
+        acquireWakeLock()
+
         deviceId = tokenManager.getDeviceId() ?: ""
         val brokerUrl = tokenManager.getMqttBrokerUrl()
 
         if (brokerUrl.isNullOrBlank() || deviceId.isBlank()) {
+            Log.w(TAG, "No MQTT credentials, stopping service")
             stopSelf()
             return
         }
@@ -64,6 +82,7 @@ class MqttService : Service() {
         startConnectionMonitor()
         startHeartbeat()
         startRetryProcessor()
+        registerNetworkCallback()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -89,13 +108,160 @@ class MqttService : Service() {
                 if (!connected && !isReconnecting) {
                     isReconnecting = true
                     updateNotification("Reconnecting...")
-                    android.util.Log.w(TAG, "MQTT disconnected, waiting for auto-reconnect...")
+                    Log.w(TAG, "MQTT disconnected, waiting for auto-reconnect...")
                 } else if (connected) {
                     isReconnecting = false
                     updateNotification("Connected to broker")
-                    android.util.Log.i(TAG, "MQTT reconnected")
+                    Log.i(TAG, "MQTT reconnected")
                 }
             }
+        }
+    }
+
+    /**
+     * Adaptive heartbeat: 30s when active, 60s when battery is moderate,
+     * 120s when battery is low or device is in Doze. Saves battery significantly.
+     */
+    private fun getHeartbeatIntervalMs(): Long {
+        val batteryLevel = getBatteryLevel()
+        val isIdleMode = try {
+            val pm = getSystemService(POWER_SERVICE) as PowerManager
+            pm.isDeviceIdleMode
+        } catch (_: Exception) { false }
+
+        return when {
+            isIdleMode -> 120_000L                           // 2 min in Doze
+            batteryLevel <= 15 -> 120_000L                   // 2 min at low battery
+            batteryLevel <= 30 -> 60_000L                    // 1 min at moderate battery
+            else -> HEARTBEAT_INTERVAL_MS                    // 30s normally
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun getNetworkInfo(): Pair<String, Boolean> {
+        val cm = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = cm.activeNetwork
+        if (network == null) return "None" to false
+        val caps = cm.getNetworkCapabilities(network) ?: return "Unknown" to false
+        val isConnected = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+        val type = when {
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "WiFi"
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "Ethernet"
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> getCellularType()
+            else -> "Other"
+        }
+        return type to isConnected
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun getCellularType(): String {
+        val tm = getSystemService(TELEPHONY_SERVICE) as TelephonyManager
+        return when (tm.dataNetworkType) {
+            TelephonyManager.NETWORK_TYPE_NR -> "5G"
+            TelephonyManager.NETWORK_TYPE_LTE -> "LTE"
+            TelephonyManager.NETWORK_TYPE_UMTS,
+            TelephonyManager.NETWORK_TYPE_HSDPA,
+            TelephonyManager.NETWORK_TYPE_HSUPA,
+            TelephonyManager.NETWORK_TYPE_HSPAP -> "3G"
+            TelephonyManager.NETWORK_TYPE_EDGE,
+            TelephonyManager.NETWORK_TYPE_GPRS,
+            TelephonyManager.NETWORK_TYPE_GSM -> "2G"
+            TelephonyManager.NETWORK_TYPE_CDMA,
+            TelephonyManager.NETWORK_TYPE_EVDO_0,
+            TelephonyManager.NETWORK_TYPE_EVDO_A -> "CDMA"
+            else -> "Cellular"
+        }
+    }
+
+    /**
+     * Returns signal strength as Pair(rssi_dbm, level_0_to_4).
+     * For WiFi: RSSI in dBm and calculated level (0-4).
+     * For cellular: RSSI from CellInfo and signal level.
+     */
+    @SuppressLint("MissingPermission")
+    private fun getSignalStrength(): Pair<Int, Int> {
+        val cm = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = cm.activeNetwork ?: return 0 to 0
+        val caps = cm.getNetworkCapabilities(network) ?: return 0 to 0
+
+        return when {
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> getWifiSignalStrength()
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> getCellularSignalStrength()
+            else -> 0 to 0
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun getWifiSignalStrength(): Pair<Int, Int> {
+        val wm = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
+        val wifiInfo: WifiInfo = wm.connectionInfo
+        val rssi = wifiInfo.rssi
+        // Map RSSI to level 0-4 (same as WifiManager.calculateSignalLevel)
+        val level = when {
+            rssi <= -100 -> 0
+            rssi <= -80 -> 1
+            rssi <= -67 -> 2
+            rssi <= -55 -> 3
+            else -> 4
+        }
+        return rssi to level
+    }
+
+    @Suppress("DEPRECATION")
+    private fun getCellularSignalStrength(): Pair<Int, Int> {
+        val tm = getSystemService(TELEPHONY_SERVICE) as TelephonyManager
+        try {
+            // Use getSignalStrength() — deprecated but doesn't require ACCESS_FINE_LOCATION
+            // unlike getAllCellInfo() which needs location permission on API 29+
+            val ss: SignalStrength? = tm.signalStrength
+            if (ss != null) {
+                val dbm = ss.cellSignalStrengths.firstOrNull()?.dbm ?: 0
+                val level = ss.cellSignalStrengths.firstOrNull()?.level ?: 0
+                return dbm to level
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to get cellular signal: ${e.message}")
+        }
+        return 0 to 0
+    }
+
+    private fun getBatteryLevel(): Int {
+        val filter = android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED)
+        val intent = registerReceiver(null, filter)
+        val level = intent?.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1) ?: -1
+        val scale = intent?.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, -1) ?: -1
+        return if (level >= 0 && scale > 0) (level * 100) / scale else 50
+    }
+
+    private fun registerNetworkCallback() {
+        connectivityManager = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
+        val request = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .build()
+
+        networkCallback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: android.net.Network) {
+                Log.i(TAG, "Network available, triggering MQTT reconnect")
+                mqttManager.onNetworkAvailable()
+            }
+        }
+
+        val callback = networkCallback ?: return
+        try {
+            connectivityManager?.registerNetworkCallback(request, callback)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to register network callback: ${e.message}")
+        }
+    }
+
+    private fun acquireWakeLock() {
+        val pm = getSystemService(POWER_SERVICE) as PowerManager
+        wakeLock = pm.newWakeLock(
+            PowerManager.PARTIAL_WAKE_LOCK,
+            "aeroxebee:mqtt_service"
+        ).apply {
+            acquire() // No timeout — released in onDestroy when service stops
         }
     }
 
@@ -118,9 +284,20 @@ class MqttService : Service() {
         connectionMonitorJob?.cancel()
         heartbeatJob?.cancel()
         retryJob?.cancel()
+        unregisterNetworkCallback()
+        wakeLock?.let { if (it.isHeld) it.release() }
         scope.cancel()
         mqttManager.destroy()
         super.onDestroy()
+    }
+
+    private fun unregisterNetworkCallback() {
+        networkCallback?.let {
+            try {
+                connectivityManager?.unregisterNetworkCallback(it)
+            } catch (_: Exception) {}
+        }
+        networkCallback = null
     }
 
     /**
@@ -130,17 +307,27 @@ class MqttService : Service() {
     private fun startHeartbeat() {
         heartbeatJob = scope.launch {
             while (isActive) {
+                val interval = getHeartbeatIntervalMs()
                 val deviceState = deviceStateClassifier.classify()
+                val networkInfo = getNetworkInfo()
+                val signalStrength = getSignalStrength()
                 val payload = gson.toJson(
                     mapOf(
                         "device_id" to deviceId,
                         "action" to "ping",
                         "timestamp" to System.currentTimeMillis(),
                         "device_state" to deviceState,
+                        "battery_level" to getBatteryLevel(),
+                        "network_type" to networkInfo.first,
+                        "is_connected" to networkInfo.second,
+                        "signal_rssi" to signalStrength.first,
+                        "signal_level" to signalStrength.second,
                     )
                 )
-                mqttManager.publish("devices/$deviceId/ping", payload)
-                delay(HEARTBEAT_INTERVAL_MS)
+                if (!mqttManager.publish("devices/$deviceId/ping", payload)) {
+                    Log.w(TAG, "Heartbeat publish failed, will retry next cycle")
+                }
+                delay(interval)
             }
         }
     }
@@ -173,7 +360,7 @@ class MqttService : Service() {
                         val result = smsEngine.send(task)
                         val isSuccess = result == SMSTask.Status.SENT || result == SMSTask.Status.DELIVERED
                         if (!isSuccess) {
-                            android.util.Log.w(TAG, "SMS send failed for ${cmd.id}, will retry from queue")
+                            Log.w(TAG, "SMS send failed for ${cmd.id}, will retry from queue")
                         }
                         mqttManager.publish(
                             "devices/$deviceId/status",
@@ -204,7 +391,7 @@ class MqttService : Service() {
             }
         } catch (e: Exception) {
             trace.putAttribute("error", e.message?.take(100) ?: "unknown")
-            android.util.Log.e("MqttService", "Failed to process MQTT message", e)
+            Log.e(TAG, "Failed to process MQTT message", e)
         } finally {
             tracer.stopTrace(trace, TAG)
         }
@@ -220,7 +407,7 @@ class MqttService : Service() {
                 try {
                     val failedTasks = smsRepository.getRetryableTasks()
                     for (task in failedTasks) {
-                        android.util.Log.i(TAG, "Retrying failed SMS: ${task.id} (attempt ${task.retryCount + 1}/${task.maxRetries})")
+                        Log.i(TAG, "Retrying failed SMS: ${task.id} (attempt ${task.retryCount + 1}/${task.maxRetries})")
                         val result = smsEngine.send(task)
                         val isSuccess = result == SMSTask.Status.SENT || result == SMSTask.Status.DELIVERED
                         if (isSuccess) {
@@ -243,7 +430,7 @@ class MqttService : Service() {
                         }
                     }
                 } catch (e: Exception) {
-                    android.util.Log.e(TAG, "Retry processor error", e)
+                    Log.e(TAG, "Retry processor error", e)
                 }
             }
         }

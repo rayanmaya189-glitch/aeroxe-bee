@@ -47,7 +47,19 @@ export function MemberDevicesPage() {
   const onlineCount = devices.filter((d) => d.status === 'ONLINE').length
   if (isLoading) return <PageTransition><PageSkeleton /></PageTransition>
   if (error) return <PageTransition><div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-400">Failed to load devices</div></PageTransition>
-  if (devices.length === 0) return <PageTransition><div className="space-y-6"><h1 className="text-2xl font-bold tracking-tight text-gray-100">Devices</h1><EmptyState title="No devices registered" description="Download the Android app to register your first device." /></div></PageTransition>
+  if (devices.length === 0) return (
+    <PageTransition>
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold tracking-tight text-gray-100">Devices</h1>
+        <EmptyState
+          title="No devices registered"
+          description="Pair your first Android device to start sending SMS."
+          action={<Button size="sm" onClick={() => setShowQRModal(true)} icon={<Plus className="h-4 w-4" />}>Add Device</Button>}
+        />
+        <AddDeviceQRModal open={showQRModal} onClose={() => setShowQRModal(false)} />
+      </div>
+    </PageTransition>
+  )
 
   return (
     <PageTransition>
