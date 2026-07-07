@@ -624,3 +624,104 @@ export async function getBIDashboard(): Promise<BIDashboard> {
   if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load BI data')
   return res.data.data
 }
+
+// ─── AI Config ──────────────────────────────────────────────────────────
+
+export interface AIConfig {
+  id: string
+  provider: string
+  label: string
+  endpoint_url: string
+  model: string
+  has_api_key: boolean
+  is_active: boolean
+  created_by?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface AIConfigChangeRequest {
+  id: string
+  requested_by: string
+  requested_by_name: string
+  config_type: string
+  action: string
+  config_id?: string
+  payload: Record<string, unknown>
+  status: string
+  reviewed_by?: string
+  reviewed_by_name: string
+  review_notes: string
+  created_at: string
+  reviewed_at?: string
+}
+
+export interface AIGeneratedTemplate {
+  name: string
+  body: string
+  variables: string[]
+}
+
+export async function getAIConfigs(): Promise<AIConfig[]> {
+  const res = await api.get<ApiResponse<AIConfig[]>>('/admin/ai/configs')
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load AI configs')
+  return res.data.data
+}
+
+export async function getAIConfig(id: string): Promise<AIConfig> {
+  const res = await api.get<ApiResponse<AIConfig>>(`/admin/ai/configs/${id}`)
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to load AI config')
+  return res.data.data
+}
+
+export async function createAIConfig(data: {
+  provider: string
+  label: string
+  endpoint_url: string
+  api_key: string
+  model: string
+  is_active: boolean
+}): Promise<AIConfig | { status: string; request_id: string }> {
+  const res = await api.post<ApiResponse<AIConfig | { status: string; request_id: string }>>('/admin/ai/configs', data)
+  if (!res.data.success) throw new Error(res.data.error ?? 'Failed to create AI config')
+  return res.data.data!
+}
+
+export async function updateAIConfig(id: string, data: {
+  provider?: string
+  label?: string
+  endpoint_url?: string
+  api_key?: string
+  model?: string
+  is_active: boolean
+}): Promise<AIConfig | { status: string; request_id: string }> {
+  const res = await api.put<ApiResponse<AIConfig | { status: string; request_id: string }>>(`/admin/ai/configs/${id}`, data)
+  if (!res.data.success) throw new Error(res.data.error ?? 'Failed to update AI config')
+  return res.data.data!
+}
+
+export async function deleteAIConfig(id: string): Promise<void | { status: string; request_id: string }> {
+  const res = await api.delete(`/admin/ai/configs/${id}`)
+  if (!res.data.success) throw new Error(res.data.error ?? 'Failed to delete AI config')
+  return res.data.data
+}
+
+export async function getAIChangeRequests(): Promise<AIConfigChangeRequest[]> {
+  const res = await api.get<ApiResponse<AIConfigChangeRequest[]>>('/admin/ai/change-requests')
+  if (!res.data.success) throw new Error(res.data.error ?? 'Failed to load change requests')
+  return res.data.data || []
+}
+
+export async function approveAIChangeRequest(id: string, notes?: string): Promise<void> {
+  await api.post(`/admin/ai/change-requests/${id}/approve`, { notes })
+}
+
+export async function rejectAIChangeRequest(id: string, notes?: string): Promise<void> {
+  await api.post(`/admin/ai/change-requests/${id}/reject`, { notes })
+}
+
+export async function generateAITemplate(prompt: string, context?: string): Promise<AIGeneratedTemplate> {
+  const res = await api.post<ApiResponse<AIGeneratedTemplate>>('/ai/generate-template', { prompt, context })
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to generate template')
+  return res.data.data
+}

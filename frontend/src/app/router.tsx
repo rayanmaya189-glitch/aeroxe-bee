@@ -38,6 +38,7 @@ const AdminSubscriptionsPage = lazy(() => import('@/features/billing/pages/Admin
 const KycReviewPage = lazy(() => import('@/features/accounts/pages/KycReviewPage').then((m) => ({ default: m.KycReviewPage })))
 const AppReleasesPage = lazy(() => import('@/features/accounts/pages/AppReleasesPage').then((m) => ({ default: m.AppReleasesPage })))
 const FirebaseConfigPage = lazy(() => import('@/features/accounts/pages/FirebaseConfigPage').then((m) => ({ default: m.FirebaseConfigPage })))
+const AIConfigPage = lazy(() => import('@/features/accounts/pages/AIConfigPage').then((m) => ({ default: m.AIConfigPage })))
 const MemberUpgradePage = lazy(() => import('@/features/member/pages/MemberUpgradePage').then((m) => ({ default: m.MemberUpgradePage })))
 const MemberPaymentRequestsPage = lazy(() => import('@/features/member/pages/MemberPaymentRequestsPage').then((m) => ({ default: m.MemberPaymentRequestsPage })))
 const MemberSubscriptionRequestsPage = lazy(() => import('@/features/member/pages/MemberSubscriptionRequestsPage').then((m) => ({ default: m.MemberSubscriptionRequestsPage })))
@@ -163,6 +164,7 @@ const routes: RouteObject[] = [
           { path: 'kyc-reviews', element: <LazyLoader><KycReviewPage /></LazyLoader> },
           { path: 'app-releases', element: <LazyLoader><AppReleasesPage /></LazyLoader> },
           { path: 'firebase-config', element: <LazyLoader><FirebaseConfigPage /></LazyLoader> },
+          { path: 'ai-config', element: <LazyLoader><AIConfigPage /></LazyLoader> },
         ],
       },
       // Shared routes (accessible to both admin and member)

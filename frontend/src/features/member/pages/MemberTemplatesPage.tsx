@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { PageTransition } from '@/components/ui/PageTransition'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -13,9 +13,12 @@ import { Modal } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { PageSkeleton } from '@/components/ui/Skeleton'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { VoiceInput } from '@/components/ui/VoiceInput'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
-import { Plus, FileText } from 'lucide-react'
+import { Plus, FileText, Sparkles, Loader2, Lightbulb } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
+
+import { generateAITemplate } from '@/services/dashboard'
 
 export function MemberTemplatesPage() {
   const queryClient = useQueryClient()
@@ -26,6 +29,27 @@ export function MemberTemplatesPage() {
   const [name, setName] = useState('')
   const [body, setBody] = useState('')
   const [error, setError] = useState('')
+  const [aiPrompt, setAiPrompt] = useState('')
+  const [isGenerating, setIsGenerating] = useState(false)
+
+  const handleVoiceResult = useCallback((text: string) => {
+    setBody((prev) => prev + text)
+  }, [])
+
+  const handleGenerateAI = useCallback(async () => {
+    if (!aiPrompt.trim()) return
+    setIsGenerating(true)
+    try {
+      const result = await generateAITemplate(aiPrompt.trim(), body || undefined)
+      if (result.name) setName(result.name)
+      if (result.body) setBody(result.body)
+      if (result.variables.length > 0) addToast(`Variables detected: ${result.variables.join(', ')}`, 'info')
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'AI generation failed', 'error')
+    } finally {
+      setIsGenerating(false)
+    }
+  }, [aiPrompt, body, addToast])
 
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ['member-templates'],
@@ -108,7 +132,40 @@ export function MemberTemplatesPage() {
           {error && <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-3 text-sm text-red-400">{error}</div>}
           <Input label="Template name" value={name} onChange={(e) => setName(e.target.value)} required />
           <div><label className="mb-1.5 block text-sm font-medium text-gray-300">Body</label>
-            <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={5} className="block w-full rounded-xl border border-white/[0.08] bg-white/[0.05] px-3.5 py-2.5 text-sm text-gray-100 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 placeholder:text-gray-500" required /></div>
+            <div className="relative">
+              <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={5} className="block w-full rounded-xl border border-white/[0.08] bg-white/[0.05] px-3.5 py-2.5 pr-10 text-sm text-gray-100 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 placeholder:text-gray-500" required />
+              <div className="absolute right-2 top-2">
+                <VoiceInput onResult={handleVoiceResult} />
+              </div>
+            </div>
+          </div>
+
+          {/* AI generation */}
+          <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="h-4 w-4 text-purple-400" />
+              <span className="text-sm font-medium text-purple-300">AI Generate</span>
+            </div>
+            <div className="flex gap-2">
+              <input
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                placeholder="Describe the template you want..."
+                className="flex-1 rounded-lg border border-white/[0.08] bg-white/[0.05] px-3 py-2 text-sm text-gray-100 focus:border-purple-500 focus:outline-none focus:ring-4 focus:ring-purple-500/10 placeholder:text-gray-500"
+                onKeyDown={(e) => e.key === 'Enter' && handleGenerateAI()}
+              />
+              <Button
+                size="xs"
+                className="bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20"
+                onClick={handleGenerateAI}
+                loading={isGenerating}
+                icon={isGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Lightbulb className="h-3.5 w-3.5" />}
+                disabled={!aiPrompt.trim()}
+              >
+                Generate
+              </Button>
+            </div>
+          </div>
         </div>
       </Modal>
 

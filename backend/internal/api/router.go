@@ -38,6 +38,7 @@ func NewRouter(
 	subscriptionRequestHandler *handlers.SubscriptionRequestHandler,
 	planChangeRequestHandler *handlers.PlanChangeRequestHandler,
 	sessionHandler *handlers.SessionHandler,
+	aiHandler *handlers.AIHandler,
 	kycAdminHandler *handlers.KycAdminHandler,
 	qrPairingHandler *handlers.QRPairingHandler,
 	releaseHandler *handlers.AppReleaseHandler,
@@ -381,6 +382,21 @@ func NewRouter(
 	mux.Handle("DELETE /api/v1/admin/releases/{id}", authMiddleware.AdminAuth(http.HandlerFunc(releaseHandler.Delete)))
 	mux.Handle("POST /api/v1/admin/releases/{id}/upload", authMiddleware.JWTAuth(http.HandlerFunc(releaseHandler.UploadAPK)))
 	mux.Handle("GET /api/v1/version-check", ipRateLimiter.Limit(http.HandlerFunc(releaseHandler.VersionCheck)))
+
+	// AI configuration routes
+	mux.Handle("GET /api/v1/admin/ai/configs", authMiddleware.AdminAuth(http.HandlerFunc(aiHandler.ListConfigs)))
+	mux.Handle("GET /api/v1/admin/ai/configs/{id}", authMiddleware.AdminAuth(http.HandlerFunc(aiHandler.GetConfig)))
+	mux.Handle("POST /api/v1/admin/ai/configs", authMiddleware.JWTAuth(http.HandlerFunc(aiHandler.CreateConfig)))
+	mux.Handle("PUT /api/v1/admin/ai/configs/{id}", authMiddleware.JWTAuth(http.HandlerFunc(aiHandler.UpdateConfig)))
+	mux.Handle("DELETE /api/v1/admin/ai/configs/{id}", authMiddleware.JWTAuth(http.HandlerFunc(aiHandler.DeleteConfig)))
+
+	// AI config change requests (maker-checker: staff/viewer submits, admin approves/rejects)
+	mux.Handle("GET /api/v1/admin/ai/change-requests", authMiddleware.AdminAuth(http.HandlerFunc(aiHandler.ListChangeRequests)))
+	mux.Handle("POST /api/v1/admin/ai/change-requests/{id}/approve", authMiddleware.AdminAuth(http.HandlerFunc(aiHandler.ApproveChangeRequest)))
+	mux.Handle("POST /api/v1/admin/ai/change-requests/{id}/reject", authMiddleware.AdminAuth(http.HandlerFunc(aiHandler.RejectChangeRequest)))
+
+	// AI template generation (requires JWT auth — available to admin and member portal)
+	mux.Handle("POST /api/v1/ai/generate-template", authMiddleware.JWTAuth(http.HandlerFunc(aiHandler.GenerateTemplate)))
 
 	// Firebase config management routes
 	mux.Handle("GET /api/v1/admin/firebase-config", authMiddleware.JWTAuth(http.HandlerFunc(firebaseConfigHandler.List)))

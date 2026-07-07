@@ -76,6 +76,7 @@ const adminNavGroups: NavGroup[] = [
       { label: 'KYC Reviews', path: '/kyc-reviews', icon: <FileCheck className="h-[14px] w-[14px]" /> },
       { label: 'App Releases', path: '/app-releases', icon: <AppWindow className="h-[14px] w-[14px]" /> },
       { label: 'Firebase Config', path: '/firebase-config', icon: <Settings2 className="h-[14px] w-[14px]" /> },
+      { label: 'AI Config', path: '/ai-config', icon: <BrainCircuit className="h-[14px] w-[14px]" /> },
     ],
   },
 ]

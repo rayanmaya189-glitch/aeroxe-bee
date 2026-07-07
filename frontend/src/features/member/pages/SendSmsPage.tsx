@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { PageTransition } from '@/components/ui/PageTransition'
 import { useMutation, useQuery } from '@tanstack/react-query'
@@ -8,6 +8,7 @@ import type { OnlineDevice } from '@/services/api'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Badge } from '@/components/ui/Badge'
+import { VoiceInput } from '@/components/ui/VoiceInput'
 import { staggerContainer, fadeInUp } from '@/components/animations/variants'
 import { Send, Phone, MessageSquare, CheckCircle, AlertCircle, Smartphone } from 'lucide-react'
 
@@ -17,6 +18,10 @@ export function SendSmsPage() {
   const [message, setMessage] = useState('')
   const [messageType, setMessageType] = useState('transactional')
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
+
+  const handleVoiceResult = useCallback((text: string) => {
+    setMessage((prev) => prev + text)
+  }, [])
 
   const { data: devices = [] } = useQuery({
     queryKey: ['member-devices-online'],
@@ -131,10 +136,13 @@ export function SendSmsPage() {
             onChange={(e) => setMessage(e.target.value)}
             rows={4}
             maxLength={160}
-            placeholder="Type your SMS message here..."
+            placeholder="Type or speak your SMS message here..."
             className="block w-full rounded-xl border border-white/[0.08] bg-white/[0.05] px-3.5 py-2.5 text-sm text-gray-100 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 placeholder:text-gray-500"
             required
           />
+          <div className="flex justify-end mt-1">
+            <VoiceInput onResult={handleVoiceResult} />
+          </div>
         </div>
 
         {/* Message type */}
