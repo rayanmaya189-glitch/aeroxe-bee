@@ -191,6 +191,13 @@ func (h *QRPairingHandler) QRLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if device == nil {
+		// Ensure physical_devices row exists (required by FK constraint)
+		_, _ = db.Exec(r.Context(),
+			`INSERT INTO physical_devices (id, account_id, model, os_version, app_version, battery_level, network_type, device_state, updated_at)
+			 VALUES ($1, $2, '', '', '', 0, '', 'ACTIVE', NOW())
+			 ON CONFLICT (id) DO NOTHING`,
+			req.DeviceID, accountID)
+
 		// New device — register it
 		countryCode, region := detectCountryFromPhone(req.PhoneNumber)
 		device = &models.Device{

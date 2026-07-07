@@ -174,11 +174,12 @@ class RegistrationViewModel @Inject constructor(
             tokenManager.saveServerUrl(s.serverUrl.trimEnd('/'))
 
             try {
-                deviceRepository.loginDevice(
+                val result = deviceRepository.loginDevice(
                     email = s.email.trim(),
                     password = s.password,
                     simSlot = s.selectedSlotIndex,
                 )
+                result.getOrThrow() // Throw if login failed — prevents auth bypass to dashboard
                 MqttService.start(appContext)
                 fcmRegistrar.registerToken()
                 analytics.logLogin("device")

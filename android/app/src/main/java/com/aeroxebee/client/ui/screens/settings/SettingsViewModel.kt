@@ -55,11 +55,12 @@ class SettingsViewModel @Inject constructor(
             tokenManager.saveAccountEmail(email.trim())
             tokenManager.saveAccountPassword(password)
             try {
-                deviceRepository.loginDevice(
+                val result = deviceRepository.loginDevice(
                     email = email.trim(),
                     password = password,
                     simSlot = tokenManager.getSimSlot(),
                 )
+                result.getOrThrow() // Throw if login failed — prevents auth bypass
                 MqttService.start(appContext)
                 fcmRegistrar.registerToken()
                 analytics.logSettingsSaved()

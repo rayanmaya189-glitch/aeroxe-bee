@@ -202,6 +202,13 @@ func (h *DeviceHandler) DeviceLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if device == nil {
+		// Ensure physical_devices row exists (required by FK constraint on devices.physical_device_id)
+		_, _ = h.deviceService.DB().Exec(r.Context(),
+			`INSERT INTO physical_devices (id, account_id, model, os_version, app_version, battery_level, network_type, device_state, updated_at)
+			 VALUES ($1, $2, '', '', '', 0, '', 'ACTIVE', NOW())
+			 ON CONFLICT (id) DO NOTHING`,
+			req.DeviceID, account.ID)
+
 		// New device — register it
 	device = &models.Device{
 		ID:                  deviceID,
