@@ -4,6 +4,7 @@ import {
   Cloud, Code, Terminal, GitBranch, Cpu, Eye,
   MessageSquare, CreditCard,
   ShieldCheck, FileCheck, Key,
+  Brain, Mic, CalendarClock, Users, ShieldBan,
 } from 'lucide-react'
 
 export const NAV_LINKS = [
@@ -29,10 +30,45 @@ export const FEATURES = [
     span: 'col-span-1',
   },
   {
+    icon: Brain,
+    title: 'Smart AI Template Generation',
+    description: 'Generate SMS templates instantly using AI. Describe your message in natural language and let AI craft the perfect template with variables and formatting.',
+    color: 'from-purple-500 to-pink-400',
+    span: 'col-span-1',
+  },
+  {
+    icon: Mic,
+    title: 'Voice-to-Text Input',
+    description: 'Dictate messages and templates using voice input. Built-in speech recognition for hands-free message composition.',
+    color: 'from-rose-500 to-pink-400',
+    span: 'col-span-1',
+  },
+  {
+    icon: Users,
+    title: 'Bulk SMS Campaigns',
+    description: 'Send messages to thousands of recipients at once. Upload recipient lists, use templates, and track delivery per recipient — all from a single interface.',
+    color: 'from-green-500 to-emerald-400',
+    span: 'col-span-1',
+  },
+  {
+    icon: CalendarClock,
+    title: 'Message Scheduling',
+    description: 'Schedule messages for future delivery. Set precise delivery times, manage time zones, and automatically release messages when the time comes.',
+    color: 'from-orange-500 to-amber-400',
+    span: 'col-span-1',
+  },
+  {
+    icon: ShieldBan,
+    title: 'Sensitive Content Protection',
+    description: 'Automatic detection of prohibited content including spam, phishing, and fraudulent language. Messages flagged before they reach recipients.',
+    color: 'from-cyan-500 to-blue-400',
+    span: 'col-span-1',
+  },
+  {
     icon: BarChart3,
     title: 'Real-Time Analytics',
     description: 'Delivery confidence scores, success rates, queue monitoring, and cost tracking across your entire device fleet.',
-    color: 'from-green-500 to-emerald-400',
+    color: 'from-blue-500 to-cyan-400',
     span: 'col-span-1',
   },
   {
@@ -116,6 +152,18 @@ export const PRICING_PLANS = [
 ] as const
 
 export const FAQ_ITEMS = [
+  {
+    question: 'How does AI template generation work?',
+    answer: 'Describe the message you want to send in plain English — for example "a welcome message for new users with their name and a verification link" — and our AI generates a complete SMS template with variables and formatting ready to use.',
+  },
+  {
+    question: 'Can I schedule messages for later delivery?',
+    answer: 'Yes. You can schedule any message for future delivery with precise timing. The scheduler automatically releases messages at the scheduled time, handles time zones, and provides status updates throughout the process.',
+  },
+  {
+    question: 'How does sensitive content detection work?',
+    answer: 'Our content filter automatically scans all messages for prohibited content including spam patterns, phishing attempts, hate speech, and fraudulent language. Flagged messages are blocked from sending and queued for manual review.',
+  },
   {
     question: 'What is delivery confidence scoring?',
     answer: 'Mobile SMS delivery reports are not always reliable. Our confidence model combines multiple signals to produce an honest delivery confidence score, giving you accurate visibility into message delivery status.',

@@ -49,7 +49,7 @@ export function Hero() {
             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-r from-blue-500 to-purple-500">
               <Star className="h-3 w-3 text-white" fill="currentColor" />
             </span>
-            <span>New: Real-time delivery confidence scoring now available</span>
+            <span>New: AI-powered template generation and voice-to-text now available</span>
             <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
           </a>
         </motion.div>
@@ -70,7 +70,7 @@ export function Hero() {
           </motion.h1>
 
           <motion.p variants={fadeInUp} className="mx-auto mt-6 max-w-2xl text-lg text-gray-400 lg:mt-8 lg:text-xl">
-            Delivery confidence scoring, priority messaging lanes, and real-time analytics — all from a single platform.
+            AI template generation, voice-to-text input, bulk campaigns, message scheduling, and real-time analytics — all from a single platform.
             Self-hostable or managed SaaS.
           </motion.p>
 

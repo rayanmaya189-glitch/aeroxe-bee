@@ -23,7 +23,7 @@ import { useSEO } from '@/hooks/useSEO'
 export function LandingPage() {
   useSEO({
     title: 'AeroXe Bee — Distributed SMS Gateway Platform',
-    description: 'Enterprise SMS delivery with intelligent multi-strategy routing, real-time analytics, device fleet management, and self-hosting options. Start free, scale as you grow.',
+    description: 'Enterprise SMS delivery with AI template generation, voice-to-text input, bulk campaigns, message scheduling, and real-time analytics. Start free, scale as you grow.',
     ogImage: '/og-image.svg',
     ogUrl: 'https://aeroxbee.com',
     schema: {
@@ -31,7 +31,7 @@ export function LandingPage() {
       '@type': 'WebSite',
       name: 'AeroXe Bee',
       url: 'https://aeroxbee.com',
-      description: 'Enterprise SMS delivery platform with intelligent multi-strategy routing, real-time analytics, and device fleet management.',
+      description: 'Enterprise SMS delivery platform with AI template generation, voice-to-text input, bulk campaigns, message scheduling, and real-time analytics.',
       potentialAction: {
         '@type': 'SearchAction',
         target: 'https://aeroxbee.com/?q={search_term_string}',

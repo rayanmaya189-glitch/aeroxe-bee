@@ -23,7 +23,7 @@ export function Features() {
               <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">you actually need</span>
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-lg text-gray-400">
-              Real features backed by real infrastructure — authentication, routing, fleet management, analytics, and more.
+              Real features backed by real infrastructure — AI template generation, voice input, bulk campaigns, scheduling, and real-time analytics.
             </p>
           </motion.div>
 
