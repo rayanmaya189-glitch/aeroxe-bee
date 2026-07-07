@@ -9,7 +9,7 @@ const api = axios.create({
 // Request interceptor: attach JWT or API key
 api.interceptors.request.use((config) => {
   // Check store first (for JWT auth)
-  const token = useAuthStore.getState().token
+  const token = sessionStorage.getItem('auth_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   } else {
@@ -30,7 +30,7 @@ api.interceptors.response.use(
       // Only clear auth for non-login requests
       const isLogin = err.config?.url?.includes('/auth/login')
       if (!isLogin) {
-        useAuthStore.getState().clearAuth()
+        useAuthStore.getState().logout()
         // Don't redirect here; let the component handle it via store state
       }
     }

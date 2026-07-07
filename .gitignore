@@ -201,6 +201,17 @@ captures/
 
 # =========================
 
+# 🧪 Playwright Test Reports
+
+# =========================
+
+playwrite-testing/test-results/
+playwrite-testing/playwright-report/
+test-results/
+playwright-report/
+
+# =========================
+
 # 🚀 Optional (Uncomment if needed)
 
 # =========================
