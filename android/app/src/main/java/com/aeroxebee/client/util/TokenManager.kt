@@ -81,6 +81,13 @@ class TokenManager @Inject constructor(
     fun saveDeviceName(name: String) = prefs.edit().putString(KEY_DEVICE_NAME, name).apply()
     fun getDeviceName(): String? = prefs.getString(KEY_DEVICE_NAME, null)
 
+    // Device identity (fingerprint) stored after successful registration
+    fun saveDeviceFingerprint(hash: String) = prefs.edit().putString(KEY_DEVICE_FINGERPRINT, hash).apply()
+    fun getDeviceFingerprint(): String? = prefs.getString(KEY_DEVICE_FINGERPRINT, null)
+
+    fun saveDeviceIdentityRegistered(registered: Boolean) = prefs.edit().putBoolean(KEY_DEVICE_IDENTITY_REGISTERED, registered).apply()
+    fun isDeviceIdentityRegistered(): Boolean = prefs.getBoolean(KEY_DEVICE_IDENTITY_REGISTERED, false)
+
     companion object {
         private const val KEY_TOKEN = "auth_token"
         private const val KEY_REFRESH_TOKEN = "refresh_token"
@@ -99,5 +106,7 @@ class TokenManager @Inject constructor(
         private const val KEY_ACCOUNT_ID = "account_id"
         private const val KEY_FCM_TOKEN = "fcm_token"
         private const val KEY_DEVICE_NAME = "device_name"
+        private const val KEY_DEVICE_FINGERPRINT = "device_fingerprint"
+        private const val KEY_DEVICE_IDENTITY_REGISTERED = "device_identity_registered"
     }
 }

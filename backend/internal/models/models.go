@@ -199,16 +199,29 @@ type APIKey struct {
 
 // PhysicalDevice represents an Android phone
 type PhysicalDevice struct {
-	ID          string      `db:"id" json:"id"`
-	AccountID   string      `db:"account_id" json:"account_id"`
-	Model       string      `db:"model" json:"model"`
-	OSVersion   string      `db:"os_version" json:"os_version"`
-	AppVersion  string      `db:"app_version" json:"app_version"`
-	BatteryLevel float64    `db:"battery_level" json:"battery_level"`
-	NetworkType  string     `db:"network_type" json:"network_type"`
-	DeviceState DeviceState `db:"device_state" json:"device_state"`
-	CreatedAt   time.Time   `db:"created_at" json:"created_at"`
-	UpdatedAt   time.Time   `db:"updated_at" json:"updated_at"`
+	ID               string      `db:"id" json:"id"`
+	AccountID        string      `db:"account_id" json:"account_id"`
+	Model            string      `db:"model" json:"model"`
+	OSVersion        string      `db:"os_version" json:"os_version"`
+	AppVersion       string      `db:"app_version" json:"app_version"`
+	BatteryLevel     float64     `db:"battery_level" json:"battery_level"`
+	NetworkType      string      `db:"network_type" json:"network_type"`
+	DeviceState      DeviceState `db:"device_state" json:"device_state"`
+	FingerprintHash  string      `db:"fingerprint_hash" json:"fingerprint_hash,omitempty"`
+	Signature        string      `db:"signature" json:"signature,omitempty"`
+	PublicKey        string      `db:"public_key" json:"public_key,omitempty"`
+	UUID             string      `db:"uuid" json:"uuid,omitempty"`
+	Manufacturer     string      `db:"manufacturer" json:"manufacturer,omitempty"`
+	Brand            string      `db:"brand" json:"brand,omitempty"`
+	SDKLevel         int         `db:"sdk_level" json:"sdk_level,omitempty"`
+	SIMCountry       string      `db:"sim_country" json:"sim_country,omitempty"`
+	SIMOperator      string      `db:"sim_operator" json:"sim_operator,omitempty"`
+	InstallTime      int64       `db:"install_time" json:"install_time,omitempty"`
+	TrustScore       float64     `db:"trust_score" json:"trust_score,omitempty"`
+	IntegrityToken   *string     `db:"integrity_token" json:"integrity_token,omitempty"`
+	IdentityVerifiedAt *time.Time `db:"identity_verified_at" json:"identity_verified_at,omitempty"`
+	CreatedAt        time.Time   `db:"created_at" json:"created_at"`
+	UpdatedAt        time.Time   `db:"updated_at" json:"updated_at"`
 }
 
 // Device represents a per-SIM logical identity
@@ -243,8 +256,9 @@ type Device struct {
 	IsolatedPoolID   *string       `db:"isolated_pool_id" json:"isolated_pool_id,omitempty"`
 	Name             string            `db:"name" json:"name"`
 	CircuitBreakerState CircuitBreakerState `db:"circuit_breaker_state" json:"circuit_breaker_state"`
-	CreatedAt        time.Time     `db:"created_at" json:"created_at"`
-	UpdatedAt        time.Time     `db:"updated_at" json:"updated_at"`
+	FingerprintHash  string            `db:"fingerprint_hash" json:"fingerprint_hash,omitempty"`
+	CreatedAt        time.Time         `db:"created_at" json:"created_at"`
+	UpdatedAt        time.Time         `db:"updated_at" json:"updated_at"`
 }
 
 // MQTTCredential represents device MQTT credentials

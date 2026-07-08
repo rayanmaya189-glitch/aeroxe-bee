@@ -110,6 +110,9 @@ dependencies {
     implementation("com.google.firebase:firebase-analytics-ktx")
     implementation("com.google.firebase:firebase-config")
 
+    // Play Integrity API (anti-tamper)
+    implementation("com.google.android.play:integrity:1.4.0")
+
     // EncryptedSharedPreferences
     implementation("androidx.security:security-crypto:1.1.0")
 

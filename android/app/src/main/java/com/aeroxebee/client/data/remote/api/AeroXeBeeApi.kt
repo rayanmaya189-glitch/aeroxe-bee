@@ -18,6 +18,9 @@ interface AeroXeBeeApi {
     @POST("devices/deregister")
     suspend fun deregisterDevice(@Body request: DeregisterRequest): Response<ApiResponse<Map<String, Any>>>
 
+    @POST("devices/identity")
+    suspend fun registerDeviceIdentity(@Body request: DeviceIdentityRequest): Response<ApiResponse<DeviceIdentityResponse>>
+
     @POST("devices/info")
     suspend fun reportDeviceInfo(@Body request: DeviceInfoReportRequest): Response<ApiResponse<Unit>>
 

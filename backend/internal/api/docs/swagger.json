@@ -1527,6 +1527,146 @@
         }
       }
     },
+    "/api/v1/devices/identity": {
+      "post": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Register multi-layer device fingerprint for anti-clone protection",
+        "operationId": "registerDeviceIdentity",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/APIResponse"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "fingerprint_hash": {
+                            "type": "string",
+                            "description": "SHA-256 hash of the composite device fingerprint"
+                          },
+                          "signature": {
+                            "type": "string",
+                            "description": "RSA+SHA256 signature of fingerprint_hash, signed by Android Keystore"
+                          },
+                          "public_key": {
+                            "type": "string",
+                            "description": "Base64-encoded RSA public key from Android Keystore"
+                          },
+                          "integrity_token": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Play Integrity API token for anti-tamper verification"
+                          },
+                          "android_id": {
+                            "type": "string"
+                          },
+                          "uuid": {
+                            "type": "string"
+                          },
+                          "model": {
+                            "type": "string"
+                          },
+                          "brand": {
+                            "type": "string"
+                          },
+                          "manufacturer": {
+                            "type": "string"
+                          },
+                          "os_version": {
+                            "type": "string"
+                          },
+                          "sdk_level": {
+                            "type": "integer"
+                          },
+                          "carrier": {
+                            "type": "string"
+                          },
+                          "sim_country": {
+                            "type": "string"
+                          },
+                          "sim_operator": {
+                            "type": "string"
+                          },
+                          "install_time": {
+                            "type": "integer",
+                            "description": "App first install epoch millis"
+                          }
+                        },
+                        "required": [
+                          "fingerprint_hash",
+                          "signature",
+                          "public_key",
+                          "android_id",
+                          "uuid"
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Device identity verified",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/APIResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "device_id": {
+                              "type": "string"
+                            },
+                            "trust_score": {
+                              "type": "number"
+                            },
+                            "fingerprint_hash": {
+                              "type": "string"
+                            },
+                            "is_verified": {
+                              "type": "boolean"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid signature"
+          },
+          "409": {
+            "description": "Fingerprint already registered to another account"
+          }
+        }
+      }
+    },
     "/api/v1/member/devices/qr-code": {
       "post": {
         "tags": [

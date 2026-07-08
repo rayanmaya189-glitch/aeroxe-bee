@@ -189,6 +189,7 @@ func NewRouter(
 	mux.Handle("GET /api/v1/devices", authMiddleware.JWTAuth(http.HandlerFunc(deviceHandler.List)))
 	mux.Handle("GET /api/v1/devices/{id}", authMiddleware.JWTAuth(http.HandlerFunc(deviceHandler.Get)))
 	mux.Handle("POST /api/v1/devices/info", authMiddleware.JWTAuth(http.HandlerFunc(deviceHandler.HandleDeviceInfo)))
+	mux.Handle("POST /api/v1/devices/identity", authMiddleware.JWTAuth(http.HandlerFunc(deviceHandler.HandleDeviceIdentity)))
 
 	// Account routes
 	mux.Handle("GET /api/v1/account/profile", authMiddleware.JWTAuth(http.HandlerFunc(accountHandler.GetProfile)))

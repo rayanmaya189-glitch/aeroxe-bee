@@ -1,6 +1,11 @@
 package handlers
 
 import (
+	"crypto"
+	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -437,6 +442,174 @@ func (h *DeviceHandler) RegisterDeprecated(w http.ResponseWriter, r *http.Reques
 		Data: map[string]interface{}{
 			"device_id": deviceID,
 			"status":    "registered",
+		},
+	})
+}
+
+// ─── Device Identity ─────────────────────────────────────────
+
+// DeviceIdentityRequest is sent by Android to register a multi-layer
+// device fingerprint for anti-clone and anti-spoofing protection.
+type DeviceIdentityRequest struct {
+	FingerprintHash string `json:"fingerprint_hash"`
+	Signature       string `json:"signature"`
+	PublicKey       string `json:"public_key"`
+	IntegrityToken  *string `json:"integrity_token"`
+	AndroidID       string `json:"android_id"`
+	UUID            string `json:"uuid"`
+	Model           string `json:"model"`
+	Brand           string `json:"brand"`
+	Manufacturer    string `json:"manufacturer"`
+	OSVersion       string `json:"os_version"`
+	SDKLevel        int    `json:"sdk_level"`
+	Carrier         string `json:"carrier"`
+	SIMCountry      string `json:"sim_country"`
+	SIMOperator     string `json:"sim_operator"`
+	InstallTime     int64  `json:"install_time"`
+}
+
+// verifySignature decodes the base64-encoded public key, then verifies
+// that `signature` is a valid RSA+SHA256 signature over `fingerprintHash`.
+func verifySignature(fingerprintHash, signatureB64, publicKeyB64 string) bool {
+	pubKeyBytes, err := base64.StdEncoding.DecodeString(publicKeyB64)
+	if err != nil {
+		slog.Warn("device identity: failed to decode public key", "error", err)
+		return false
+	}
+
+	pubKey, err := x509.ParsePKIXPublicKey(pubKeyBytes)
+	if err != nil {
+		slog.Warn("device identity: failed to parse public key", "error", err)
+		return false
+	}
+
+	rsaPubKey, ok := pubKey.(*rsa.PublicKey)
+	if !ok {
+		slog.Warn("device identity: public key is not RSA")
+		return false
+	}
+
+	sigBytes, err := base64.StdEncoding.DecodeString(signatureB64)
+	if err != nil {
+		slog.Warn("device identity: failed to decode signature", "error", err)
+		return false
+	}
+
+	hash := sha256.Sum256([]byte(fingerprintHash))
+	err = rsa.VerifyPKCS1v15(rsaPubKey, crypto.SHA256, hash[:], sigBytes)
+	if err != nil {
+		slog.Warn("device identity: signature verification failed", "error", err)
+		return false
+	}
+
+	return true
+}
+
+// HandleDeviceIdentity handles POST /api/v1/devices/identity
+// Accepts a multi-layer device fingerprint, verifies the Keystore-backed
+// signature, stores the fingerprint on the physical_device, and returns
+// a trust score. This is the authoritative device identity binding.
+func (h *DeviceHandler) HandleDeviceIdentity(w http.ResponseWriter, r *http.Request) {
+	accountID := middleware.GetAccountID(r.Context())
+
+	var req DeviceIdentityRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid request body"})
+		return
+	}
+
+	if req.FingerprintHash == "" || req.Signature == "" || req.PublicKey == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "fingerprint_hash, signature, and public_key are required"})
+		return
+	}
+
+	// 1. Verify the Keystore-backed signature
+	sigValid := verifySignature(req.FingerprintHash, req.Signature, req.PublicKey)
+	if !sigValid {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Error: "signature verification failed"})
+		return
+	}
+
+	// 2. Check for fingerprint reuse across accounts
+	var existingAccounts []string
+	err := h.deviceService.DB().QueryRow(r.Context(),
+		`SELECT ARRAY_AGG(DISTINCT account_id) FROM physical_devices WHERE fingerprint_hash = $1 AND fingerprint_hash != ''`,
+		req.FingerprintHash,
+	).Scan(&existingAccounts)
+	if err == nil && len(existingAccounts) > 0 {
+		// Same fingerprint seen on a different account — potential clone
+		isSameAccount := false
+		for _, aid := range existingAccounts {
+			if aid == accountID {
+				isSameAccount = true
+				break
+			}
+		}
+		if !isSameAccount {
+			slog.Warn("device identity: fingerprint reused across accounts",
+				"fingerprint_hash", req.FingerprintHash[:8]+"...",
+				"existing_accounts", existingAccounts,
+				"requesting_account", accountID,
+			)
+			writeJSON(w, http.StatusConflict, APIResponse{Error: "device fingerprint already registered to another account"})
+			return
+		}
+	}
+
+	// 3. Compute a trust score
+	trustScore := 0.5
+	if sigValid {
+		trustScore += 0.3
+	}
+	if req.IntegrityToken != nil && *req.IntegrityToken != "" {
+		trustScore += 0.2
+	}
+	if trustScore > 1.0 {
+		trustScore = 1.0
+	}
+
+	now := time.Now()
+
+	// 4. Upsert the physical_devices row with identity data
+	_, err = h.deviceService.DB().Exec(r.Context(),
+		`INSERT INTO physical_devices
+			(id, account_id, model, os_version, app_version, battery_level, network_type, device_state,
+			 fingerprint_hash, signature, public_key, uuid, manufacturer, brand, sdk_level,
+			 sim_country, sim_operator, install_time, trust_score, integrity_token, identity_verified_at, updated_at)
+		 VALUES ($1, $2, $3, $4, '', 0, '', '',
+		         $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW())
+		 ON CONFLICT (id) DO UPDATE SET
+		   model=$3, os_version=$4, fingerprint_hash=$5, signature=$6, public_key=$7, uuid=$8,
+		   manufacturer=$9, brand=$10, sdk_level=$11, sim_country=$12, sim_operator=$13,
+		   install_time=$14, trust_score=$15,
+		   integrity_token = CASE WHEN $16 IS NOT NULL THEN $16 ELSE physical_devices.integrity_token END,
+		   identity_verified_at = CASE WHEN physical_devices.identity_verified_at IS NULL THEN $17 ELSE physical_devices.identity_verified_at END,
+		   updated_at=NOW()`,
+		req.AndroidID, accountID, req.Model, req.OSVersion,
+		req.FingerprintHash, req.Signature, req.PublicKey, req.UUID,
+		req.Manufacturer, req.Brand, req.SDKLevel,
+		req.SIMCountry, req.SIMOperator, req.InstallTime,
+		trustScore, req.IntegrityToken, now,
+	)
+	if err != nil {
+		slog.Error("device identity: upsert failed", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to store device identity"})
+		return
+	}
+
+	// 5. Propagate fingerprint_hash to all logical devices belonging to this physical device
+	_, _ = h.deviceService.DB().Exec(r.Context(),
+		`UPDATE devices SET fingerprint_hash = $1 WHERE physical_device_id = $2`,
+		req.FingerprintHash, req.AndroidID,
+	)
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Data: map[string]interface{}{
+			"device_id":       req.AndroidID,
+			"trust_score":     trustScore,
+			"fingerprint_hash": req.FingerprintHash,
+			"is_verified":     sigValid,
 		},
 	})
 }
