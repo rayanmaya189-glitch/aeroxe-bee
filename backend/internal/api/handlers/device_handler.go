@@ -605,6 +605,178 @@ func (h *DeviceHandler) HandleDeviceIdentity(w http.ResponseWriter, r *http.Requ
 	})
 }
 
+// ─── SIM Rotation Detection ──────────────────────────────────
+
+type SimReportEvent struct {
+	Type     string `json:"type"`
+	Severity int    `json:"severity"`
+	Details  string `json:"details"`
+}
+
+type SimSnapshotReport struct {
+	SlotIndex      int    `json:"slot_index"`
+	SubscriptionID int    `json:"subscription_id"`
+	CarrierName    string `json:"carrier_name"`
+	MccMnc         string `json:"mcc_mnc"`
+	CountryIso     string `json:"country_iso"`
+}
+
+type SimReportRequest struct {
+	DeviceID       string              `json:"device_id"`
+	Events         []SimReportEvent    `json:"events"`
+	SimState       []SimSnapshotReport `json:"sim_state"`
+	Frequency      string              `json:"frequency"`
+	FingerprintHash string             `json:"fingerprint_hash"`
+}
+
+// trustScorePenalty returns the trust score deduction and action label
+// for a given set of SIM events and their frequency.
+func trustScorePenalty(events []SimReportEvent, frequency string) (float64, string) {
+	var penalty float64
+	hasSwap := false
+	hasCountryChange := false
+
+	for _, e := range events {
+		switch e.Type {
+		case "SIM_SWAPPED":
+			penalty += 10
+			hasSwap = true
+		case "COUNTRY_CHANGED":
+			penalty += 20
+			hasCountryChange = true
+		case "CARRIER_CHANGED":
+			penalty += 5
+		case "NEW_SIM_INSERTED":
+			penalty += 5
+		case "SIM_REMOVED":
+			penalty += 3
+		}
+	}
+
+	switch frequency {
+	case "CRITICAL":
+		penalty += 30
+	case "HIGH":
+		penalty += 20
+	case "MEDIUM":
+		penalty += 10
+	}
+
+	// OTP abuse signal: SIM swap + high frequency
+	if hasSwap && frequency == "HIGH" {
+		penalty += 15
+	}
+	if hasCountryChange && hasSwap {
+		penalty += 10
+	}
+
+	action := computeAction(penalty)
+	return penalty, action
+}
+
+func computeAction(penalty float64) string {
+	effectiveScore := 100.0 - penalty
+	switch {
+	case effectiveScore >= 80:
+		return "NORMAL"
+	case effectiveScore >= 50:
+		return "THROTTLE"
+	case effectiveScore >= 20:
+		return "OTP_ONLY"
+	default:
+		return "BLOCK"
+	}
+}
+
+// HandleSimReport handles POST /api/v1/devices/sim-report
+// Accepts SIM rotation events from the Android device, logs them,
+// updates the device trust score, and returns the recommended action.
+func (h *DeviceHandler) HandleSimReport(w http.ResponseWriter, r *http.Request) {
+	accountID := middleware.GetAccountID(r.Context())
+
+	var req SimReportRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid request body"})
+		return
+	}
+
+	if req.DeviceID == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "device_id is required"})
+		return
+	}
+
+	// 1. Serialize SIM snapshot to JSON
+	simStateJSON, _ := json.Marshal(req.SimState)
+
+	// 2. Log each event to sim_events table
+	for _, event := range req.Events {
+		_, err := h.deviceService.DB().Exec(r.Context(),
+			`INSERT INTO sim_events
+				(physical_device_id, account_id, event_type, severity, details, sim_snapshot, frequency, fingerprint_hash, created_at)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
+			req.DeviceID, accountID, event.Type, event.Severity, event.Details,
+			string(simStateJSON), req.Frequency, req.FingerprintHash,
+		)
+		if err != nil {
+			slog.Error("sim report: failed to insert event",
+				"device_id", req.DeviceID,
+				"event", event.Type,
+				"error", err,
+			)
+		}
+	}
+
+	// 3. Compute trust score penalty
+	penalty, action := trustScorePenalty(req.Events, req.Frequency)
+	newTrustScore := 100.0 - penalty
+	if newTrustScore < 0 {
+		newTrustScore = 0
+	}
+
+	// 4. Update physical_device trust_score and device status if blocked
+	_, _ = h.deviceService.DB().Exec(r.Context(),
+		`UPDATE physical_devices SET trust_score = $1, updated_at = NOW() WHERE id = $2`,
+		newTrustScore, req.DeviceID,
+	)
+
+	if action == "BLOCK" {
+		// Mark all logical devices on this physical device as OFFLINE
+		_, _ = h.deviceService.DB().Exec(r.Context(),
+			`UPDATE devices SET status = 'OFFLINE', updated_at = NOW() WHERE physical_device_id = $1`,
+			req.DeviceID,
+		)
+	}
+
+	// 5. Check recent event count for anomaly detection
+	var recentCount int
+	_ = h.deviceService.DB().QueryRow(r.Context(),
+		`SELECT COUNT(*) FROM sim_events
+		  WHERE physical_device_id = $1 AND created_at > NOW() - INTERVAL '1 hour'`,
+		req.DeviceID,
+	).Scan(&recentCount)
+
+	slog.Info("sim report processed",
+		"device_id", req.DeviceID,
+		"events", len(req.Events),
+		"frequency", req.Frequency,
+		"penalty", penalty,
+		"action", action,
+		"recent_events_1h", recentCount,
+	)
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Data: map[string]interface{}{
+			"action":               action,
+			"trust_score":          newTrustScore,
+			"penalty":              penalty,
+			"recent_events_1h":     recentCount,
+			"device_id":            req.DeviceID,
+			"sim_events_logged":    len(req.Events),
+		},
+	})
+}
+
 // Deregister handles POST /api/v1/devices/deregister
 // Revokes MQTT credentials and marks the device as offline
 func (h *DeviceHandler) Deregister(w http.ResponseWriter, r *http.Request) {

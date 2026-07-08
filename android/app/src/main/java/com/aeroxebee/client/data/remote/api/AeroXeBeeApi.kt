@@ -21,6 +21,9 @@ interface AeroXeBeeApi {
     @POST("devices/identity")
     suspend fun registerDeviceIdentity(@Body request: DeviceIdentityRequest): Response<ApiResponse<DeviceIdentityResponse>>
 
+    @POST("devices/sim-report")
+    suspend fun reportSimEvent(@Body request: SimReportRequest): Response<ApiResponse<Map<String, Any>>>
+
     @POST("devices/info")
     suspend fun reportDeviceInfo(@Body request: DeviceInfoReportRequest): Response<ApiResponse<Unit>>
 

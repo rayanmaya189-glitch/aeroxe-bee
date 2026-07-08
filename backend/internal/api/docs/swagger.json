@@ -1667,6 +1667,116 @@
         }
       }
     },
+    "/api/v1/devices/sim-report": {
+      "post": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Report SIM rotation events for fraud detection",
+        "operationId": "reportSimEvent",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "device_id": {
+                    "type": "string"
+                  },
+                  "fingerprint_hash": {
+                    "type": "string"
+                  },
+                  "frequency": {
+                    "type": "string",
+                    "enum": ["NONE", "LOW", "MEDIUM", "HIGH", "CRITICAL"]
+                  },
+                  "events": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": ["FIRST_SEEN", "SIM_SWAPPED", "CARRIER_CHANGED", "COUNTRY_CHANGED", "NEW_SIM_INSERTED", "SIM_REMOVED"]
+                        },
+                        "severity": {
+                          "type": "integer"
+                        },
+                        "details": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "sim_state": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "slot_index": { "type": "integer" },
+                        "subscription_id": { "type": "integer" },
+                        "carrier_name": { "type": "string" },
+                        "mcc_mnc": { "type": "string" },
+                        "country_iso": { "type": "string" }
+                      }
+                    }
+                  }
+                },
+                "required": ["device_id", "events", "sim_state"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "SIM report processed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/APIResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "action": {
+                              "type": "string",
+                              "enum": ["NORMAL", "THROTTLE", "OTP_ONLY", "BLOCK"]
+                            },
+                            "trust_score": {
+                              "type": "number"
+                            },
+                            "penalty": {
+                              "type": "number"
+                            },
+                            "recent_events_1h": {
+                              "type": "integer"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
     "/api/v1/member/devices/qr-code": {
       "post": {
         "tags": [
