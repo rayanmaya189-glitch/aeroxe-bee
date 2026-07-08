@@ -12,7 +12,7 @@ import {
   LayoutDashboard, TrendingUp, Users, BarChart3, FileText, Webhook,
   CreditCard, Settings, Zap, ChevronLeft, ChevronDown,
   MessageSquare, MessageCircleWarning, AlertTriangle, BrainCircuit, UserCog,
-  Receipt, Crown, FileCheck, Shield, Tags, AppWindow, Settings2, Send,
+  Receipt, Crown, Shield, Tags, AppWindow, Settings2, Send, KeyRound, FileCheck,
 } from 'lucide-react'
 
 interface NavItem {
@@ -84,11 +84,13 @@ const adminNavGroups: NavGroup[] = [
 const memberNav: NavItem[] = [
   { label: 'Dashboard', path: '/member', icon: <LayoutDashboard className="h-[18px] w-[18px]" /> },
   { label: 'Devices', path: '/member/devices', icon: <Zap className="h-[18px] w-[18px]" /> },
+  { label: 'KYC', path: '/member/kyc', icon: <FileCheck className="h-[18px] w-[18px]" /> },
   { label: 'Messages', path: '/member/messages', icon: <MessageSquare className="h-[18px] w-[18px]" /> },
   { label: 'Send SMS', path: '/member/send', icon: <Send className="h-[18px] w-[18px]" /> },
   { label: 'Analytics', path: '/member/analytics', icon: <BarChart3 className="h-[18px] w-[18px]" /> },
   { label: 'Templates', path: '/member/templates', icon: <FileText className="h-[18px] w-[18px]" /> },
   { label: 'Webhooks', path: '/member/webhooks', icon: <Webhook className="h-[18px] w-[18px]" /> },
+  { label: 'OTP Tool', path: '/member/otp', icon: <KeyRound className="h-[18px] w-[18px]" /> },
   { label: 'Bulk SMS', path: '/member/bulk-sms', icon: <Send className="h-[18px] w-[18px]" /> },
   { label: 'Upgrade Plan', path: '/member/upgrade', icon: <Crown className="h-[18px] w-[18px]" /> },
 ]

@@ -465,6 +465,25 @@ export async function rejectSubscriptionRequest(id: string, notes?: string): Pro
   if (!res.data.success) throw new Error(res.data.error ?? 'Failed to reject')
 }
 
+// ─── Member OTP ──────────────────────────────────────────────────
+
+export interface MemberOtpSendResponse {
+  message_id: string
+  code: string
+  expires_in: number
+}
+
+export async function sendMemberOtp(phone: string): Promise<MemberOtpSendResponse> {
+  const res = await api.post<ApiResponse<MemberOtpSendResponse>>('/member/otp/send', { phone })
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to send OTP')
+  return res.data.data
+}
+
+export async function verifyMemberOtp(phone: string, code: string): Promise<void> {
+  const res = await api.post<ApiResponse<{ verified: boolean }>>('/member/otp/verify', { phone, code })
+  if (!res.data.success) throw new Error(res.data.error ?? 'Failed to verify OTP')
+}
+
 // ─── Member Preferences & KYC ─────────────────────────────────────
 
 export interface UserPreferences {

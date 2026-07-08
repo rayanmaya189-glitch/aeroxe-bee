@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -12,22 +13,28 @@ import (
 )
 
 type AuthHandler struct {
-	accountService *services.AccountService
-	adminService   *services.AdminService
-	userService    *services.UserService
-	authMiddleware *middleware.AuthMiddleware
-	twoFAService   *services.TwoFAService
-	sessionService *services.SessionService
+	accountService         *services.AccountService
+	adminService           *services.AdminService
+	userService            *services.UserService
+	authMiddleware         *middleware.AuthMiddleware
+	twoFAService           *services.TwoFAService
+	sessionService         *services.SessionService
+	passwordResetService   *services.PasswordResetService
+	mailer                 *services.Mailer
+	appBaseURL             string
 }
 
-func NewAuthHandler(accountService *services.AccountService, adminService *services.AdminService, userService *services.UserService, authMiddleware *middleware.AuthMiddleware, twoFAService *services.TwoFAService, sessionService *services.SessionService) *AuthHandler {
+func NewAuthHandler(accountService *services.AccountService, adminService *services.AdminService, userService *services.UserService, authMiddleware *middleware.AuthMiddleware, twoFAService *services.TwoFAService, sessionService *services.SessionService, passwordResetService *services.PasswordResetService, mailer *services.Mailer, appBaseURL string) *AuthHandler {
 	return &AuthHandler{
-		accountService: accountService,
-		adminService:   adminService,
-		userService:    userService,
-		authMiddleware: authMiddleware,
-		twoFAService:   twoFAService,
-		sessionService: sessionService,
+		accountService:       accountService,
+		adminService:         adminService,
+		userService:          userService,
+		authMiddleware:       authMiddleware,
+		twoFAService:         twoFAService,
+		sessionService:       sessionService,
+		passwordResetService: passwordResetService,
+		mailer:               mailer,
+		appBaseURL:           appBaseURL,
 	}
 }
 
@@ -577,6 +584,91 @@ func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(data)
+}
+
+func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid request body"})
+		return
+	}
+	if req.Email == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "email is required"})
+		return
+	}
+
+	account, err := h.accountService.GetByEmail(r.Context(), req.Email)
+	if err != nil || account == nil {
+		writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: map[string]string{"message": "If that email is registered, you will receive a password reset link."}})
+		return
+	}
+
+	rawToken, err := h.passwordResetService.GenerateToken(r.Context(), account.ID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to generate reset token"})
+		return
+	}
+
+	resetLink := fmt.Sprintf("%s/reset-password/%s", h.appBaseURL, rawToken)
+	if err := h.mailer.SendPasswordReset(req.Email, resetLink); err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to send reset email"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: map[string]string{"message": "If that email is registered, you will receive a password reset link."}})
+}
+
+func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Token       string `json:"token"`
+		NewPassword string `json:"new_password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid request body"})
+		return
+	}
+	if req.Token == "" || req.NewPassword == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "token and new_password are required"})
+		return
+	}
+
+	if pwErr := middleware.PasswordStrength(req.NewPassword); pwErr != "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: pwErr})
+		return
+	}
+
+	accountID, err := h.passwordResetService.ValidateToken(r.Context(), req.Token)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: err.Error()})
+		return
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to hash password"})
+		return
+	}
+
+	account, err := h.accountService.GetByID(r.Context(), accountID)
+	if err != nil || account == nil {
+		writeJSON(w, http.StatusNotFound, APIResponse{Error: "account not found"})
+		return
+	}
+	account.PasswordHash = string(hash)
+	if err := h.accountService.Update(r.Context(), account); err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to update password"})
+		return
+	}
+
+	if err := h.passwordResetService.MarkTokenUsed(r.Context(), req.Token); err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to mark token as used"})
+		return
+	}
+
+	h.mailer.SendPasswordResetSuccess(account.Email)
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: map[string]string{"message": "Password has been reset successfully."}})
 }
 
 // Login2FA handles POST /api/v1/auth/login/2fa — second step after password

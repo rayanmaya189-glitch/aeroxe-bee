@@ -9,6 +9,8 @@ import { AdminRoute, MemberRoute } from './guards'
 
 const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage').then((m) => ({ default: m.LoginPage })))
 const RegisterPage = lazy(() => import('@/features/auth/pages/RegisterPage').then((m) => ({ default: m.RegisterPage })))
+const ForgotPasswordPage = lazy(() => import('@/features/auth/pages/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })))
+const ResetPasswordPage = lazy(() => import('@/features/auth/pages/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })))
 const DashboardPage = lazy(() => import('@/features/dashboard/pages/DashboardPage').then((m) => ({ default: m.DashboardPage })))
 const UsersPage = lazy(() => import('@/features/users/pages/UsersPage').then((m) => ({ default: m.UsersPage })))
 const AnalyticsPage = lazy(() => import('@/features/analytics/pages/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })))
@@ -40,6 +42,8 @@ const AppReleasesPage = lazy(() => import('@/features/accounts/pages/AppReleases
 const FirebaseConfigPage = lazy(() => import('@/features/accounts/pages/FirebaseConfigPage').then((m) => ({ default: m.FirebaseConfigPage })))
 const AIConfigPage = lazy(() => import('@/features/accounts/pages/AIConfigPage').then((m) => ({ default: m.AIConfigPage })))
 const MemberUpgradePage = lazy(() => import('@/features/member/pages/MemberUpgradePage').then((m) => ({ default: m.MemberUpgradePage })))
+const OtpPage = lazy(() => import('@/features/member/pages/OtpPage').then((m) => ({ default: m.OtpPage })))
+const KycPage = lazy(() => import('@/features/member/pages/KycPage').then((m) => ({ default: m.KycPage })))
 const MemberPaymentRequestsPage = lazy(() => import('@/features/member/pages/MemberPaymentRequestsPage').then((m) => ({ default: m.MemberPaymentRequestsPage })))
 const MemberSubscriptionRequestsPage = lazy(() => import('@/features/member/pages/MemberSubscriptionRequestsPage').then((m) => ({ default: m.MemberSubscriptionRequestsPage })))
 const LandingPage = lazy(() => import('@/landing/pages/LandingPage').then((m) => ({ default: m.LandingPage })))
@@ -136,6 +140,26 @@ const routes: RouteObject[] = [
           </ErrorBoundary>
         ),
       },
+      {
+        path: '/forgot-password',
+        element: (
+          <ErrorBoundary>
+            <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><Skeleton className="h-96 w-96 rounded-2xl" variant="rectangular" /></div>}>
+              <ForgotPasswordPage />
+            </Suspense>
+          </ErrorBoundary>
+        ),
+      },
+      {
+        path: '/reset-password/:token',
+        element: (
+          <ErrorBoundary>
+            <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><Skeleton className="h-96 w-96 rounded-2xl" variant="rectangular" /></div>}>
+              <ResetPasswordPage />
+            </Suspense>
+          </ErrorBoundary>
+        ),
+      },
     ],
   },
   {
@@ -182,6 +206,8 @@ const routes: RouteObject[] = [
           { path: 'member/analytics', element: <LazyLoader><MemberAnalyticsPage /></LazyLoader> },
           { path: 'member/templates', element: <LazyLoader><MemberTemplatesPage /></LazyLoader> },
           { path: 'member/webhooks', element: <LazyLoader><MemberWebhooksPage /></LazyLoader> },
+          { path: 'member/otp', element: <LazyLoader><OtpPage /></LazyLoader> },
+          { path: 'member/kyc', element: <LazyLoader><KycPage /></LazyLoader> },
           { path: 'member/upgrade', element: <LazyLoader><MemberUpgradePage /></LazyLoader> },
           { path: 'member/payment-requests', element: <LazyLoader><MemberPaymentRequestsPage /></LazyLoader> },
           { path: 'member/subscription-requests', element: <LazyLoader><MemberSubscriptionRequestsPage /></LazyLoader> },

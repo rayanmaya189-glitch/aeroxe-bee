@@ -31,6 +31,16 @@ type OTPVerifyRequest struct {
 	Code  string `json:"code"`
 }
 
+type MemberOTPSendRequest struct {
+	Phone string `json:"phone"`
+}
+
+type MemberOTPSendResponse struct {
+	MessageID string `json:"message_id"`
+	Code      string `json:"code"`
+	ExpiresIn int    `json:"expires_in"`
+}
+
 func (h *OTPHandler) Send(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
 	accountID := middleware.GetAccountID(r.Context())
@@ -71,6 +81,50 @@ func (h *OTPHandler) Send(w http.ResponseWriter, r *http.Request) {
 		Data: map[string]interface{}{
 			"message_id": messageID,
 			"expires_in": 300,
+		},
+	})
+}
+
+func (h *OTPHandler) MemberSend(w http.ResponseWriter, r *http.Request) {
+	startTime := time.Now()
+	accountID := middleware.GetAccountID(r.Context())
+
+	var req MemberOTPSendRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid request body"})
+		return
+	}
+	if req.Phone == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "phone is required"})
+		return
+	}
+
+	if !fraud.IsValidPhoneNumber(req.Phone) {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid phone number format"})
+		return
+	}
+
+	code, err := h.otpService.GenerateCode(6)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to generate code"})
+		return
+	}
+
+	messageID := uuidV4()
+	if err := h.otpService.StoreCode(r.Context(), req.Phone, code, messageID); err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to store OTP"})
+		return
+	}
+
+	slog.Debug("Member OTP generated", "account_id", accountID, "phone", req.Phone, "message_id", messageID)
+	h.metrics.ObserveOTPLatency(time.Since(startTime))
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Data: MemberOTPSendResponse{
+			MessageID: messageID,
+			Code:      code,
+			ExpiresIn: 300,
 		},
 	})
 }

@@ -154,6 +154,8 @@ func NewRouter(
 	mux.Handle("GET /api/v1/auth/profile", authMiddleware.JWTAuth(http.HandlerFunc(authHandler.GetProfile)))
 	mux.Handle("PUT /api/v1/auth/profile", authMiddleware.JWTAuth(http.HandlerFunc(authHandler.UpdateProfile)))
 	mux.Handle("POST /api/v1/auth/change-password", authMiddleware.JWTAuth(http.HandlerFunc(authHandler.ChangePassword)))
+	mux.Handle("POST /api/v1/auth/forgot-password", bfProtector.Protect("forgot-password")(http.HandlerFunc(authHandler.ForgotPassword)))
+	mux.Handle("POST /api/v1/auth/reset-password", bfProtector.Protect("reset-password")(http.HandlerFunc(authHandler.ResetPassword)))
 
 	// 2FA routes
 	mux.Handle("POST /api/v1/auth/2fa/setup", authMiddleware.JWTAuth(http.HandlerFunc(twoFAHandler.Setup)))
@@ -177,7 +179,7 @@ func NewRouter(
 
 	// OTP routes (plan-checked + rate-limited)
 	mux.Handle("POST /api/v1/otp/send", authMiddleware.APIKeyAuth(apiKeyPlanChain(http.HandlerFunc(otpHandler.Send))))
-	mux.Handle("POST /api/v1/otp/verify", authMiddleware.APIKeyAuth(http.HandlerFunc(otpHandler.Verify)))
+	mux.Handle("POST /api/v1/otp/verify", authMiddleware.APIKeyAuth(apiKeyPlanChain(http.HandlerFunc(otpHandler.Verify))))
 
 	// Device routes — brute force protected
 	mux.Handle("POST /api/v1/devices/login", bfProtector.Protect("device-login")(http.HandlerFunc(deviceHandler.DeviceLogin)))
@@ -338,6 +340,10 @@ func NewRouter(
 	mux.Handle("PUT /api/v1/member/preferences", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.UpdatePreferences))))
 	mux.Handle("POST /api/v1/member/kyc", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.SubmitKYC))))
 	mux.Handle("GET /api/v1/member/kyc", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.GetKYC))))
+
+	// Member OTP routes (JWT auth — for frontend portal)
+	mux.Handle("POST /api/v1/member/otp/send", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(otpHandler.MemberSend))))
+	mux.Handle("POST /api/v1/member/otp/verify", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(otpHandler.Verify))))
 
 	// Session management routes
 	mux.Handle("GET /api/v1/auth/sessions", authMiddleware.JWTAuth(http.HandlerFunc(sessionHandler.ListSessions)))

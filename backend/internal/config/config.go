@@ -24,6 +24,8 @@ type Config struct {
 	Telemetry TelemetryConfig
 	App      AppConfig
 	FCM      FCMConfig
+	SMTP     SMTPConfig
+	AppURL   AppURLConfig
 }
 
 type ServerConfig struct {
@@ -177,6 +179,19 @@ type FCMConfig struct {
 	Enabled           bool
 }
 
+type SMTPConfig struct {
+	Host     string
+	Port     int
+	Username string
+	Password string
+	FromAddr string
+	FromName string
+}
+
+type AppURLConfig struct {
+	BaseURL string
+}
+
 func Load() *Config {
 	return &Config{
 		Server: ServerConfig{
@@ -313,6 +328,17 @@ func Load() *Config {
 			ProjectID:          getEnv("FCM_PROJECT_ID", ""),
 			ServiceAccountPath: getEnv("FCM_SERVICE_ACCOUNT_PATH", ""),
 			Enabled:            getEnvBool("FCM_ENABLED", false),
+		},
+		SMTP: SMTPConfig{
+			Host:     getEnv("SMTP_HOST", ""),
+			Port:     getEnvInt("SMTP_PORT", 587),
+			Username: getEnv("SMTP_USERNAME", ""),
+			Password: getEnv("SMTP_PASSWORD", ""),
+			FromAddr: getEnv("SMTP_FROM_ADDR", "noreply@aeroxe.com"),
+			FromName: getEnv("SMTP_FROM_NAME", "AeroXe Bee"),
+		},
+		AppURL: AppURLConfig{
+			BaseURL: getEnv("APP_BASE_URL", "http://localhost:5173"),
 		},
 	}
 }

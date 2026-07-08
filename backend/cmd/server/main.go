@@ -244,7 +244,10 @@ func main() {
 	authMiddleware := middleware.NewAuthMiddleware(svc.APIKeys, svc.Accounts, cfg.JWT.Secret)
 	planMiddleware := middleware.NewPlanMiddleware(svc.Accounts)
 
-	authHandler := handlers.NewAuthHandler(svc.Accounts, svc.Admin, userService, authMiddleware, twoFAService, sessionService)
+	passwordResetService := services.NewPasswordResetService(postgres.Pool)
+	mailer := services.NewMailer(cfg.SMTP)
+
+	authHandler := handlers.NewAuthHandler(svc.Accounts, svc.Admin, userService, authMiddleware, twoFAService, sessionService, passwordResetService, mailer, cfg.AppURL.BaseURL)
 	twoFAHandler := handlers.NewTwoFAHandler(twoFAService)
 	messageHandler := handlers.NewMessageHandler(svc.Messages, svc.Devices, svc.Accounts,
 		idempotencyStore, queue, encMgr, cfg.App, metrics)

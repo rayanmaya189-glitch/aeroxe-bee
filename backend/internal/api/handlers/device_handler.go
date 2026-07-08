@@ -853,7 +853,7 @@ func (h *DeviceHandler) HandleSimReport(w http.ResponseWriter, r *http.Request) 
 		"penalty", adjustedPenalty,
 		"action", action,
 		"recent_events_1h", recentCount,
-		"sim_reuse_count", simReuseCount,
+		"sim_reuse_count", recentCount,
 	)
 
 	writeJSON(w, http.StatusOK, APIResponse{
@@ -1386,8 +1386,6 @@ func (h *DeviceHandler) HandleDeviceIntelligence(w http.ResponseWriter, r *http.
 	}
 
 	// 4. Upsert physical_devices with all intelligence data
-	now := time.Now()
-	simJSON, _ := json.Marshal(req.SimInfo)
 	_, err := h.deviceService.DB().Exec(r.Context(),
 		`INSERT INTO physical_devices
 			(id, account_id, model, os_version, app_version,

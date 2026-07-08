@@ -526,6 +526,82 @@
         }
       }
     },
+    "/api/v1/auth/forgot-password": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Request a password reset link",
+        "operationId": "forgotPassword",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reset email sent (if account exists)"
+          },
+          "400": {
+            "description": "Invalid request"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/reset-password": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Reset password with token",
+        "operationId": "resetPassword",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "token",
+                  "new_password"
+                ],
+                "properties": {
+                  "token": {
+                    "type": "string"
+                  },
+                  "new_password": {
+                    "type": "string",
+                    "minLength": 8
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset successfully"
+          },
+          "400": {
+            "description": "Invalid or expired token, or weak password"
+          }
+        }
+      }
+    },
     "/api/v1/auth/2fa/setup": {
       "post": {
         "tags": [
@@ -1167,6 +1243,113 @@
           },
           "400": {
             "description": "Invalid OTP"
+          }
+        }
+      }
+    },
+    "/api/v1/member/otp/send": {
+      "post": {
+        "tags": [
+          "Member"
+        ],
+        "summary": "Generate and store OTP code (member portal)",
+        "operationId": "memberSendOtp",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "phone"
+                ],
+                "properties": {
+                  "phone": {
+                    "type": "string",
+                    "description": "Recipient phone number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP code generated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message_id": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string",
+                      "description": "The generated OTP code (returned so frontend can send via SMS)"
+                    },
+                    "expires_in": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          }
+        }
+      }
+    },
+    "/api/v1/member/otp/verify": {
+      "post": {
+        "tags": [
+          "Member"
+        ],
+        "summary": "Verify an OTP code (member portal)",
+        "operationId": "memberVerifyOtp",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "phone",
+                  "code"
+                ],
+                "properties": {
+                  "phone": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP verified"
+          },
+          "400": {
+            "description": "Invalid OTP or expired"
+          },
+          "429": {
+            "description": "Too many failed attempts, account locked"
           }
         }
       }

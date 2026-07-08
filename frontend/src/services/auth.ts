@@ -54,6 +54,21 @@ export async function verify2FALogin(token: string, code: string): Promise<Login
   return res.data.data
 }
 
+export async function forgotPassword(email: string): Promise<{ message: string }> {
+  const res = await api.post<ApiResponse<{ message: string }>>('/auth/forgot-password', { email })
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to send reset email')
+  return res.data.data
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+  const res = await api.post<ApiResponse<{ message: string }>>('/auth/reset-password', {
+    token,
+    new_password: newPassword,
+  })
+  if (!res.data.success || !res.data.data) throw new Error(res.data.error ?? 'Failed to reset password')
+  return res.data.data
+}
+
 // ─── Session Management ───────────────────────────────────────
 
 export interface UserSession {
