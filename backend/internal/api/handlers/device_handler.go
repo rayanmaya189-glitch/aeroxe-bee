@@ -777,6 +777,458 @@ func (h *DeviceHandler) HandleSimReport(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
+// ─── Device Intelligence (enriched fingerprint + weighted scoring) ─────
+
+type DeviceIntelligenceRequest struct {
+	AndroidID       string              `json:"android_id"`
+	UUID            string              `json:"uuid"`
+	FingerprintHash string              `json:"fingerprint_hash"`
+	Signature       string              `json:"signature"`
+	PublicKey       string              `json:"public_key"`
+	KeyVersion      int                 `json:"key_version"`
+
+	BuildFingerprint  string `json:"build_fingerprint"`
+	BuildHardware     string `json:"build_hardware"`
+	BuildProduct      string `json:"build_product"`
+	BuildManufacturer string `json:"build_manufacturer"`
+	BuildDevice       string `json:"build_device"`
+	BuildBootloader   string `json:"build_bootloader"`
+	BuildBoard        string `json:"build_board"`
+	BuildBrand        string `json:"build_brand"`
+	BuildModel        string `json:"build_model"`
+	BuildType         string `json:"build_type"`
+	BuildTags         string `json:"build_tags"`
+	BuildDisplay      string `json:"build_display"`
+	BuildHost         string `json:"build_host"`
+	OSVersion         string `json:"os_version"`
+	SDKLevel          int    `json:"sdk_level"`
+	SecurityPatch     string `json:"security_patch"`
+
+	SystemTime  int64    `json:"system_time"`
+	BuildTime   int64    `json:"build_time"`
+	InstallTime int64    `json:"install_time"`
+	TimeIssues  []string `json:"time_issues"`
+
+	EmulatorConfidence float64            `json:"emulator_confidence"`
+	EmulatorFlags      map[string]bool    `json:"emulator_flags"`
+	RootConfidence     float64            `json:"root_confidence"`
+	RootFlags          map[string]bool    `json:"root_flags"`
+	VirtualizationFlags map[string]bool   `json:"virtualization_flags"`
+	HookConfidence     float64            `json:"hook_confidence"`
+	HookFlags          map[string]bool    `json:"hook_flags"`
+	IntegrityScore     float64            `json:"integrity_score"`
+	IntegrityFlags     map[string]any     `json:"integrity_flags"`
+
+	NetworkType         string `json:"network_type"`
+	IsVpnActive         bool   `json:"is_vpn_active"`
+	SensorCount         int    `json:"sensor_count"`
+	MissingCommonSensors bool   `json:"missing_common_sensors"`
+
+	SimInfo    map[string]string `json:"sim_info"`
+	Carrier    string `json:"carrier"`
+	SimCountry string `json:"sim_country"`
+	SimOperator string `json:"sim_operator"`
+	AppVersion string `json:"app_version"`
+}
+
+type DeviceIntelligenceResponse struct {
+	DeviceID        string   `json:"device_id"`
+	ConfidenceScore float64  `json:"confidence_score"`
+	TrustScore      float64  `json:"trust_score"`
+	Action          string   `json:"action"`
+	RiskFactors     []string `json:"risk_factors"`
+	DriftDetected   bool     `json:"drift_detected"`
+	DriftDetails    string   `json:"drift_details,omitempty"`
+}
+
+// weightedConfidence computes a confidence score from weighted signals.
+// Returns (confidence 0-100, riskFactors).
+func weightedConfidence(req *DeviceIntelligenceRequest, prevFPHash string) (float64, []string, bool, string) {
+	var score float64
+	var maxScore float64 = 100.0
+	var riskFactors []string
+	driftDetected := false
+	driftDetails := ""
+
+	// Signal weights
+	type signal struct {
+		name   string
+		weight float64
+		check  func() (float64, bool)
+	}
+
+	signals := []signal{
+		// Keystore signature (30%) — strongest signal
+		{
+			name: "keystore_signature", weight: 30,
+			check: func() (float64, bool) {
+				if req.Signature != "" && req.PublicKey != "" {
+					if verifySignature(req.FingerprintHash, req.Signature, req.PublicKey) {
+						return 30, false
+					}
+					riskFactors = append(riskFactors, "invalid_signature")
+					return 0, false
+				}
+				riskFactors = append(riskFactors, "missing_signature")
+				return 0, false
+			},
+		},
+		// Play Integrity would add ~25% here
+		// Emulator detection (penalty up to 15%)
+		{
+			name: "emulator", weight: 15,
+			check: func() (float64, bool) {
+				if req.EmulatorConfidence > 0.7 {
+					riskFactors = append(riskFactors, "emulator_high_confidence")
+					return 0, false
+				}
+				if req.EmulatorConfidence > 0.3 {
+					riskFactors = append(riskFactors, "emulator_suspected")
+					return 5, false
+				}
+				return 15, false
+			},
+		},
+		// Root detection (penalty up to 15%)
+		{
+			name: "root", weight: 15,
+			check: func() (float64, bool) {
+				if req.RootConfidence > 0.7 {
+					riskFactors = append(riskFactors, "rooted_high_confidence")
+					return 0, false
+				}
+				if req.RootConfidence > 0.3 {
+					riskFactors = append(riskFactors, "root_suspected")
+					return 3, false
+				}
+				return 15, false
+			},
+		},
+		// Runtime hooking (penalty up to 10%)
+		{
+			name: "runtime_hooking", weight: 10,
+			check: func() (float64, bool) {
+				if req.HookConfidence > 0.5 {
+					riskFactors = append(riskFactors, "runtime_hooked")
+					return 0, false
+				}
+				return 10, false
+			},
+		},
+		// Integrity score (penalty up to 10%)
+		{
+			name: "integrity", weight: 10,
+			check: func() (float64, bool) {
+				if req.IntegrityScore < 0.3 {
+					riskFactors = append(riskFactors, "low_integrity")
+					return 0, false
+				}
+				if req.IntegrityScore < 0.7 {
+					riskFactors = append(riskFactors, "reduced_integrity")
+					return 5, false
+				}
+				return 10, false
+			},
+		},
+		// Time consistency (penalty up to 5%)
+		{
+			name: "time_consistency", weight: 5,
+			check: func() (float64, bool) {
+				if len(req.TimeIssues) > 0 {
+					riskFactors = append(riskFactors, "time_inconsistent")
+					return 0, false
+				}
+				return 5, false
+			},
+		},
+		// Virtualization (penalty up to 10%)
+		{
+			name: "virtualization", weight: 10,
+			check: func() (float64, bool) {
+				if val, ok := req.VirtualizationFlags["virt_any_found"]; ok && val {
+					riskFactors = append(riskFactors, "virtualized_environment")
+					return 0, false
+				}
+				return 10, false
+			},
+		},
+		// Network (bonus for no VPN, penalty for VPN)
+		{
+			name: "network", weight: 5,
+			check: func() (float64, bool) {
+				if req.IsVpnActive {
+					riskFactors = append(riskFactors, "vpn_active")
+					return 2, false
+				}
+				return 5, false
+			},
+		},
+		// Sensors (penalty for missing common sensors)
+		{
+			name: "sensors", weight: 5,
+			check: func() (float64, bool) {
+				if req.MissingCommonSensors {
+					riskFactors = append(riskFactors, "missing_sensors")
+					return 0, false
+				}
+				return 5, false
+			},
+		},
+	}
+
+	for _, s := range signals {
+		sigScore, _ := s.check()
+		score += sigScore
+	}
+
+	// Normalize to 0-100
+	if score > maxScore {
+		score = maxScore
+	}
+
+	// --- Fingerprint drift detection ---
+	if prevFPHash != "" && prevFPHash != req.FingerprintHash {
+		driftDetected = true
+		driftDetails = "fingerprint_hash_changed"
+		riskFactors = append(riskFactors, "fingerprint_drift")
+		score -= 20
+	}
+
+	// Detect impossible hardware transitions in the same session
+	driftReasons := detectHardwareDrift(req)
+	if len(driftReasons) > 0 {
+		driftDetected = true
+		driftDetails = joinStrings(driftReasons, "; ")
+		for _, r := range driftReasons {
+			riskFactors = append(riskFactors, "drift_"+r)
+		}
+		score -= 15
+	}
+
+	if score < 0 {
+		score = 0
+	}
+
+	return score, riskFactors, driftDetected, driftDetails
+}
+
+// detectHardwareDrift checks for impossible hardware transitions
+// compared to previously reported values stored on the server side.
+// For the initial report, we flag suspicious combinations.
+func detectHardwareDrift(req *DeviceIntelligenceRequest) []string {
+	var reasons []string
+
+	// Brand + model mismatch (common in virtual/cloned devices)
+	if req.BuildBrand != "" && req.BuildModel != "" && req.BuildManufacturer != "" {
+		// Check if brand/manufacturer are consistent
+		knownBrands := map[string][]string{
+			"samsung":   {"samsung"},
+			"google":    {"google"},
+			"xiaomi":    {"xiaomi", "redmi"},
+			"oneplus":   {"oneplus"},
+			"oppo":      {"oppo", "realme"},
+			"vivo":      {"vivo"},
+			"huawei":    {"huawei"},
+			"honor":     {"honor"},
+			"motorola":  {"motorola"},
+			"nokia":     {"nokia", "hmd global"},
+			"sony":      {"sony"},
+			"lg":        {"lg"},
+			"asus":      {"asus"},
+			"lenovo":    {"lenovo"},
+			"htc":       {"htc"},
+		}
+
+		brandLower := toLower(req.BuildBrand)
+		manuLower := toLower(req.BuildManufacturer)
+
+		// If brand is known, manufacturer should be related
+		for knownBrand, manuAliases := range knownBrands {
+			if contains(brandLower, knownBrand) {
+				match := false
+				for _, alias := range manuAliases {
+					if contains(manuLower, alias) {
+						match = true
+						break
+					}
+				}
+				if !match {
+					reasons = append(reasons, "brand_manufacturer_mismatch")
+				}
+				break
+			}
+		}
+	}
+
+	// Emulator + real hardware flags (contradiction)
+	if req.EmulatorConfidence > 0.5 && req.SensorCount > 5 {
+		reasons = append(reasons, "emulator_with_hardware_sensors")
+	}
+
+	// Virtualization + high sensor count
+	if val, ok := req.VirtualizationFlags["virt_any_found"]; ok && val && req.SensorCount > 8 {
+		reasons = append(reasons, "virtualized_with_real_sensors")
+	}
+
+	return reasons
+}
+
+func toLower(s string) string {
+	b := make([]byte, len(s))
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c >= 'A' && c <= 'Z' {
+			c += 32
+		}
+		b[i] = c
+	}
+	return string(b)
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && containsString(s, substr)
+}
+
+func containsString(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
+
+func joinStrings(strs []string, sep string) string {
+	if len(strs) == 0 {
+		return ""
+	}
+	result := strs[0]
+	for i := 1; i < len(strs); i++ {
+		result += sep + strs[i]
+	}
+	return result
+}
+
+// computeActionFromScore maps a confidence score to a device action.
+func computeActionFromScore(score float64) string {
+	switch {
+	case score >= 80:
+		return "NORMAL"
+	case score >= 55:
+		return "THROTTLE"
+	case score >= 30:
+		return "OTP_ONLY"
+	default:
+		return "BLOCK"
+	}
+}
+
+// HandleDeviceIntelligence handles POST /api/v1/devices/intelligence
+// Accepts an enriched multi-signal fingerprint, computes weighted confidence,
+// detects fingerprint drift, and returns action + risk factors.
+func (h *DeviceHandler) HandleDeviceIntelligence(w http.ResponseWriter, r *http.Request) {
+	accountID := middleware.GetAccountID(r.Context())
+
+	var req DeviceIntelligenceRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid request body"})
+		return
+	}
+
+	if req.AndroidID == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "android_id is required"})
+		return
+	}
+
+	// 1. Fetch previously stored fingerprint hash for drift detection
+	var prevFPHash string
+	_ = h.deviceService.DB().QueryRow(r.Context(),
+		`SELECT fingerprint_hash FROM physical_devices WHERE id = $1`,
+		req.AndroidID,
+	).Scan(&prevFPHash)
+
+	// 2. Compute weighted confidence score
+	confidence, riskFactors, driftDetected, driftDetails := weightedConfidence(&req, prevFPHash)
+	action := computeActionFromScore(confidence)
+
+	// 3. Compute trust_score as a smoother version (50% weight on existing)
+	var existingTrust float64 = 0.5
+	_ = h.deviceService.DB().QueryRow(r.Context(),
+		`SELECT trust_score FROM physical_devices WHERE id = $1`,
+		req.AndroidID,
+	).Scan(&existingTrust)
+
+	normalizedConfidence := confidence / 100.0
+	newTrustScore := (existingTrust * 0.4) + (normalizedConfidence * 0.6)
+	if newTrustScore > 1.0 {
+		newTrustScore = 1.0
+	}
+	if newTrustScore < 0.0 {
+		newTrustScore = 0.0
+	}
+
+	// 4. Upsert physical_devices with all intelligence data
+	now := time.Now()
+	simJSON, _ := json.Marshal(req.SimInfo)
+	_, err := h.deviceService.DB().Exec(r.Context(),
+		`INSERT INTO physical_devices
+			(id, account_id, model, os_version, app_version,
+			 fingerprint_hash, signature, public_key, uuid, manufacturer,
+			 brand, sdk_level, sim_country, sim_operator, install_time,
+			 trust_score, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW())
+		 ON CONFLICT (id) DO UPDATE SET
+		   model=$3, os_version=$4, fingerprint_hash=$6, signature=$7, public_key=$8, uuid=$9,
+		   manufacturer=$10, brand=$11, sdk_level=$12, sim_country=$13, sim_operator=$14,
+		   install_time=$15, trust_score=$16, updated_at=NOW()`,
+		req.AndroidID, accountID, req.BuildModel, req.OSVersion, req.AppVersion,
+		req.FingerprintHash, req.Signature, req.PublicKey, req.UUID, req.BuildManufacturer,
+		req.BuildBrand, req.SDKLevel, req.SimCountry, req.SimOperator, req.InstallTime,
+		newTrustScore,
+	)
+	if err != nil {
+		slog.Error("device intelligence: upsert failed", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to store device intelligence"})
+		return
+	}
+
+	// 5. Propagate to devices table
+	_, _ = h.deviceService.DB().Exec(r.Context(),
+		`UPDATE devices SET fingerprint_hash = $1 WHERE physical_device_id = $2`,
+		req.FingerprintHash, req.AndroidID,
+	)
+
+	// 6. If blocked, set all devices offline
+	if action == "BLOCK" {
+		_, _ = h.deviceService.DB().Exec(r.Context(),
+			`UPDATE devices SET status = 'OFFLINE', updated_at = NOW() WHERE physical_device_id = $1`,
+			req.AndroidID,
+		)
+	}
+
+	slog.Info("device intelligence processed",
+		"device_id", req.AndroidID,
+		"confidence", confidence,
+		"trust_score", newTrustScore,
+		"action", action,
+		"risk_factors", riskFactors,
+		"drift", driftDetected,
+	)
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Data: DeviceIntelligenceResponse{
+			DeviceID:        req.AndroidID,
+			ConfidenceScore: confidence,
+			TrustScore:      newTrustScore,
+			Action:          action,
+			RiskFactors:     riskFactors,
+			DriftDetected:   driftDetected,
+			DriftDetails:    driftDetails,
+		},
+	})
+}
+
 // Deregister handles POST /api/v1/devices/deregister
 // Revokes MQTT credentials and marks the device as offline
 func (h *DeviceHandler) Deregister(w http.ResponseWriter, r *http.Request) {

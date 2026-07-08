@@ -10,7 +10,8 @@ import java.security.PublicKey
 import java.security.Signature
 
 object KeystoreManager {
-    private const val KEY_ALIAS = "aeroxe_device_key"
+    const val KEY_ALIAS = "aeroxe_device_key"
+    const val KEY_VERSION = 1
     private const val KEYSTORE_TYPE = "AndroidKeyStore"
     private const val SIGNATURE_ALGORITHM = "SHA256withRSA"
 

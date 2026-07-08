@@ -23,6 +23,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "MQTT_CLIENT_ID", "\"aeroxebee_android_\"")
+        buildConfigField("String", "CERT_PIN_SHA256", "\"sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=\"")
     }
 
     buildTypes {

@@ -1777,6 +1777,78 @@
         }
       }
     },
+    "/api/v1/devices/intelligence": {
+      "post": {
+        "tags": ["Devices"],
+        "summary": "Submit enriched device intelligence for weighted confidence scoring",
+        "operationId": "reportDeviceIntelligence",
+        "security": [{"BearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "android_id": {"type": "string"},
+                  "uuid": {"type": "string"},
+                  "fingerprint_hash": {"type": "string"},
+                  "signature": {"type": "string"},
+                  "public_key": {"type": "string"},
+                  "key_version": {"type": "integer"},
+                  "build_fingerprint": {"type": "string"},
+                  "build_hardware": {"type": "string"},
+                  "build_product": {"type": "string"},
+                  "build_manufacturer": {"type": "string"},
+                  "build_bootloader": {"type": "string"},
+                  "emulator_confidence": {"type": "number"},
+                  "root_confidence": {"type": "number"},
+                  "hook_confidence": {"type": "number"},
+                  "integrity_score": {"type": "number"},
+                  "network_type": {"type": "string"},
+                  "is_vpn_active": {"type": "boolean"},
+                  "sensor_count": {"type": "integer"},
+                  "missing_common_sensors": {"type": "boolean"}
+                },
+                "required": ["android_id", "fingerprint_hash"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Intelligence processed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {"$ref": "#/components/schemas/APIResponse"},
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "device_id": {"type": "string"},
+                            "confidence_score": {"type": "number"},
+                            "trust_score": {"type": "number"},
+                            "action": {"type": "string", "enum": ["NORMAL", "THROTTLE", "OTP_ONLY", "BLOCK"]},
+                            "risk_factors": {"type": "array", "items": {"type": "string"}},
+                            "drift_detected": {"type": "boolean"},
+                            "drift_details": {"type": "string"}
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {"description": "Unauthorized"}
+        }
+      }
+    },
     "/api/v1/member/devices/qr-code": {
       "post": {
         "tags": [

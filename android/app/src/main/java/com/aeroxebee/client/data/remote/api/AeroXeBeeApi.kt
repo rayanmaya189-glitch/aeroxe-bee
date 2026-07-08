@@ -24,6 +24,9 @@ interface AeroXeBeeApi {
     @POST("devices/sim-report")
     suspend fun reportSimEvent(@Body request: SimReportRequest): Response<ApiResponse<Map<String, Any>>>
 
+    @POST("devices/intelligence")
+    suspend fun reportDeviceIntelligence(@Body request: DeviceIntelligenceRequest): Response<ApiResponse<DeviceIntelligenceResponse>>
+
     @POST("devices/info")
     suspend fun reportDeviceInfo(@Body request: DeviceInfoReportRequest): Response<ApiResponse<Unit>>
 

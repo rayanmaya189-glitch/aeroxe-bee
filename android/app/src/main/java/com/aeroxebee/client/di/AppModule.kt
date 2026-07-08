@@ -21,6 +21,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import okhttp3.CertificatePinner
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -61,6 +62,19 @@ object AppModule {
                 level = HttpLoggingInterceptor.Level.BODY
             }
             builder.addInterceptor(logging)
+        }
+
+        // Certificate pinning for release builds — prevents MITM via forged CA
+        // Obtain hashes: openssl s_client -connect api.aeroxe.com:443 -servername api.aeroxe.com </dev/null 2>/dev/null | openssl x509 -pubkey -noout | openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | base64
+        if (!BuildConfig.DEBUG && BuildConfig.BASE_URL.startsWith("https")) {
+            val host = java.net.URI(BuildConfig.BASE_URL).host
+            if (host != null) {
+                builder.certificatePinner(
+                    CertificatePinner.Builder()
+                        .add(host, BuildConfig.CERT_PIN_SHA256)
+                        .build()
+                )
+            }
         }
 
         return builder.build()
