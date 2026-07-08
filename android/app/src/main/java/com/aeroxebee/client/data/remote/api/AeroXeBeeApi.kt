@@ -33,6 +33,12 @@ interface AeroXeBeeApi {
     @POST("devices/status")
     suspend fun updateStatus(@Body request: StatusUpdateRequest): Response<ApiResponse<Unit>>
 
+    @POST("devices/imei")
+    suspend fun reportImei(@Body request: ImeiReportRequest): Response<ApiResponse<ImeiReportResponse>>
+
+    @POST("devices/behavior")
+    suspend fun reportBehaviorEvent(@Body request: BehaviorEventRequest): Response<ApiResponse<Map<String, Any>>>
+
     // ─── Auth ───────────────────────────────────────────────
     @POST("auth/refresh")
     suspend fun refreshToken(@Body request: TokenRefreshRequest): Response<ApiResponse<TokenRefreshResponse>>

@@ -61,6 +61,11 @@ data class DeviceIntelligenceRequest(
     @SerializedName("sensor_count") val sensorCount: Int,
     @SerializedName("missing_common_sensors") val missingCommonSensors: Boolean,
 
+    // IMEI / hardware identifiers (best-effort, null on Android 10+)
+    @SerializedName("imei") val imei: String,
+    @SerializedName("meid") val meid: String,
+    @SerializedName("hardware_serial") val hardwareSerial: String,
+
     // SIM context
     @SerializedName("sim_info") val simInfo: Map<String, String>,
 
@@ -79,4 +84,25 @@ data class DeviceIntelligenceResponse(
     @SerializedName("risk_factors") val riskFactors: List<String>,
     @SerializedName("drift_detected") val driftDetected: Boolean,
     @SerializedName("drift_details") val driftDetails: String?,
+)
+
+data class ImeiReportRequest(
+    @SerializedName("android_id") val androidId: String,
+    @SerializedName("imei") val imei: String,
+    @SerializedName("meid") val meid: String,
+    @SerializedName("hardware_serial") val hardwareSerial: String,
+)
+
+data class ImeiReportResponse(
+    @SerializedName("imei_hash") val imeiHash: String,
+    @SerializedName("device_count") val deviceCount: Int,
+    @SerializedName("concurrent_sessions") val concurrentSessions: Boolean,
+    @SerializedName("trust_impact") val trustImpact: Double,
+)
+
+data class BehaviorEventRequest(
+    @SerializedName("physical_device_id") val physicalDeviceId: String,
+    @SerializedName("event_type") val eventType: String,
+    @SerializedName("details") val details: String,
+    @SerializedName("metadata") val metadata: Map<String, Any> = emptyMap(),
 )

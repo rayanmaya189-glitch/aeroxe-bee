@@ -10,6 +10,7 @@ import com.aeroxebee.client.device.FingerprintHasher
 import com.aeroxebee.client.device.KeystoreManager
 import com.aeroxebee.client.device.LocalUuidStore
 import com.aeroxebee.client.device.SimInfoProvider
+import com.aeroxebee.client.device.imei.ImeiProvider
 
 object DeviceIntelligenceReportBuilder {
 
@@ -34,6 +35,8 @@ object DeviceIntelligenceReportBuilder {
         val fpHash = FingerprintHasher.hashRaw(context)
         val signature = KeystoreManager.sign(fpHash)
         val pubKey = KeystoreManager.getPublicKeyBase64()
+
+        val imeiInfo = ImeiProvider.collect(context)
 
         return DeviceIntelligenceRequest(
             androidId = DeviceIdProvider.getAndroidId(context),
@@ -91,6 +94,10 @@ object DeviceIntelligenceReportBuilder {
 
             sensorCount = sensors.sensorCount,
             missingCommonSensors = sensors.missingCommonSensors,
+
+            imei = imeiInfo.imei ?: "",
+            meid = imeiInfo.meid ?: "",
+            hardwareSerial = imeiInfo.hardwareSerial ?: "",
 
             simInfo = simInfo,
 

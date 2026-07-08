@@ -192,6 +192,10 @@ func NewRouter(
 	mux.Handle("POST /api/v1/devices/identity", authMiddleware.JWTAuth(http.HandlerFunc(deviceHandler.HandleDeviceIdentity)))
 	mux.Handle("POST /api/v1/devices/sim-report", authMiddleware.JWTAuth(http.HandlerFunc(deviceHandler.HandleSimReport)))
 	mux.Handle("POST /api/v1/devices/intelligence", authMiddleware.JWTAuth(http.HandlerFunc(deviceHandler.HandleDeviceIntelligence)))
+	mux.Handle("POST /api/v1/devices/imei", authMiddleware.JWTAuth(http.HandlerFunc(deviceHandler.HandleImeiReport)))
+	mux.Handle("POST /api/v1/devices/imei/check", authMiddleware.JWTAuth(http.HandlerFunc(deviceHandler.HandleImeiConcurrentCheck)))
+	mux.Handle("POST /api/v1/devices/behavior", authMiddleware.JWTAuth(http.HandlerFunc(deviceHandler.HandleBehaviorEvent)))
+	mux.Handle("GET /api/v1/devices/sim-history", authMiddleware.JWTAuth(http.HandlerFunc(deviceHandler.HandleSimHistory)))
 
 	// Account routes
 	mux.Handle("GET /api/v1/account/profile", authMiddleware.JWTAuth(http.HandlerFunc(accountHandler.GetProfile)))

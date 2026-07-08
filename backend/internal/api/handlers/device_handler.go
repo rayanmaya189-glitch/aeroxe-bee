@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -619,6 +620,7 @@ type SimSnapshotReport struct {
 	CarrierName    string `json:"carrier_name"`
 	MccMnc         string `json:"mcc_mnc"`
 	CountryIso     string `json:"country_iso"`
+	IsRoaming      bool   `json:"is_roaming"`
 }
 
 type SimReportRequest struct {
@@ -691,6 +693,10 @@ func computeAction(penalty float64) string {
 // HandleSimReport handles POST /api/v1/devices/sim-report
 // Accepts SIM rotation events from the Android device, logs them,
 // updates the device trust score, and returns the recommended action.
+// HandleSimReport handles POST /api/v1/devices/sim-report
+// Accepts SIM rotation events, records SIM→device history,
+// detects context-aware risks (roaming vs country change), eSIM lifecycle,
+// and updates trust score with behavioral penalties.
 func (h *DeviceHandler) HandleSimReport(w http.ResponseWriter, r *http.Request) {
 	accountID := middleware.GetAccountID(r.Context())
 
@@ -708,7 +714,7 @@ func (h *DeviceHandler) HandleSimReport(w http.ResponseWriter, r *http.Request) 
 	// 1. Serialize SIM snapshot to JSON
 	simStateJSON, _ := json.Marshal(req.SimState)
 
-	// 2. Log each event to sim_events table
+	// 2. Log each event to sim_events table + update SIM device history
 	for _, event := range req.Events {
 		_, err := h.deviceService.DB().Exec(r.Context(),
 			`INSERT INTO sim_events
@@ -724,30 +730,115 @@ func (h *DeviceHandler) HandleSimReport(w http.ResponseWriter, r *http.Request) 
 				"error", err,
 			)
 		}
+
+		// Record SIM→device binding for each active SIM in the snapshot
+		for _, sim := range req.SimState {
+			subID := fmt.Sprintf("%s:%d", sim.MccMnc, sim.SubscriptionID)
+			_, _ = h.deviceService.DB().Exec(r.Context(),
+				`INSERT INTO sim_device_history
+					(subscription_id, physical_device_id, account_id, first_seen, last_seen,
+					 first_fingerprint_hash, last_fingerprint_hash, device_count, is_active,
+					 sim_slot, carrier_name, mcc_mnc, country_iso)
+				 VALUES ($1, $2, $3, NOW(), NOW(), $4, $4,
+				   (SELECT COUNT(DISTINCT physical_device_id) FROM sim_device_history WHERE subscription_id = $1),
+				   TRUE, $5, $6, $7, $8)
+				 ON CONFLICT (subscription_id, physical_device_id) DO UPDATE SET
+				   last_seen = NOW(), last_fingerprint_hash = $4, is_active = TRUE,
+				   carrier_name = $6, country_iso = $8`,
+				subID, req.DeviceID, accountID, req.FingerprintHash,
+				sim.SlotIndex, sim.CarrierName, sim.MccMnc, sim.CountryIso,
+			)
+		}
 	}
 
-	// 3. Compute trust score penalty
-	penalty, action := trustScorePenalty(req.Events, req.Frequency)
-	newTrustScore := 100.0 - penalty
+	// 3. Context-aware checks
+	var adjustedPenalty float64
+	for _, event := range req.Events {
+		switch event.Type {
+		case "COUNTRY_CHANGED":
+			adjustedPenalty += 18
+		case "CARRIER_CHANGED":
+			// eSIM activation is normal — check details for "esim" prefix
+			if containsString(event.Details, "esim") || containsString(event.Details, "profile") {
+				adjustedPenalty += 1 // eSIM lifecycle — minimal risk
+			} else {
+				adjustedPenalty += 5 // physical SIM carrier change
+			}
+		case "SIM_REMOVED":
+			adjustedPenalty += 3
+		case "NEW_SIM_INSERTED":
+			adjustedPenalty += 5
+		case "SIM_SWAPPED":
+			adjustedPenalty += 10
+		default:
+			adjustedPenalty += 5
+		}
+	}
+
+	// Frequency bonus
+	switch req.Frequency {
+	case "CRITICAL":
+		adjustedPenalty += 30
+	case "HIGH":
+		adjustedPenalty += 20
+	case "MEDIUM":
+		adjustedPenalty += 10
+	}
+
+	// 4. Check SIM age from sim_device_history
+	for _, sim := range req.SimState {
+		subID := fmt.Sprintf("%s:%d", sim.MccMnc, sim.SubscriptionID)
+		var simAgeHours float64
+		_ = h.deviceService.DB().QueryRow(r.Context(),
+			`SELECT EXTRACT(EPOCH FROM (NOW() - first_seen)) / 3600
+			  FROM sim_device_history WHERE subscription_id = $1 AND physical_device_id = $2`,
+			subID, req.DeviceID,
+		).Scan(&simAgeHours)
+		// Fresh SIM (< 24h) raises penalty
+		if simAgeHours > 0 && simAgeHours < 24 {
+			adjustedPenalty += 10
+		}
+	}
+
+	// 5. Check for SIM reuse across many devices
+	var maxSimReuse int
+	for _, sim := range req.SimState {
+		subID := fmt.Sprintf("%s:%d", sim.MccMnc, sim.SubscriptionID)
+		var count int
+		_ = h.deviceService.DB().QueryRow(r.Context(),
+			`SELECT COUNT(DISTINCT physical_device_id) FROM sim_device_history
+			  WHERE subscription_id = $1 AND is_active = TRUE`,
+			subID,
+		).Scan(&count)
+		if count > maxSimReuse {
+			maxSimReuse = count
+		}
+	}
+	if maxSimReuse >= 3 {
+		adjustedPenalty += 20 // same SIM on 3+ devices — farm indicator
+	}
+
+	// 6. Compute action
+	action := computeAction(adjustedPenalty)
+	newTrustScore := 100.0 - adjustedPenalty
 	if newTrustScore < 0 {
 		newTrustScore = 0
 	}
 
-	// 4. Update physical_device trust_score and device status if blocked
+	// 7. Update physical_device trust_score and device status if blocked
 	_, _ = h.deviceService.DB().Exec(r.Context(),
 		`UPDATE physical_devices SET trust_score = $1, updated_at = NOW() WHERE id = $2`,
 		newTrustScore, req.DeviceID,
 	)
 
 	if action == "BLOCK" {
-		// Mark all logical devices on this physical device as OFFLINE
 		_, _ = h.deviceService.DB().Exec(r.Context(),
 			`UPDATE devices SET status = 'OFFLINE', updated_at = NOW() WHERE physical_device_id = $1`,
 			req.DeviceID,
 		)
 	}
 
-	// 5. Check recent event count for anomaly detection
+	// 8. Check recent event count for anomaly detection
 	var recentCount int
 	_ = h.deviceService.DB().QueryRow(r.Context(),
 		`SELECT COUNT(*) FROM sim_events
@@ -759,9 +850,10 @@ func (h *DeviceHandler) HandleSimReport(w http.ResponseWriter, r *http.Request) 
 		"device_id", req.DeviceID,
 		"events", len(req.Events),
 		"frequency", req.Frequency,
-		"penalty", penalty,
+		"penalty", adjustedPenalty,
 		"action", action,
 		"recent_events_1h", recentCount,
+		"sim_reuse_count", simReuseCount,
 	)
 
 	writeJSON(w, http.StatusOK, APIResponse{
@@ -769,7 +861,7 @@ func (h *DeviceHandler) HandleSimReport(w http.ResponseWriter, r *http.Request) 
 		Data: map[string]interface{}{
 			"action":               action,
 			"trust_score":          newTrustScore,
-			"penalty":              penalty,
+			"penalty":              adjustedPenalty,
 			"recent_events_1h":     recentCount,
 			"device_id":            req.DeviceID,
 			"sim_events_logged":    len(req.Events),
@@ -809,26 +901,30 @@ type DeviceIntelligenceRequest struct {
 	InstallTime int64    `json:"install_time"`
 	TimeIssues  []string `json:"time_issues"`
 
-	EmulatorConfidence float64            `json:"emulator_confidence"`
-	EmulatorFlags      map[string]bool    `json:"emulator_flags"`
-	RootConfidence     float64            `json:"root_confidence"`
-	RootFlags          map[string]bool    `json:"root_flags"`
-	VirtualizationFlags map[string]bool   `json:"virtualization_flags"`
-	HookConfidence     float64            `json:"hook_confidence"`
-	HookFlags          map[string]bool    `json:"hook_flags"`
-	IntegrityScore     float64            `json:"integrity_score"`
-	IntegrityFlags     map[string]any     `json:"integrity_flags"`
+	EmulatorConfidence  float64          `json:"emulator_confidence"`
+	EmulatorFlags       map[string]bool  `json:"emulator_flags"`
+	RootConfidence      float64          `json:"root_confidence"`
+	RootFlags           map[string]bool  `json:"root_flags"`
+	VirtualizationFlags map[string]bool  `json:"virtualization_flags"`
+	HookConfidence      float64          `json:"hook_confidence"`
+	HookFlags           map[string]bool  `json:"hook_flags"`
+	IntegrityScore      float64          `json:"integrity_score"`
+	IntegrityFlags      map[string]any   `json:"integrity_flags"`
 
-	NetworkType         string `json:"network_type"`
-	IsVpnActive         bool   `json:"is_vpn_active"`
-	SensorCount         int    `json:"sensor_count"`
+	NetworkType          string `json:"network_type"`
+	IsVpnActive          bool   `json:"is_vpn_active"`
+	SensorCount          int    `json:"sensor_count"`
 	MissingCommonSensors bool   `json:"missing_common_sensors"`
 
-	SimInfo    map[string]string `json:"sim_info"`
-	Carrier    string `json:"carrier"`
-	SimCountry string `json:"sim_country"`
-	SimOperator string `json:"sim_operator"`
-	AppVersion string `json:"app_version"`
+	Imei           string `json:"imei"`
+	Meid           string `json:"meid"`
+	HardwareSerial string `json:"hardware_serial"`
+
+	SimInfo     map[string]string `json:"sim_info"`
+	Carrier     string            `json:"carrier"`
+	SimCountry  string            `json:"sim_country"`
+	SimOperator string            `json:"sim_operator"`
+	AppVersion  string            `json:"app_version"`
 }
 
 type DeviceIntelligenceResponse struct {
@@ -842,7 +938,7 @@ type DeviceIntelligenceResponse struct {
 }
 
 // weightedConfidence computes a confidence score from weighted signals.
-// Returns (confidence 0-100, riskFactors).
+// Returns (confidence 0-100, riskFactors, driftDetected, driftDetails).
 func weightedConfidence(req *DeviceIntelligenceRequest, prevFPHash string) (float64, []string, bool, string) {
 	var score float64
 	var maxScore float64 = 100.0
@@ -1012,6 +1108,113 @@ func weightedConfidence(req *DeviceIntelligenceRequest, prevFPHash string) (floa
 	return score, riskFactors, driftDetected, driftDetails
 }
 
+// enhancedConfidence extends weightedConfidence with IMEI reputation,
+// SIM age, behavioral correlation, and time-decayed historical scores.
+// This is called from HandleDeviceIntelligence when DB lookups succeed.
+// Returns (confidence 0-100, riskFactors, driftDetected, driftDetails).
+func enhancedConfidence(req *DeviceIntelligenceRequest, prevFPHash string, db services.DatabaseQuerier, ctx context.Context, accountID string) (float64, []string, bool, string) {
+	score, riskFactors, driftDetected, driftDetails := weightedConfidence(req, prevFPHash)
+
+	// --- IMEI reputation (when available) ---
+	if req.Imei != "" {
+		imeiHash := sha256Hex(req.Imei)
+		var deviceCount int
+		_ = db.QueryRow(ctx,
+			`SELECT COUNT(DISTINCT physical_device_id) FROM imei_registry WHERE imei = $1 AND is_active = TRUE`,
+			imeiHash,
+		).Scan(&deviceCount)
+
+		if deviceCount > 5 {
+			riskFactors = append(riskFactors, "imei_high_reuse")
+			score -= 20
+		} else if deviceCount > 2 {
+			riskFactors = append(riskFactors, "imei_reused")
+			score -= 10
+		} else if deviceCount > 1 {
+			score -= 3
+		}
+
+		// Concurrent sessions
+		var concurrentCount int
+		_ = db.QueryRow(ctx,
+			`SELECT COUNT(DISTINCT physical_device_id) FROM imei_registry
+			  WHERE imei = $1 AND is_active = TRUE AND last_seen > NOW() - INTERVAL '1 hour'
+			    AND physical_device_id != $2`,
+			imeiHash, req.AndroidID,
+		).Scan(&concurrentCount)
+
+		if concurrentCount > 0 {
+			riskFactors = append(riskFactors, "imei_concurrent_session")
+			score -= 15
+		}
+	}
+
+	// --- SIM age (fresh SIMs are riskier) ---
+	if req.SimOperator != "" {
+		var youngestAgeHours float64
+		_ = db.QueryRow(ctx,
+			`SELECT MIN(EXTRACT(EPOCH FROM (NOW() - first_seen)) / 3600)
+			  FROM sim_device_history
+			  WHERE physical_device_id = $1 AND is_active = TRUE AND carrier_name = $2`,
+			req.AndroidID, req.Carrier,
+		).Scan(&youngestAgeHours)
+
+		if youngestAgeHours > 0 && youngestAgeHours < 1 {
+			riskFactors = append(riskFactors, "sim_less_than_1h")
+			score -= 15
+		} else if youngestAgeHours > 0 && youngestAgeHours < 24 {
+			riskFactors = append(riskFactors, "sim_less_than_24h")
+			score -= 8
+		} else if youngestAgeHours >= 720 {
+			score += 5 // SIM > 30 days = trusted
+		}
+	}
+
+	// --- Behavioral correlation ---
+	var recentRiskyBehaviors int
+	_ = db.QueryRow(ctx,
+		`SELECT COUNT(*) FROM behavior_events
+		  WHERE physical_device_id = $1
+		    AND created_at > NOW() - INTERVAL '1 hour'
+		    AND event_type IN ('password_reset', 'new_payee', 'large_transfer', 'kyc_update')`,
+		req.AndroidID,
+	).Scan(&recentRiskyBehaviors)
+
+	if recentRiskyBehaviors > 0 {
+		riskFactors = append(riskFactors, "recent_risky_behavior")
+		score -= float64(recentRiskyBehaviors) * 5
+	}
+
+	// --- OTP burst detection ---
+	var recentOtpCount int
+	_ = db.QueryRow(ctx,
+		`SELECT COUNT(*) FROM behavior_events
+		  WHERE physical_device_id = $1 AND event_type = 'otp_request'
+		    AND created_at > NOW() - INTERVAL '5 minutes'`,
+		req.AndroidID,
+	).Scan(&recentOtpCount)
+
+	if recentOtpCount > 10 {
+		riskFactors = append(riskFactors, "otp_burst_extreme")
+		score -= 25
+	} else if recentOtpCount > 5 {
+		riskFactors = append(riskFactors, "otp_burst")
+		score -= 10
+	}
+
+	// --- Time decay: confidence drops if reports are stale ---
+	// (This is applied on the server when querying historical trust score)
+
+	if score > 100 {
+		score = 100
+	}
+	if score < 0 {
+		score = 0
+	}
+
+	return score, riskFactors, driftDetected, driftDetails
+}
+
 // detectHardwareDrift checks for impossible hardware transitions
 // compared to previously reported values stored on the server side.
 // For the initial report, we flag suspicious combinations.
@@ -1147,8 +1350,9 @@ func (h *DeviceHandler) HandleDeviceIntelligence(w http.ResponseWriter, r *http.
 		req.AndroidID,
 	).Scan(&prevFPHash)
 
-	// 2. Compute weighted confidence score
-	confidence, riskFactors, driftDetected, driftDetails := weightedConfidence(&req, prevFPHash)
+	// 2. Compute weighted confidence score (with IMEI, SIM age, behavioral enrichments)
+	db := h.deviceService.DB()
+	confidence, riskFactors, driftDetected, driftDetails := enhancedConfidence(&req, prevFPHash, db, r.Context(), accountID)
 	action := computeActionFromScore(confidence)
 
 	// 3. Compute trust_score as a smoother version (50% weight on existing)
@@ -1225,6 +1429,367 @@ func (h *DeviceHandler) HandleDeviceIntelligence(w http.ResponseWriter, r *http.
 			RiskFactors:     riskFactors,
 			DriftDetected:   driftDetected,
 			DriftDetails:    driftDetails,
+		},
+	})
+}
+
+// ─── IMEI Registry ──────────────────────────────────────────
+
+type ImeiReportRequest struct {
+	AndroidID      string `json:"android_id"`
+	Imei           string `json:"imei"`
+	Meid           string `json:"meid"`
+	HardwareSerial string `json:"hardware_serial"`
+}
+
+type ImeiReportResponse struct {
+	ImeiHash          string  `json:"imei_hash"`
+	DeviceCount       int     `json:"device_count"`
+	ConcurrentSessions bool   `json:"concurrent_sessions"`
+	TrustImpact       float64 `json:"trust_impact"`
+}
+
+// HandleImeiReport handles POST /api/v1/devices/imei
+// Stores IMEI-to-device binding, detects cross-device IMEI sharing,
+// concurrent sessions, and factory reset scenarios.
+func (h *DeviceHandler) HandleImeiReport(w http.ResponseWriter, r *http.Request) {
+	accountID := middleware.GetAccountID(r.Context())
+
+	var req ImeiReportRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid request body"})
+		return
+	}
+	if req.AndroidID == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "android_id is required"})
+		return
+	}
+
+	// No IMEI provided — not an error, just skip
+	if req.Imei == "" {
+		writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: ImeiReportResponse{
+			ImeiHash:          "",
+			DeviceCount:       0,
+			ConcurrentSessions: false,
+			TrustImpact:       0,
+		}})
+		return
+	}
+
+	imeiHash := sha256Hex(req.Imei)
+	now := time.Now()
+	var trustImpact float64
+
+	// 1. Upsert the IMEI → device binding
+	_, err := h.deviceService.DB().Exec(r.Context(),
+		`INSERT INTO imei_registry (imei, physical_device_id, account_id, first_seen, last_seen, is_active)
+		 VALUES ($1, $2, $3, $4, $4, TRUE)
+		 ON CONFLICT (imei, physical_device_id) DO UPDATE SET
+		   last_seen = EXCLUDED.last_seen, is_active = TRUE`,
+		imeiHash, req.AndroidID, accountID, now,
+	)
+	if err != nil {
+		slog.Error("imei report: upsert failed", "error", err)
+	}
+
+	// 2. Count unique devices that have used this IMEI
+	var deviceCount int
+	h.deviceService.DB().QueryRow(r.Context(),
+		`SELECT COUNT(DISTINCT physical_device_id) FROM imei_registry WHERE imei = $1 AND is_active = TRUE`,
+		imeiHash,
+	).Scan(&deviceCount)
+
+	// 3. Detect concurrent sessions: same IMEI, different devices, active recently
+	var concurrentCount int
+	h.deviceService.DB().QueryRow(r.Context(),
+		`SELECT COUNT(DISTINCT physical_device_id) FROM imei_registry
+		  WHERE imei = $1 AND is_active = TRUE AND last_seen > NOW() - INTERVAL '1 hour'
+		    AND physical_device_id != $2`,
+		imeiHash, req.AndroidID,
+	).Scan(&concurrentCount)
+
+	concurrentSessions := concurrentCount > 0
+
+	// 4. Compute trust impact
+	if deviceCount > 5 {
+		trustImpact = -30
+	} else if deviceCount > 3 {
+		trustImpact = -15
+	} else if deviceCount > 1 {
+		trustImpact = -5
+	}
+	if concurrentSessions {
+		trustImpact -= 20
+	}
+
+	slog.Info("imei report processed",
+		"device_id", req.AndroidID,
+		"imei_present", req.Imei != "",
+		"device_count", deviceCount,
+		"concurrent", concurrentSessions,
+		"trust_impact", trustImpact,
+	)
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Data: ImeiReportResponse{
+			ImeiHash:           imeiHash,
+			DeviceCount:        deviceCount,
+			ConcurrentSessions: concurrentSessions,
+			TrustImpact:        trustImpact,
+		},
+	})
+}
+
+// HandleImeiConcurrentCheck handles POST /api/v1/devices/imei/check
+// Checks whether the given IMEI is active on multiple devices simultaneously.
+func (h *DeviceHandler) HandleImeiConcurrentCheck(w http.ResponseWriter, r *http.Request) {
+	accountID := middleware.GetAccountID(r.Context())
+
+	var req struct {
+		Imei string `json:"imei"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid request body"})
+		return
+	}
+	if req.Imei == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "imei is required"})
+		return
+	}
+
+	imeiHash := sha256Hex(req.Imei)
+
+	var activeDevices []struct {
+		DeviceID  string    `json:"device_id"`
+		AccountID string    `json:"account_id"`
+		LastSeen  time.Time `json:"last_seen"`
+	}
+
+	rows, err := h.deviceService.DB().Query(r.Context(),
+		`SELECT physical_device_id, account_id, last_seen FROM imei_registry
+		  WHERE imei = $1 AND is_active = TRUE
+		  ORDER BY last_seen DESC`,
+		imeiHash,
+	)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var d struct {
+				DeviceID  string    `json:"device_id"`
+				AccountID string    `json:"account_id"`
+				LastSeen  time.Time `json:"last_seen"`
+			}
+			if err := rows.Scan(&d.DeviceID, &d.AccountID, &d.LastSeen); err == nil {
+				activeDevices = append(activeDevices, d)
+			}
+		}
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Data: map[string]any{
+			"imei_hash":           imeiHash,
+			"active_device_count": len(activeDevices),
+			"devices":             activeDevices,
+			"has_concurrent":      len(activeDevices) > 1,
+			"same_account":        isSingleAccount(activeDevices, accountID),
+		},
+	})
+}
+
+func isSingleAccount(devices []struct {
+	DeviceID  string    `json:"device_id"`
+	AccountID string    `json:"account_id"`
+	LastSeen  time.Time `json:"last_seen"`
+}, accountID string) bool {
+	if len(devices) <= 1 {
+		return true
+	}
+	for _, d := range devices {
+		if d.AccountID != accountID {
+			return false
+		}
+	}
+	return true
+}
+
+func sha256Hex(s string) string {
+	h := sha256.Sum256([]byte(s))
+	return fmt.Sprintf("%x", h)
+}
+
+// ─── Behavior Events (correlation) ──────────────────────────
+
+type BehaviorEventRequest struct {
+	PhysicalDeviceID string         `json:"physical_device_id"`
+	EventType        string         `json:"event_type"`
+	Details          string         `json:"details"`
+	Metadata         map[string]any `json:"metadata,omitempty"`
+}
+
+// HandleBehaviorEvent handles POST /api/v1/devices/behavior
+// Logs a behavior event (password reset, OTP request, new payee, etc.)
+// for correlation with identity changes.
+func (h *DeviceHandler) HandleBehaviorEvent(w http.ResponseWriter, r *http.Request) {
+	accountID := middleware.GetAccountID(r.Context())
+
+	var req BehaviorEventRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid request body"})
+		return
+	}
+	if req.PhysicalDeviceID == "" || req.EventType == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "physical_device_id and event_type are required"})
+		return
+	}
+
+	ip := r.RemoteAddr
+	metaJSON, _ := json.Marshal(req.Metadata)
+
+	_, err := h.deviceService.DB().Exec(r.Context(),
+		`INSERT INTO behavior_events
+			(physical_device_id, account_id, event_type, severity, details, ip_address, metadata, created_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+		req.PhysicalDeviceID, accountID, req.EventType, 5, req.Details, ip, string(metaJSON),
+	)
+	if err != nil {
+		slog.Error("behavior event: insert failed", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to log behavior event"})
+		return
+	}
+
+	// Score impact: check for risky combinations
+	var riskFlags []string
+
+	// Check if there was a recent SIM swap on this device
+	var recentSimSwapCount int
+	h.deviceService.DB().QueryRow(r.Context(),
+		`SELECT COUNT(*) FROM sim_events
+		  WHERE physical_device_id = $1 AND event_type = 'SIM_SWAPPED'
+		    AND created_at > NOW() - INTERVAL '15 minutes'`,
+		req.PhysicalDeviceID,
+	).Scan(&recentSimSwapCount)
+
+	if recentSimSwapCount > 0 {
+		switch req.EventType {
+		case "password_reset":
+			riskFlags = append(riskFlags, "sim_swap_then_password_reset")
+		case "new_payee":
+			riskFlags = append(riskFlags, "sim_swap_then_new_payee")
+		case "large_transfer":
+			riskFlags = append(riskFlags, "sim_swap_then_large_transfer")
+		case "kyc_update":
+			riskFlags = append(riskFlags, "sim_swap_then_kyc_update")
+		}
+	}
+
+	// Check for OTP bursts
+	var recentOtpCount int
+	h.deviceService.DB().QueryRow(r.Context(),
+		`SELECT COUNT(*) FROM behavior_events
+		  WHERE physical_device_id = $1 AND event_type = 'otp_request'
+		    AND created_at > NOW() - INTERVAL '5 minutes'`,
+		req.PhysicalDeviceID,
+	).Scan(&recentOtpCount)
+
+	if req.EventType == "otp_request" && recentOtpCount > 5 {
+		riskFlags = append(riskFlags, "otp_burst")
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Data: map[string]any{
+			"risk_flags": riskFlags,
+			"logged":     true,
+		},
+	})
+}
+
+// HandleSimHistory handles GET /api/v1/devices/sim-history?device_id=X
+// Returns the full SIM→device binding history for a physical device.
+func (h *DeviceHandler) HandleSimHistory(w http.ResponseWriter, r *http.Request) {
+	deviceID := r.URL.Query().Get("device_id")
+	if deviceID == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "device_id query param is required"})
+		return
+	}
+
+	type simHistoryEntry struct {
+		SubscriptionID   string    `json:"subscription_id"`
+		CarrierName      string    `json:"carrier_name"`
+		CountryIso       string    `json:"country_iso"`
+		FirstSeen        time.Time `json:"first_seen"`
+		LastSeen         time.Time `json:"last_seen"`
+		DeviceCount      int       `json:"device_count"`
+		IsActive         bool      `json:"is_active"`
+	}
+
+	rows, err := h.deviceService.DB().Query(r.Context(),
+		`SELECT subscription_id, carrier_name, country_iso, first_seen, last_seen,
+		        COALESCE(device_count, 0), is_active
+		  FROM sim_device_history
+		  WHERE physical_device_id = $1
+		  ORDER BY last_seen DESC
+		  LIMIT 50`,
+		deviceID,
+	)
+	if err != nil {
+		slog.Error("sim history query failed", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to query sim history"})
+		return
+	}
+	defer rows.Close()
+
+	var history []simHistoryEntry
+	for rows.Next() {
+		var e simHistoryEntry
+		if err := rows.Scan(&e.SubscriptionID, &e.CarrierName, &e.CountryIso,
+			&e.FirstSeen, &e.LastSeen, &e.DeviceCount, &e.IsActive); err != nil {
+			continue
+		}
+		history = append(history, e)
+	}
+
+	// Also gather cross-device SIM reuse info for each subscription
+	type reuseInfo struct {
+		SubscriptionID string `json:"subscription_id"`
+		DeviceIDs      []string `json:"device_ids"`
+	}
+	var reuseList []reuseInfo
+	for _, entry := range history {
+		devRows, err := h.deviceService.DB().Query(r.Context(),
+			`SELECT physical_device_id FROM sim_device_history
+			  WHERE subscription_id = $1 AND is_active = TRUE
+			  ORDER BY last_seen DESC`,
+			entry.SubscriptionID,
+		)
+		if err != nil {
+			continue
+		}
+		var deviceIDs []string
+		for devRows.Next() {
+			var did string
+			if err := devRows.Scan(&did); err == nil {
+				deviceIDs = append(deviceIDs, did)
+			}
+		}
+		devRows.Close()
+		if len(deviceIDs) > 0 {
+			reuseList = append(reuseList, reuseInfo{
+				SubscriptionID: entry.SubscriptionID,
+				DeviceIDs:      deviceIDs,
+			})
+		}
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Data: map[string]any{
+			"device_id":       deviceID,
+			"sim_history":     history,
+			"sim_reuse_info":  reuseList,
+			"total_entries":   len(history),
 		},
 	})
 }

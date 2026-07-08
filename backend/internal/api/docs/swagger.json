@@ -1808,7 +1808,10 @@
                   "network_type": {"type": "string"},
                   "is_vpn_active": {"type": "boolean"},
                   "sensor_count": {"type": "integer"},
-                  "missing_common_sensors": {"type": "boolean"}
+                  "missing_common_sensors": {"type": "boolean"},
+                  "imei": {"type": "string", "description": "IMEI (null on Android 10+)"},
+                  "meid": {"type": "string"},
+                  "hardware_serial": {"type": "string"}
                 },
                 "required": ["android_id", "fingerprint_hash"]
               }
@@ -1836,6 +1839,217 @@
                             "risk_factors": {"type": "array", "items": {"type": "string"}},
                             "drift_detected": {"type": "boolean"},
                             "drift_details": {"type": "string"}
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {"description": "Unauthorized"}
+        }
+      }
+    },
+    "/api/v1/devices/imei": {
+      "post": {
+        "tags": ["Devices"],
+        "summary": "Report IMEI/MEID for device identity tracking",
+        "operationId": "reportImei",
+        "security": [{"BearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "android_id": {"type": "string"},
+                  "imei": {"type": "string", "description": "SHA-256 hashed before storage"},
+                  "meid": {"type": "string"},
+                  "hardware_serial": {"type": "string"}
+                },
+                "required": ["android_id"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "IMEI registered",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {"$ref": "#/components/schemas/APIResponse"},
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "imei_hash": {"type": "string"},
+                            "device_count": {"type": "integer"},
+                            "concurrent_sessions": {"type": "boolean"},
+                            "trust_impact": {"type": "number"}
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {"description": "Unauthorized"}
+        }
+      }
+    },
+    "/api/v1/devices/imei/check": {
+      "post": {
+        "tags": ["Devices"],
+        "summary": "Check for concurrent IMEI sessions across devices",
+        "operationId": "checkImeiConcurrent",
+        "security": [{"BearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "imei": {"type": "string"}
+                },
+                "required": ["imei"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Concurrent check results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {"$ref": "#/components/schemas/APIResponse"},
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "imei_hash": {"type": "string"},
+                            "active_device_count": {"type": "integer"},
+                            "has_concurrent": {"type": "boolean"},
+                            "same_account": {"type": "boolean"}
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {"description": "Unauthorized"}
+        }
+      }
+    },
+    "/api/v1/devices/behavior": {
+      "post": {
+        "tags": ["Devices"],
+        "summary": "Log behavioral event for fraud correlation",
+        "operationId": "reportBehaviorEvent",
+        "security": [{"BearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "physical_device_id": {"type": "string"},
+                  "event_type": {"type": "string", "enum": ["password_reset", "new_payee", "large_transfer", "otp_request", "kyc_update", "login"]},
+                  "details": {"type": "string"},
+                  "metadata": {"type": "object"}
+                },
+                "required": ["physical_device_id", "event_type"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Behavior event logged",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {"$ref": "#/components/schemas/APIResponse"},
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "risk_flags": {"type": "array", "items": {"type": "string"}},
+                            "logged": {"type": "boolean"}
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {"description": "Unauthorized"}
+        }
+      }
+    },
+    "/api/v1/devices/sim-history": {
+      "get": {
+        "tags": ["Devices"],
+        "summary": "Get SIM device binding history",
+        "operationId": "getSimHistory",
+        "security": [{"BearerAuth": []}],
+        "parameters": [
+          {"name": "device_id", "in": "query", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "SIM history returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {"$ref": "#/components/schemas/APIResponse"},
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "device_id": {"type": "string"},
+                            "sim_history": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "subscription_id": {"type": "string"},
+                                  "carrier_name": {"type": "string"},
+                                  "country_iso": {"type": "string"},
+                                  "first_seen": {"type": "string", "format": "date-time"},
+                                  "last_seen": {"type": "string", "format": "date-time"},
+                                  "device_count": {"type": "integer"},
+                                  "is_active": {"type": "boolean"}
+                                }
+                              }
+                            },
+                            "sim_reuse_info": {"type": "array", "items": {"type": "object"}},
+                            "total_entries": {"type": "integer"}
                           }
                         }
                       }
