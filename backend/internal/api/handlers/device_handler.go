@@ -531,29 +531,20 @@ func (h *DeviceHandler) HandleDeviceIdentity(w http.ResponseWriter, r *http.Requ
 	}
 
 	// 2. Check for fingerprint reuse across accounts
-	var existingAccounts []string
+	var cloneCount int
 	err := h.deviceService.DB().QueryRow(r.Context(),
-		`SELECT ARRAY_AGG(DISTINCT account_id) FROM physical_devices WHERE fingerprint_hash = $1 AND fingerprint_hash != ''`,
-		req.FingerprintHash,
-	).Scan(&existingAccounts)
-	if err == nil && len(existingAccounts) > 0 {
-		// Same fingerprint seen on a different account — potential clone
-		isSameAccount := false
-		for _, aid := range existingAccounts {
-			if aid == accountID {
-				isSameAccount = true
-				break
-			}
-		}
-		if !isSameAccount {
-			slog.Warn("device identity: fingerprint reused across accounts",
-				"fingerprint_hash", req.FingerprintHash[:8]+"...",
-				"existing_accounts", existingAccounts,
-				"requesting_account", accountID,
-			)
-			writeJSON(w, http.StatusConflict, APIResponse{Error: "device fingerprint already registered to another account"})
-			return
-		}
+		`SELECT COUNT(*) FROM physical_devices
+		  WHERE fingerprint_hash = $1 AND fingerprint_hash != '' AND account_id != $2`,
+		req.FingerprintHash, accountID,
+	).Scan(&cloneCount)
+	if err == nil && cloneCount > 0 {
+		slog.Warn("device identity: fingerprint reused across accounts",
+			"fingerprint_hash", req.FingerprintHash[:8]+"...",
+			"clone_count", cloneCount,
+			"requesting_account", accountID,
+		)
+		writeJSON(w, http.StatusConflict, APIResponse{Error: "device fingerprint already registered to another account"})
+		return
 	}
 
 	// 3. Compute a trust score
