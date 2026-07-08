@@ -43,6 +43,9 @@ interface AeroXeBeeApi {
     @POST("auth/refresh")
     suspend fun refreshToken(@Body request: TokenRefreshRequest): Response<ApiResponse<TokenRefreshResponse>>
 
+    @POST("auth/change-password")
+    suspend fun changePassword(@Body request: ChangePasswordRequest): Response<ApiResponse<Unit>>
+
     @POST("auth/fcm-token")
     suspend fun registerFCMToken(@Body request: FCMTokenRequest): Response<ApiResponse<Unit>>
 

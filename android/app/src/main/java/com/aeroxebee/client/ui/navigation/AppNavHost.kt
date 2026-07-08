@@ -30,7 +30,10 @@ import com.aeroxebee.client.ui.screens.logs.LogsScreen
 import com.aeroxebee.client.ui.screens.templates.TemplatesScreen
 import com.aeroxebee.client.ui.screens.notifications.NotificationsScreen
 import com.aeroxebee.client.ui.screens.onboarding.OnboardingScreen
+import com.aeroxebee.client.ui.screens.profile.ChangePasswordScreen
+import com.aeroxebee.client.ui.screens.profile.KycScreen
 import com.aeroxebee.client.ui.screens.profile.ProfileScreen
+import com.aeroxebee.client.ui.screens.otp.OtpScreen
 import com.aeroxebee.client.ui.screens.qrscanner.QrScannerScreen
 import com.aeroxebee.client.ui.screens.registration.RegistrationScreen
 import com.aeroxebee.client.ui.screens.splash.SplashScreen
@@ -130,6 +133,9 @@ fun AppNavHost() {
                 "splash" -> "Splash"
                 "onboarding" -> "Onboarding"
                 "registration" -> "Registration"
+                "kyc" -> "KYC"
+                "change-password" -> "Change Password"
+                "otp" -> "OTP"
                 else -> route
             }
             analytics.logScreenView(screenName)
@@ -210,10 +216,34 @@ fun AppNavHost() {
                             popUpTo(0) { inclusive = true }
                         }
                     },
+                    onNavigateToKyc = {
+                        navController.navigate("kyc")
+                    },
+                    onNavigateToChangePassword = {
+                        navController.navigate("change-password")
+                    },
+                    onNavigateToOtp = {
+                        navController.navigate("otp")
+                    },
                 )
             }
             composable(Screen.Templates.route) { TemplatesScreen() }
             composable(Screen.Notifications.route) { NotificationsScreen() }
+            composable("kyc") {
+                KycScreen(
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable("change-password") {
+                ChangePasswordScreen(
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable("otp") {
+                OtpScreen(
+                    onBack = { navController.popBackStack() },
+                )
+            }
         }
     }
 

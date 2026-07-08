@@ -393,6 +393,12 @@ data class FirebaseConfigResponse(
     @SerializedName("data") val data: Map<String, Any>? = null,
 )
 
+// ─── Change Password ─────────────────────────────────────────
+data class ChangePasswordRequest(
+    @SerializedName("old_password") val oldPassword: String,
+    @SerializedName("new_password") val newPassword: String,
+)
+
 // ─── OTP ────────────────────────────────────────────────────
 
 data class OtpSendRequest(

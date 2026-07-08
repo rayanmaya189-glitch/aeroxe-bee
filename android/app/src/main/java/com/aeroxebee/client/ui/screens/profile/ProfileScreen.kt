@@ -16,6 +16,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.outlined.Build
+import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,6 +34,9 @@ import com.aeroxebee.client.ui.theme.*
 @Composable
 fun ProfileScreen(
     onLoggedOut: () -> Unit = {},
+    onNavigateToKyc: () -> Unit = {},
+    onNavigateToChangePassword: () -> Unit = {},
+    onNavigateToOtp: () -> Unit = {},
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -139,6 +144,40 @@ fun ProfileScreen(
 
         Spacer(Modifier.height(AppSpacing.XXL))
 
+        // ─── KYC Verification ──────────────────────────────────
+        SectionHeader(icon = Icons.Outlined.Verified, title = "Verification")
+
+        Spacer(Modifier.height(AppSpacing.MD))
+
+        GlassCard(onClick = onNavigateToKyc) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "KYC Verification",
+                        style = AppTypography.Body,
+                        color = AppColors.TextPrimary,
+                    )
+                    Text(
+                        text = "Verify your identity",
+                        style = AppTypography.Caption,
+                        color = AppColors.TextMuted,
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Outlined.ChevronRight,
+                    contentDescription = "Open KYC",
+                    tint = AppColors.TextMuted,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
+
+        Spacer(Modifier.height(AppSpacing.XXL))
+
         // ─── Device ───────────────────────────────────────────
         SectionHeader(icon = Icons.Outlined.PhoneAndroid, title = "Device")
 
@@ -237,6 +276,70 @@ fun ProfileScreen(
                         loading = state.isLoading2FA,
                     )
                 }
+            }
+        }
+
+        Spacer(Modifier.height(AppSpacing.XXL))
+
+        // ─── Change Password ───────────────────────────────────
+        GlassCard(onClick = onNavigateToChangePassword) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Change Password",
+                        style = AppTypography.Body,
+                        color = AppColors.TextPrimary,
+                    )
+                    Text(
+                        text = "Update your account password",
+                        style = AppTypography.Caption,
+                        color = AppColors.TextMuted,
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Outlined.ChevronRight,
+                    contentDescription = "Change Password",
+                    tint = AppColors.TextMuted,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
+
+        Spacer(Modifier.height(AppSpacing.XXL))
+
+        // ─── Tools ─────────────────────────────────────────────
+        SectionHeader(icon = Icons.Outlined.Build, title = "Tools")
+
+        Spacer(Modifier.height(AppSpacing.MD))
+
+        GlassCard(onClick = onNavigateToOtp) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "OTP Tool",
+                        style = AppTypography.Body,
+                        color = AppColors.TextPrimary,
+                    )
+                    Text(
+                        text = "Send and verify OTP codes",
+                        style = AppTypography.Caption,
+                        color = AppColors.TextMuted,
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Outlined.ChevronRight,
+                    contentDescription = "Open OTP Tool",
+                    tint = AppColors.TextMuted,
+                    modifier = Modifier.size(20.dp),
+                )
             }
         }
 
