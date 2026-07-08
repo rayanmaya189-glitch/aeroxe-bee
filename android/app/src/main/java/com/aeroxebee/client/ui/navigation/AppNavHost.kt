@@ -27,6 +27,7 @@ import androidx.navigation.compose.rememberNavController
 import com.aeroxebee.client.ui.screens.dashboard.DashboardScreen
 import com.aeroxebee.client.ui.screens.device.DeviceScreen
 import com.aeroxebee.client.ui.screens.logs.LogsScreen
+import com.aeroxebee.client.ui.screens.templates.TemplatesScreen
 import com.aeroxebee.client.ui.screens.notifications.NotificationsScreen
 import com.aeroxebee.client.ui.screens.onboarding.OnboardingScreen
 import com.aeroxebee.client.ui.screens.profile.ProfileScreen
@@ -53,10 +54,11 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector,
     data object Device : Screen("device", "Device", Icons.Outlined.PhoneAndroid, Icons.Filled.PhoneAndroid)
     data object Profile : Screen("profile", "Profile", Icons.Outlined.Person, Icons.Filled.Person)
     data object Notifications : Screen("notifications", "Alerts", Icons.Outlined.Notifications, Icons.Filled.Notifications)
+    data object Templates : Screen("templates", "Templates", Icons.Outlined.Description, Icons.Filled.Description)
 }
 
 private val bottomNavItems = listOf(
-    Screen.Dashboard, Screen.Logs, Screen.Device, Screen.Profile,
+    Screen.Dashboard, Screen.Logs, Screen.Templates, Screen.Device, Screen.Profile,
 )
 
 /**
@@ -69,7 +71,7 @@ interface NavAnalyticsEntryPoint {
 }
 
 private val routeOrder = listOf(
-    Screen.Dashboard.route, Screen.Logs.route, Screen.Device.route, Screen.Profile.route,
+    Screen.Dashboard.route, Screen.Logs.route, Screen.Templates.route, Screen.Device.route, Screen.Profile.route,
 )
 
 private fun slideTransitionForRoute(targetRoute: String, initialRoute: String?): EnterTransition {
@@ -124,6 +126,7 @@ fun AppNavHost() {
                 Screen.Device.route -> "Device"
                 Screen.Profile.route -> "Profile"
                 Screen.Notifications.route -> "Notifications"
+                Screen.Templates.route -> "Templates"
                 "splash" -> "Splash"
                 "onboarding" -> "Onboarding"
                 "registration" -> "Registration"
@@ -209,6 +212,7 @@ fun AppNavHost() {
                     },
                 )
             }
+            composable(Screen.Templates.route) { TemplatesScreen() }
             composable(Screen.Notifications.route) { NotificationsScreen() }
         }
     }

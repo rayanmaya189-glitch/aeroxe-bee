@@ -52,6 +52,15 @@ data class DashboardState(
     val accountName: String = "",
     val totalDevices: Int = 0,
     val onlineDevices: Int = 0,
+    // Account / Plan (from dashboard API, previously unused)
+    val planName: String = "",
+    val accountStatus: String = "",
+    val dailyUsage: Long = 0,
+    val monthlyUsage: Long = 0,
+    val subscriptionPlanType: String = "",
+    val subscriptionBillingCycle: String = "",
+    val subscriptionStatus: String = "",
+    val subscriptionRenewalDate: String = "",
     // MQTT connection
     val mqttConnected: Boolean = false,
 )
@@ -125,6 +134,8 @@ class DashboardViewModel @Inject constructor(
             val response = api.getMemberDashboard()
             if (response.isSuccessful && response.body()?.success == true) {
                 val data = response.body()?.data ?: return
+                val usage = data.usage
+                val sub = data.subscription
                 _state.update {
                     it.copy(
                         accountName = data.account.name,
@@ -134,6 +145,14 @@ class DashboardViewModel @Inject constructor(
                         todayDelivered = data.messages.totalDelivered,
                         todayFailed = data.messages.totalFailed,
                         todaySuccessRate = data.messages.deliveryRate,
+                        planName = data.account.plan,
+                        accountStatus = data.account.status,
+                        dailyUsage = usage.daily,
+                        monthlyUsage = usage.monthly,
+                        subscriptionPlanType = sub?.planType ?: "",
+                        subscriptionBillingCycle = sub?.billingCycle ?: "",
+                        subscriptionStatus = sub?.status ?: "",
+                        subscriptionRenewalDate = sub?.renewalDate ?: "",
                     )
                 }
             }

@@ -127,6 +127,19 @@ fun DashboardScreen(
 
                 Spacer(Modifier.height(AppSpacing.XXL))
 
+                // ─── Subscription / Plan ─────────────────────
+                SubscriptionCard(
+                    planName = state.planName,
+                    accountStatus = state.accountStatus,
+                    dailyUsage = state.dailyUsage,
+                    monthlyUsage = state.monthlyUsage,
+                    billingCycle = state.subscriptionBillingCycle,
+                    subscriptionStatus = state.subscriptionStatus,
+                    renewalDate = state.subscriptionRenewalDate,
+                )
+
+                Spacer(Modifier.height(AppSpacing.XXL))
+
                 // ─── SIM Health ──────────────────────────────
                 SIMHealthCard(
                     networkType = state.networkType,
@@ -571,6 +584,110 @@ private fun TotalMessagesCard(
                         color = AppColors.Error,
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SubscriptionCard(
+    planName: String,
+    accountStatus: String,
+    dailyUsage: Long,
+    monthlyUsage: Long,
+    billingCycle: String,
+    subscriptionStatus: String,
+    renewalDate: String,
+) {
+    GlassCard {
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Plan & Usage",
+                    style = AppTypography.Card,
+                    color = AppColors.TextSecondary,
+                )
+                if (planName.isNotBlank()) {
+                    StatusBadge(
+                        text = planName.replaceFirstChar { it.uppercase() },
+                        color = AppColors.Blue,
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(AppSpacing.MD))
+
+            InfoRow(
+                icon = Icons.Outlined.Verified,
+                label = "Status",
+                value = when {
+                    accountStatus.isNotBlank() -> accountStatus.replaceFirstChar { it.uppercase() }
+                    else -> "Active"
+                },
+            )
+
+            Spacer(Modifier.height(AppSpacing.SM))
+
+            Text(
+                text = "Daily Usage",
+                style = AppTypography.Caption,
+                color = AppColors.TextMuted,
+            )
+            Spacer(Modifier.height(AppSpacing.XS))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(AppSpacing.SM),
+            ) {
+                AeroProgressBar(
+                    progress = if (dailyUsage > 0) (dailyUsage.toFloat() / 500).coerceAtMost(1f) else 0f,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = "$dailyUsage",
+                    style = AppTypography.Caption,
+                    fontWeight = FontWeight.Medium,
+                    color = AppColors.TextPrimary,
+                )
+            }
+
+            Spacer(Modifier.height(AppSpacing.SM))
+
+            Text(
+                text = "Monthly Usage",
+                style = AppTypography.Caption,
+                color = AppColors.TextMuted,
+            )
+            Spacer(Modifier.height(AppSpacing.XS))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(AppSpacing.SM),
+            ) {
+                AeroProgressBar(
+                    progress = if (monthlyUsage > 0) (monthlyUsage.toFloat() / 10000).coerceAtMost(1f) else 0f,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = "$monthlyUsage",
+                    style = AppTypography.Caption,
+                    fontWeight = FontWeight.Medium,
+                    color = AppColors.TextPrimary,
+                )
+            }
+
+            if (billingCycle.isNotBlank()) {
+                Spacer(Modifier.height(AppSpacing.SM))
+                InfoRow(
+                    icon = Icons.Outlined.DateRange,
+                    label = "Billing",
+                    value = when {
+                        subscriptionStatus == "active" && renewalDate.isNotBlank() -> "$billingCycle (renews $renewalDate)"
+                        else -> billingCycle.replaceFirstChar { it.uppercase() }
+                    },
+                )
             }
         }
     }
