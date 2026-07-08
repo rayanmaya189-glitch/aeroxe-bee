@@ -9,6 +9,7 @@ import com.aeroxebee.client.data.repository.DeviceRepository
 import com.aeroxebee.client.util.ExactAlarmHandler
 import com.aeroxebee.client.util.OEMBatteryGuide
 import com.aeroxebee.client.util.OEMBatteryGuideEntry
+import com.aeroxebee.client.device.behavior.BehaviorEventManager
 import com.aeroxebee.client.util.SimManager
 import com.aeroxebee.client.analytics.AnalyticsHelper
 import com.aeroxebee.client.fcm.FCMRegistrar
@@ -57,6 +58,7 @@ class RegistrationViewModel @Inject constructor(
     private val exactAlarmHandler: ExactAlarmHandler,
     private val analytics: AnalyticsHelper,
     private val fcmRegistrar: FCMRegistrar,
+    private val behaviorEventManager: BehaviorEventManager,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(RegistrationState())
@@ -183,6 +185,8 @@ class RegistrationViewModel @Inject constructor(
                 MqttService.start(appContext)
                 fcmRegistrar.registerToken()
                 analytics.logLogin("device")
+                behaviorEventManager.report("login", "Device login successful")
+                behaviorEventManager.report("device_registered", "Device registered")
                 _state.update { it.copy(isLoading = false, isRegistered = true) }
             } catch (e: Exception) {
                 analytics.logLoginFailed("device", e.message ?: "unknown")

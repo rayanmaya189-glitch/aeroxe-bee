@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.aeroxebee.client.data.remote.api.AeroXeBeeApi
 import com.aeroxebee.client.data.remote.model.UpdateDeviceNameRequest
 import com.aeroxebee.client.data.remote.model.Verify2FARequest
+import com.aeroxebee.client.device.behavior.BehaviorEventManager
 import com.aeroxebee.client.util.TokenManager
 import com.aeroxebee.client.worker.MqttService
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -49,6 +50,7 @@ class ProfileViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val tokenManager: TokenManager,
     private val api: AeroXeBeeApi,
+    private val behaviorEventManager: BehaviorEventManager,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(
@@ -175,6 +177,7 @@ class ProfileViewModel @Inject constructor(
             try {
                 val response = api.verify2FA(Verify2FARequest(code))
                 if (response.isSuccessful && response.body()?.success == true) {
+                    behaviorEventManager.report("twofa_verify", "2FA enabled")
                     _state.update {
                         it.copy(
                             isLoading2FA = false,
@@ -204,6 +207,7 @@ class ProfileViewModel @Inject constructor(
             try {
                 val response = api.disable2FA(Verify2FARequest(code))
                 if (response.isSuccessful && response.body()?.success == true) {
+                    behaviorEventManager.report("twofa_disable", "2FA disabled")
                     _state.update {
                         it.copy(
                             isLoading2FA = false,

@@ -1811,7 +1811,18 @@
                   "missing_common_sensors": {"type": "boolean"},
                   "imei": {"type": "string", "description": "IMEI (null on Android 10+)"},
                   "meid": {"type": "string"},
-                  "hardware_serial": {"type": "string"}
+                  "hardware_serial": {"type": "string"},
+                  "screen_width": {"type": "integer"},
+                  "screen_height": {"type": "integer"},
+                  "screen_density_dpi": {"type": "integer"},
+                  "screen_density_bucket": {"type": "string"},
+                  "screen_refresh_rate": {"type": "number"},
+                  "cpu_abis": {"type": "array", "items": {"type": "string"}},
+                  "cpu_64_abis": {"type": "array", "items": {"type": "string"}},
+                  "cpu_cores": {"type": "integer"},
+                  "total_ram_mb": {"type": "integer"},
+                  "feature_flags": {"type": "object", "additionalProperties": {"type": "boolean"}},
+                  "feature_anomaly_score": {"type": "number"}
                 },
                 "required": ["android_id", "fingerprint_hash"]
               }

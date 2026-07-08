@@ -920,6 +920,20 @@ type DeviceIntelligenceRequest struct {
 	Meid           string `json:"meid"`
 	HardwareSerial string `json:"hardware_serial"`
 
+	ScreenWidth        int     `json:"screen_width"`
+	ScreenHeight       int     `json:"screen_height"`
+	ScreenDensityDpi   int     `json:"screen_density_dpi"`
+	ScreenDensityBucket string `json:"screen_density_bucket"`
+	ScreenRefreshRate  float64 `json:"screen_refresh_rate"`
+
+	CpuAbis    []string `json:"cpu_abis"`
+	Cpu64Abis  []string `json:"cpu_64_abis"`
+	CpuCores   int      `json:"cpu_cores"`
+	TotalRamMb int64    `json:"total_ram_mb"`
+
+	FeatureFlags       map[string]bool `json:"feature_flags"`
+	FeatureAnomalyScore float64         `json:"feature_anomaly_score"`
+
 	SimInfo     map[string]string `json:"sim_info"`
 	Carrier     string            `json:"carrier"`
 	SimCountry  string            `json:"sim_country"`

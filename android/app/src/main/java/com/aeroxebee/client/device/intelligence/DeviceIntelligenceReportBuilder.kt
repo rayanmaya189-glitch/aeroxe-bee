@@ -1,8 +1,10 @@
 package com.aeroxebee.client.device.intelligence
 
+import android.app.ActivityManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.DisplayMetrics
 import com.aeroxebee.client.BuildConfig
 import com.aeroxebee.client.data.remote.model.DeviceIntelligenceRequest
 import com.aeroxebee.client.device.DeviceIdProvider
@@ -38,6 +40,37 @@ object DeviceIntelligenceReportBuilder {
 
         val imeiInfo = ImeiProvider.collect(context)
 
+        // Display metrics
+        val metrics = context.resources.displayMetrics
+        val densityBucket = when (metrics.densityDpi) {
+            DisplayMetrics.DENSITY_LOW -> "ldpi"
+            DisplayMetrics.DENSITY_MEDIUM -> "mdpi"
+            DisplayMetrics.DENSITY_HIGH -> "hdpi"
+            DisplayMetrics.DENSITY_XHIGH -> "xhdpi"
+            DisplayMetrics.DENSITY_XXHIGH -> "xxhdpi"
+            DisplayMetrics.DENSITY_XXXHIGH -> "xxxhdpi"
+            DisplayMetrics.DENSITY_TV -> "tvdpi"
+            else -> "unknown"
+        }
+        val refreshRate = try {
+            context.display?.refreshRate ?: 0f
+        } catch (_: Exception) { 0f }
+
+        // CPU / RAM
+        val cpuAbis = Build.SUPPORTED_ABIS.toList()
+        val cpu64Abis = Build.SUPPORTED_64_BIT_ABIS.toList()
+        val cpuCores = Runtime.getRuntime().availableProcessors()
+        val totalRamMb = try {
+            val memInfo = ActivityManager.MemoryInfo()
+            val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            am.getMemoryInfo(memInfo)
+            memInfo.totalMem / (1024 * 1024)
+        } catch (_: Exception) { 0L }
+
+        // Feature class anomaly
+        val featureFlags = FeatureClassDetector.getFlags(context)
+        val featureAnomalyScore = FeatureClassDetector.getAnomalyScore(featureFlags)
+
         return DeviceIntelligenceRequest(
             androidId = DeviceIdProvider.getAndroidId(context),
             uuid = LocalUuidStore.getOrCreate(context),
@@ -68,8 +101,8 @@ object DeviceIntelligenceReportBuilder {
             installTime = timeCheck.installTime,
             timeIssues = timeCheck.issues,
 
-            emulatorConfidence = EmulatorDetector.getConfidence(),
-            emulatorFlags = EmulatorDetector.getFlags(),
+            emulatorConfidence = EmulatorDetector.getConfidence(context),
+            emulatorFlags = EmulatorDetector.getFlags(context),
 
             rootConfidence = RootDetector.getConfidence(),
             rootFlags = RootDetector.getFlags(),
@@ -98,6 +131,20 @@ object DeviceIntelligenceReportBuilder {
             imei = imeiInfo.imei ?: "",
             meid = imeiInfo.meid ?: "",
             hardwareSerial = imeiInfo.hardwareSerial ?: "",
+
+            screenWidth = metrics.widthPixels,
+            screenHeight = metrics.heightPixels,
+            screenDensityDpi = metrics.densityDpi,
+            screenDensityBucket = densityBucket,
+            screenRefreshRate = refreshRate,
+
+            cpuAbis = cpuAbis,
+            cpu64Abis = cpu64Abis,
+            cpuCores = cpuCores,
+            totalRamMb = totalRamMb,
+
+            featureFlags = featureFlags,
+            featureAnomalyScore = featureAnomalyScore,
 
             simInfo = simInfo,
 

@@ -66,6 +66,23 @@ data class DeviceIntelligenceRequest(
     @SerializedName("meid") val meid: String,
     @SerializedName("hardware_serial") val hardwareSerial: String,
 
+    // Display fingerprint
+    @SerializedName("screen_width") val screenWidth: Int,
+    @SerializedName("screen_height") val screenHeight: Int,
+    @SerializedName("screen_density_dpi") val screenDensityDpi: Int,
+    @SerializedName("screen_density_bucket") val screenDensityBucket: String,
+    @SerializedName("screen_refresh_rate") val screenRefreshRate: Float,
+
+    // CPU / hardware fingerprint
+    @SerializedName("cpu_abis") val cpuAbis: List<String>,
+    @SerializedName("cpu_64_abis") val cpu64Abis: List<String>,
+    @SerializedName("cpu_cores") val cpuCores: Int,
+    @SerializedName("total_ram_mb") val totalRamMb: Long,
+
+    // Feature class anomaly detection
+    @SerializedName("feature_flags") val featureFlags: Map<String, Boolean>,
+    @SerializedName("feature_anomaly_score") val featureAnomalyScore: Float,
+
     // SIM context
     @SerializedName("sim_info") val simInfo: Map<String, String>,
 
