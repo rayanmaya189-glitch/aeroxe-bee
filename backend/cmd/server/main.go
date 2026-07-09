@@ -11,9 +11,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"crypto/rand"
+	"encoding/hex"
+	"strings"
+
 	"github.com/aeroxe-bee/backend/internal/api"
 	"github.com/aeroxe-bee/backend/internal/api/handlers"
 	"github.com/aeroxe-bee/backend/internal/api/middleware"
@@ -22,22 +23,22 @@ import (
 	"github.com/aeroxe-bee/backend/internal/database"
 	"github.com/aeroxe-bee/backend/internal/deliveryconf"
 	"github.com/aeroxe-bee/backend/internal/encryption"
+	"github.com/aeroxe-bee/backend/internal/fcm"
 	"github.com/aeroxe-bee/backend/internal/fraud"
 	"github.com/aeroxe-bee/backend/internal/idempotency"
 	"github.com/aeroxe-bee/backend/internal/models"
 	"github.com/aeroxe-bee/backend/internal/mqtt"
 	"github.com/aeroxe-bee/backend/internal/ratecontrol"
 	"github.com/aeroxe-bee/backend/internal/routing"
+	"github.com/aeroxe-bee/backend/internal/scheduler"
 	"github.com/aeroxe-bee/backend/internal/services"
 	"github.com/aeroxe-bee/backend/internal/simhealth"
 	"github.com/aeroxe-bee/backend/internal/telemetry"
 	"github.com/aeroxe-bee/backend/internal/webhook"
-	"github.com/aeroxe-bee/backend/internal/fcm"
-	"github.com/aeroxe-bee/backend/internal/scheduler"
 	"github.com/aeroxe-bee/backend/internal/worker"
-	"crypto/rand"
-	"encoding/hex"
-	"strings"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -232,7 +233,7 @@ func main() {
 		consumer := queue.NewConsumer(
 			fmt.Sprintf("%s-%d", cfg.Queue.ConsumerName, i),
 			func(ctx context.Context, lane worker.PriorityLane, msg *worker.QueueMessage) error {
-				return processMessage(ctx, msg, svc, mqttClient, simHealthEngine, deliveryEngine,					routingSelector, cbManager, rateMgr, fraudDetector, webhookDispatcher,
+				return processMessage(ctx, msg, svc, mqttClient, simHealthEngine, deliveryEngine, routingSelector, cbManager, rateMgr, fraudDetector, webhookDispatcher,
 					encMgr, cfg, metrics, lane, logger)
 			},
 		)
@@ -295,11 +296,11 @@ func main() {
 	}
 
 	apiServer := &http.Server{
-		Addr:         fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port),
-		Handler:      securityPipeline(cfg, metrics, router),
-		ReadTimeout:  cfg.Server.ReadTimeout,
-		WriteTimeout: cfg.Server.WriteTimeout,
-		IdleTimeout:  60 * time.Second,
+		Addr:           fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port),
+		Handler:        securityPipeline(cfg, metrics, router),
+		ReadTimeout:    cfg.Server.ReadTimeout,
+		WriteTimeout:   cfg.Server.WriteTimeout,
+		IdleTimeout:    60 * time.Second,
 		MaxHeaderBytes: 1 << 20, // 1 MB max headers
 	}
 
@@ -549,7 +550,7 @@ func processMessage(
 			"carrier", device.Carrier,
 			"status", confidenceResult.DeliveryStatus,
 			"confidence", fmt.Sprintf("%.2f", confidenceResult.Score),
-			"latency", telemetry.FormatDuration(latency),				"lane", string(lane),
+			"latency", telemetry.FormatDuration(latency), "lane", string(lane),
 		)
 
 		go dispatchWebhooks(ctx, svc, webhookDispatcher, msg, device, confidenceResult, logger)
@@ -743,81 +744,81 @@ func startBackgroundJobs(
 				logger.Info("pruned stale FCM tokens", "count", pruned)
 			}
 
-		// Cleanup stale entries from revival cooldown map (older than 1 hour)
-		if len(lastRevivalAttempt) > 0 {
-			now := time.Now()
-			for id, t := range lastRevivalAttempt {
-				if now.Sub(t) > 1*time.Hour {
-					delete(lastRevivalAttempt, id)
-				}
-			}
-		}
-
-		// Cleanup old APK files (older than 7 days) from uploads/apks/
-		if cleaned, err := services.CleanupOldAPKs("uploads/apks", 7*24*time.Hour); err != nil {
-			logger.Error("failed to cleanup old APK files", "error", err)
-		} else if cleaned > 0 {
-			logger.Info("cleaned up old APK files", "count", cleaned)
-		}
-
-		// Retry pending webhook deliveries. Query non-completed deliveries that are
-		// still within max attempts and re-dispatch those whose backoff has elapsed.
-		pendingRetries, err := svc.WebhookDeliveries.ListPendingRetries(ctx, webhookDispatcher.Cfg().MaxAttempts)
-		if err != nil {
-			logger.Error("failed to list pending webhook retries", "error", err)
-		} else {
-			for _, delivery := range pendingRetries {
-				// Compute expected backoff for the NEXT attempt (delivery.AttemptCount is
-				// the number already attempted; the next attempt would be attempt+1,
-				// so the wait before THIS retry is backoff for attempt = delivery.AttemptCount).
-				if delivery.LastAttemptAt == nil {
-					continue
-				}
-				backoff := webhookDispatcher.ComputeBackoff(delivery.AttemptCount)
-				if time.Since(*delivery.LastAttemptAt) < backoff {
-					continue // not yet due
-				}
-
-				wh, err := svc.Webhooks.GetByID(ctx, delivery.WebhookID)
-				if err != nil || wh == nil || !wh.Active {
-					// Webhook deleted or deactivated — mark completed
-					_ = svc.WebhookDeliveries.UpdateRetry(ctx, delivery.ID, 0, "", "webhook_unavailable", delivery.AttemptCount, true)
-					continue
-				}
-
-				// Re-dispatch; reconstruct minimal payload from delivery record
-				retryPayload := webhook.Payload{
-					Event:     delivery.Event,
-					MessageID: delivery.MessageID,
-				}
-				retryResult := webhookDispatcher.DispatchWithRetry(ctx, *wh, retryPayload, delivery.AttemptCount)
-
-				completed := false
-				lastStatus := "delivered"
-				if retryResult.Err != nil {
-					lastStatus = fmt.Sprintf("failed: %v", retryResult.Err)
-					if retryResult.Attempts >= webhookDispatcher.Cfg().MaxAttempts {
-						completed = true
-						lastStatus = "dead_letter"
+			// Cleanup stale entries from revival cooldown map (older than 1 hour)
+			if len(lastRevivalAttempt) > 0 {
+				now := time.Now()
+				for id, t := range lastRevivalAttempt {
+					if now.Sub(t) > 1*time.Hour {
+						delete(lastRevivalAttempt, id)
 					}
-				} else {
-					completed = true
-				}
-
-				if err := svc.WebhookDeliveries.UpdateRetry(ctx, delivery.ID, retryResult.StatusCode,
-					truncateString(retryResult.ResponseBody, 500), truncateString(lastStatus, 200),
-					retryResult.Attempts, completed); err != nil {
-					logger.Error("failed to update webhook delivery retry", "error", err, "delivery_id", delivery.ID)
-				} else {
-					logger.Info("webhook delivery retried",
-						"delivery_id", delivery.ID,
-						"webhook_id", delivery.WebhookID,
-						"attempts", retryResult.Attempts,
-						"status", lastStatus,
-					)
 				}
 			}
-		}
+
+			// Cleanup old APK files (older than 7 days) from uploads/apks/
+			if cleaned, err := services.CleanupOldAPKs("uploads/apks", 7*24*time.Hour); err != nil {
+				logger.Error("failed to cleanup old APK files", "error", err)
+			} else if cleaned > 0 {
+				logger.Info("cleaned up old APK files", "count", cleaned)
+			}
+
+			// Retry pending webhook deliveries. Query non-completed deliveries that are
+			// still within max attempts and re-dispatch those whose backoff has elapsed.
+			pendingRetries, err := svc.WebhookDeliveries.ListPendingRetries(ctx, webhookDispatcher.Cfg().MaxAttempts)
+			if err != nil {
+				logger.Error("failed to list pending webhook retries", "error", err)
+			} else {
+				for _, delivery := range pendingRetries {
+					// Compute expected backoff for the NEXT attempt (delivery.AttemptCount is
+					// the number already attempted; the next attempt would be attempt+1,
+					// so the wait before THIS retry is backoff for attempt = delivery.AttemptCount).
+					if delivery.LastAttemptAt == nil {
+						continue
+					}
+					backoff := webhookDispatcher.ComputeBackoff(delivery.AttemptCount)
+					if time.Since(*delivery.LastAttemptAt) < backoff {
+						continue // not yet due
+					}
+
+					wh, err := svc.Webhooks.GetByID(ctx, delivery.WebhookID)
+					if err != nil || wh == nil || !wh.Active {
+						// Webhook deleted or deactivated — mark completed
+						_ = svc.WebhookDeliveries.UpdateRetry(ctx, delivery.ID, 0, "", "webhook_unavailable", delivery.AttemptCount, true)
+						continue
+					}
+
+					// Re-dispatch; reconstruct minimal payload from delivery record
+					retryPayload := webhook.Payload{
+						Event:     delivery.Event,
+						MessageID: delivery.MessageID,
+					}
+					retryResult := webhookDispatcher.DispatchWithRetry(ctx, *wh, retryPayload, delivery.AttemptCount)
+
+					completed := false
+					lastStatus := "delivered"
+					if retryResult.Err != nil {
+						lastStatus = fmt.Sprintf("failed: %v", retryResult.Err)
+						if retryResult.Attempts >= webhookDispatcher.Cfg().MaxAttempts {
+							completed = true
+							lastStatus = "dead_letter"
+						}
+					} else {
+						completed = true
+					}
+
+					if err := svc.WebhookDeliveries.UpdateRetry(ctx, delivery.ID, retryResult.StatusCode,
+						truncateString(retryResult.ResponseBody, 500), truncateString(lastStatus, 200),
+						retryResult.Attempts, completed); err != nil {
+						logger.Error("failed to update webhook delivery retry", "error", err, "delivery_id", delivery.ID)
+					} else {
+						logger.Info("webhook delivery retried",
+							"delivery_id", delivery.ID,
+							"webhook_id", delivery.WebhookID,
+							"attempts", retryResult.Attempts,
+							"status", lastStatus,
+						)
+					}
+				}
+			}
 
 			// Send FCM revival notifications to offline devices (with cooldown).
 			// When a device disconnects from MQTT, send a push notification
@@ -1013,7 +1014,7 @@ func corsMiddleware(cfg *config.Config, metrics *telemetry.Metrics, next http.Ha
 func getAllowedOrigins(defaultOrigins ...string) []string {
 	origins := os.Getenv("CORS_ALLOWED_ORIGINS")
 	if origins == "" {
-		result := []string{"http://localhost:5173", "http://localhost:3000"}
+		result := []string{"http://localhost:5173", "http://localhost:3000", "http://10.10.13.148:5173", "http://10.10.13.148:8080"}
 		for _, o := range defaultOrigins {
 			if o != "" {
 				result = append(result, o)

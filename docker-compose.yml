@@ -79,7 +79,7 @@ services:
       MQTT_PASSWORD_FILE: /mosquitto/auth/passwords
       JWT_SECRET: change-jwt-secret-in-production
       ENCRYPTION_MASTER_KEY: change-encryption-key-in-production-32bytes!
-      CORS_ALLOWED_ORIGINS: localhost:5173,localhost:3000,10.10.13.148:5173,10.10.13.148:7050
+      CORS_ALLOWED_ORIGINS: http://localhost:5173,http://localhost:3000,http://10.10.13.148:5173,http://10.10.13.148:8080
       APP_ENV: development
     volumes:
       - mqtt_auth:/mosquitto/auth
