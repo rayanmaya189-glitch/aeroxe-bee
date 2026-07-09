@@ -965,7 +965,7 @@ func securityPipeline(cfg *config.Config, metrics *telemetry.Metrics, router htt
 	handler := router
 
 	// Innermost: CORS + metrics
-	handler = corsMiddleware(metrics, handler)
+	handler = corsMiddleware(cfg, metrics, handler)
 
 	// Request body size limit (1 MB)
 	handler = middleware.MaxBodySize(1 << 20)(handler)
@@ -988,8 +988,8 @@ func securityPipeline(cfg *config.Config, metrics *telemetry.Metrics, router htt
 	return handler
 }
 
-func corsMiddleware(metrics *telemetry.Metrics, next http.Handler) http.Handler {
-	allowedOrigins := getAllowedOrigins()
+func corsMiddleware(cfg *config.Config, metrics *telemetry.Metrics, next http.Handler) http.Handler {
+	allowedOrigins := getAllowedOrigins(cfg.AppURL.BaseURL)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		origin := r.Header.Get("Origin")
@@ -1010,10 +1010,16 @@ func corsMiddleware(metrics *telemetry.Metrics, next http.Handler) http.Handler 
 	})
 }
 
-func getAllowedOrigins() []string {
+func getAllowedOrigins(defaultOrigins ...string) []string {
 	origins := os.Getenv("CORS_ALLOWED_ORIGINS")
 	if origins == "" {
-		return []string{"http://localhost:5173", "http://localhost:3000"}
+		result := []string{"http://localhost:5173", "http://localhost:3000"}
+		for _, o := range defaultOrigins {
+			if o != "" {
+				result = append(result, o)
+			}
+		}
+		return result
 	}
 	var result []string
 	for _, o := range strings.Split(origins, ",") {
