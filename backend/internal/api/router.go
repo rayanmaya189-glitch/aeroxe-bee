@@ -422,9 +422,7 @@ func NewRouter(
 
 	// SSE (Server-Sent Events) for real-time device status updates
 	if sseHandler != nil {
-		// Support both JWT Bearer header and ?token= query param (for EventSource connections)
-		sseMux := http.NewServeMux()
-		sseMux.Handle("GET /api/v1/events", authMiddleware.JWTAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ssseHandler := func(w http.ResponseWriter, r *http.Request) {
 			accountID := middleware.GetAccountID(r.Context())
 			if accountID == "" {
 				w.Header().Set("Content-Type", "application/json")
@@ -433,8 +431,9 @@ func NewRouter(
 				return
 			}
 			sseHandler.Subscribe(w, r, accountID)
-		})))
-		// Also handle SSE connections with ?token= query param (used by frontend EventSource)
+		}
+		// Support both JWT Bearer header and ?token= query param (for EventSource connections)
+		mux.Handle("GET /api/v1/events", authMiddleware.JWTAuth(http.HandlerFunc(ssseHandler)))
 		mux.HandleFunc("GET /api/v1/events/stream", func(w http.ResponseWriter, r *http.Request) {
 			token := r.URL.Query().Get("token")
 			if token == "" {
@@ -445,7 +444,7 @@ func NewRouter(
 			}
 			// Set the Authorization header so JWTAuth middleware can read it
 			r.Header.Set("Authorization", "Bearer "+token)
-			sseMux.ServeHTTP(w, r)
+			authMiddleware.JWTAuth(http.HandlerFunc(ssseHandler)).ServeHTTP(w, r)
 		})
 	}
 
