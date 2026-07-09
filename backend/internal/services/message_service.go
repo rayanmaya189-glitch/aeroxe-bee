@@ -23,7 +23,7 @@ func (s *MessageService) Create(ctx context.Context, msg *models.Message) error 
 		`INSERT INTO messages (id, device_id, api_key_id, direction, recipient, sender, encrypted_message,
 		 message_type, priority_lane, template_id, status, delivery_status, confidence_score,
 		 error_reason, scheduled_at, created_at, delivered_at, purge_after, idempotency_key, routing_strategy_used)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
+		 VALUES ($1,$2,NULLIF($3,'')::UUID,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
 		msg.ID, msg.DeviceID, msg.APIKeyID, msg.Direction, msg.Recipient, msg.Sender,
 		msg.EncryptedMessage, msg.MessageType, msg.PriorityLane, msg.TemplateID,
 		msg.Status, msg.DeliveryStatus, msg.ConfidenceScore, msg.ErrorReason,
