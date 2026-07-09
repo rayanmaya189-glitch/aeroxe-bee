@@ -119,16 +119,6 @@ func main() {
 
 	mqttClient := mqtt.NewClient(cfg.MQTT, logger.Logger)
 
-	// Password file manager for Mosquitto — adds/removes device users on login/deregister.
-	// Shares the mqtt_auth volume mounted at /mosquitto/auth in both containers.
-	var passwordFile *mqtt.PasswordFile
-	if cfg.MQTT.PasswordFilePath != "" {
-		passwordFile = mqtt.NewPasswordFile(cfg.MQTT.PasswordFilePath, "", logger.Logger)
-		logger.Info("MQTT password file manager initialized", "path", cfg.MQTT.PasswordFilePath)
-	} else {
-		logger.Warn("MQTT_PASSWORD_FILE not set — device users will not be synced to Mosquitto password file")
-	}
-
 	if err := mqttClient.Connect(); err != nil {
 		logger.Warn("mqtt not available, SMS dispatch will fail until broker connects", "error", err)
 	} else {
@@ -252,7 +242,7 @@ func main() {
 	twoFAHandler := handlers.NewTwoFAHandler(twoFAService)
 	messageHandler := handlers.NewMessageHandler(svc.Messages, svc.Devices, svc.Accounts,
 		idempotencyStore, queue, encMgr, cfg.App, metrics)
-	deviceHandler := handlers.NewDeviceHandler(svc.Devices, svc.Messages, svc.APIKeys, svc.MQTTCredentials, svc.Accounts, encMgr, cfg.MQTT.BrokerURL(), authMiddleware, passwordFile, cfg.MQTT.DevicePassword)
+	deviceHandler := handlers.NewDeviceHandler(svc.Devices, svc.Messages, svc.APIKeys, svc.MQTTCredentials, svc.Accounts, encMgr, cfg.MQTT.BrokerURL(), authMiddleware, cfg.MQTT.DevicePassword)
 	accountHandler := handlers.NewAccountHandler(svc.Accounts, svc.APIKeys, svc.Subscriptions, svc.Billing)
 	adminHandler := handlers.NewAdminHandler(svc.Admin, cbManager, metrics)
 	userHandler := handlers.NewUserHandler(userService, authMiddleware)
@@ -264,7 +254,7 @@ func main() {
 	preferencesService := services.NewUserPreferencesService(postgres.Pool)
 	kycService := services.NewKycService(postgres.Pool)
 	memberHandler := handlers.NewMemberHandler(svc.Accounts, svc.Devices, svc.Messages, svc.Billing, svc.Subscriptions, svc.Templates, svc.Webhooks, svc.WebhookDeliveries, webhookDispatcher, preferencesService, kycService)
-	qrPairingHandler := handlers.NewQRPairingHandler(svc.Devices, svc.Accounts, svc.MQTTCredentials, encMgr, cfg.MQTT.BrokerURL(), authMiddleware, passwordFile, cfg.MQTT.DevicePassword)
+	qrPairingHandler := handlers.NewQRPairingHandler(svc.Devices, svc.Accounts, svc.MQTTCredentials, encMgr, cfg.MQTT.BrokerURL(), authMiddleware, cfg.MQTT.DevicePassword)
 	releaseService := services.NewAppReleaseService(postgres.Pool)
 	firebaseConfigService := services.NewFirebaseConfigService(postgres.Pool)
 	releaseHandler := handlers.NewAppReleaseHandler(releaseService)

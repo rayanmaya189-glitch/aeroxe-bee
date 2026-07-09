@@ -13,7 +13,6 @@ import (
 	"github.com/aeroxe-bee/backend/internal/api/middleware"
 	"github.com/aeroxe-bee/backend/internal/encryption"
 	"github.com/aeroxe-bee/backend/internal/models"
-	"github.com/aeroxe-bee/backend/internal/mqtt"
 	"github.com/aeroxe-bee/backend/internal/services"
 )
 
@@ -30,7 +29,6 @@ type QRPairingHandler struct {
 	encryption            *encryption.Manager
 	mqttBrokerURL         string
 	authMiddleware        *middleware.AuthMiddleware
-	passwordFile          *mqtt.PasswordFile
 	devicePassword        string
 }
 
@@ -41,7 +39,6 @@ func NewQRPairingHandler(
 	enc *encryption.Manager,
 	mqttBrokerURL string,
 	authMiddleware *middleware.AuthMiddleware,
-	passwordFile *mqtt.PasswordFile,
 	devicePassword string,
 ) *QRPairingHandler {
 	return &QRPairingHandler{
@@ -51,7 +48,6 @@ func NewQRPairingHandler(
 		encryption:            enc,
 		mqttBrokerURL:         mqttBrokerURL,
 		authMiddleware:        authMiddleware,
-		passwordFile:          passwordFile,
 		devicePassword:        devicePassword,
 	}
 }
@@ -263,19 +259,6 @@ func (h *QRPairingHandler) QRLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Sync device user to Mosquitto password file
-	if h.passwordFile != nil {
-		if err := h.passwordFile.AddDeviceUser(deviceID, h.devicePassword); err != nil {
-			slog.Error("failed to add MQTT user to password file during QR login",
-				"device_id", deviceID,
-				"account_id", accountID,
-				"error", err,
-			)
-			writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to configure MQTT auth"})
-			return
-		}
-	}
-
 	// Generate JWT token for subsequent API calls
 	token, err := h.authMiddleware.GenerateToken(account.ID, account.Email, false, 24*time.Hour)
 	if err != nil {
@@ -291,7 +274,7 @@ func (h *QRPairingHandler) QRLogin(w http.ResponseWriter, r *http.Request) {
 			"token":         token,
 			"mqtt": map[string]interface{}{
 				"broker_url": h.mqttBrokerURL,
-				"username":   deviceID,
+				"username":   "device",
 				"password":   h.devicePassword,
 			},
 			"device": map[string]interface{}{
