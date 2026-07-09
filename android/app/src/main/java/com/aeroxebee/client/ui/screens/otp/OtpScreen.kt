@@ -69,38 +69,15 @@ private fun SendOtpCard(state: OtpState, viewModel: OtpViewModel) {
             )
 
             AeroTextField(
-                value = state.recipient,
-                onValueChange = viewModel::updateRecipient,
-                label = "Recipient Phone",
+                value = state.phone,
+                onValueChange = viewModel::updatePhone,
+                label = "Phone Number",
                 leadingIcon = Icons.Outlined.Phone,
                 placeholder = "+1234567890",
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Phone,
-                    imeAction = ImeAction.Next,
+                    imeAction = ImeAction.Done,
                 ),
-            )
-
-            AeroTextField(
-                value = state.sender,
-                onValueChange = viewModel::updateSender,
-                label = "Sender ID (optional)",
-                leadingIcon = Icons.Outlined.AlternateEmail,
-                placeholder = "OTP",
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-            )
-
-            AeroTextField(
-                value = state.message,
-                onValueChange = viewModel::updateMessage,
-                label = "Message Template (optional)",
-                leadingIcon = Icons.Outlined.Message,
-                placeholder = "Your code is: {{OTP}}",
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            )
-
-            SimSlotSelector(
-                selected = state.simSlot,
-                onSelected = viewModel::updateSimSlot,
             )
 
             state.error?.let { error ->
@@ -115,7 +92,7 @@ private fun SendOtpCard(state: OtpState, viewModel: OtpViewModel) {
                 text = if (state.isSending) "Sending..." else "Send OTP",
                 onClick = { viewModel.sendOtp() },
                 loading = state.isSending,
-                enabled = state.recipient.isNotBlank(),
+                enabled = state.phone.isNotBlank(),
             )
         }
     }
@@ -144,7 +121,7 @@ private fun VerifyOtpCard(state: OtpState, viewModel: OtpViewModel) {
             )
 
             Text(
-                text = "Enter the code sent to ${state.recipient}",
+                text = "Enter the code sent to ${state.phone}",
                 style = AppTypography.Caption,
                 color = AppColors.TextMuted,
             )
@@ -203,78 +180,6 @@ private fun VerifyOtpCard(state: OtpState, viewModel: OtpViewModel) {
             }) {
                 Text("Send Again", color = AppColors.Blue)
             }
-        }
-    }
-}
-
-@Composable
-private fun SimSlotSelector(
-    selected: Int?,
-    onSelected: (Int?) -> Unit,
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val label = if (selected != null) "SIM Slot $selected" else "Auto-select SIM"
-
-    Column {
-        OutlinedTextField(
-            value = label,
-            onValueChange = {},
-            label = { Text("SIM Slot", style = AppTypography.Body) },
-            leadingIcon = {
-                Icon(Icons.Outlined.SimCard, contentDescription = null, tint = AppColors.TextMuted)
-            },
-            trailingIcon = {
-                IconButton(onClick = { expanded = !expanded }) {
-                    Icon(
-                        imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
-                        contentDescription = null,
-                        tint = AppColors.TextMuted,
-                    )
-                }
-            },
-            readOnly = true,
-            enabled = true,
-            modifier = Modifier.fillMaxWidth(),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(AppShapes.Medium),
-            colors = OutlinedTextFieldDefaults.colors(
-                unfocusedBorderColor = AppColors.Border,
-                focusedBorderColor = AppColors.Blue,
-                unfocusedContainerColor = AppColors.Glass,
-                focusedContainerColor = AppColors.Glass,
-                unfocusedTextColor = AppColors.TextPrimary,
-                focusedTextColor = AppColors.TextPrimary,
-                cursorColor = AppColors.Blue,
-                unfocusedLabelColor = AppColors.TextMuted,
-                focusedLabelColor = AppColors.Blue,
-            ),
-            textStyle = AppTypography.Body,
-        )
-
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-        ) {
-            DropdownMenuItem(
-                text = { Text("Auto-select") },
-                onClick = {
-                    onSelected(null)
-                    expanded = false
-                },
-            )
-            DropdownMenuItem(
-                text = { Text("SIM Slot 1") },
-                onClick = {
-                    onSelected(1)
-                    expanded = false
-                },
-            )
-            DropdownMenuItem(
-                text = { Text("SIM Slot 2") },
-                onClick = {
-                    onSelected(2)
-                    expanded = false
-                },
-            )
         }
     }
 }

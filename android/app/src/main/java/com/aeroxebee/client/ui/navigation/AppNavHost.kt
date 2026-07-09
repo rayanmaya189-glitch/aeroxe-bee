@@ -28,6 +28,8 @@ import com.aeroxebee.client.ui.screens.dashboard.DashboardScreen
 import com.aeroxebee.client.ui.screens.device.DeviceScreen
 import com.aeroxebee.client.ui.screens.logs.LogsScreen
 import com.aeroxebee.client.ui.screens.templates.TemplatesScreen
+import com.aeroxebee.client.ui.screens.webhooks.WebhooksScreen
+import com.aeroxebee.client.ui.screens.preferences.PreferencesScreen
 import com.aeroxebee.client.ui.screens.notifications.NotificationsScreen
 import com.aeroxebee.client.ui.screens.onboarding.OnboardingScreen
 import com.aeroxebee.client.ui.screens.profile.ChangePasswordScreen
@@ -136,6 +138,8 @@ fun AppNavHost() {
                 "kyc" -> "KYC"
                 "change-password" -> "Change Password"
                 "otp" -> "OTP"
+                "webhooks" -> "Webhooks"
+                "preferences" -> "Preferences"
                 else -> route
             }
             analytics.logScreenView(screenName)
@@ -225,6 +229,12 @@ fun AppNavHost() {
                     onNavigateToOtp = {
                         navController.navigate("otp")
                     },
+                    onNavigateToWebhooks = {
+                        navController.navigate("webhooks")
+                    },
+                    onNavigateToPreferences = {
+                        navController.navigate("preferences")
+                    },
                 )
             }
             composable(Screen.Templates.route) { TemplatesScreen() }
@@ -241,6 +251,16 @@ fun AppNavHost() {
             }
             composable("otp") {
                 OtpScreen(
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable("webhooks") {
+                WebhooksScreen(
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable("preferences") {
+                PreferencesScreen(
                     onBack = { navController.popBackStack() },
                 )
             }

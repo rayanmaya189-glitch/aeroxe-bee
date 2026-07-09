@@ -1,5 +1,24 @@
-import axios from 'axios'
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 import { useAuthStore } from '@/store/authStore'
+
+interface FailedRequest {
+  resolve: (token: string) => void
+  reject: (err: unknown) => void
+}
+
+let isRefreshing = false
+let failedQueue: FailedRequest[] = []
+
+function processQueue(token: string, err: unknown) {
+  failedQueue.forEach((p) => {
+    if (err) {
+      p.reject(err)
+    } else {
+      p.resolve(token)
+    }
+  })
+  failedQueue = []
+}
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || window.location.origin,
@@ -8,12 +27,10 @@ const api = axios.create({
 
 // Request interceptor: attach JWT or API key
 api.interceptors.request.use((config) => {
-  // Check store first (for JWT auth)
   const token = sessionStorage.getItem('auth_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   } else {
-    // Fallback to stored API key (for API key auth)
     const apiKey = localStorage.getItem('api_key')
     if (apiKey) {
       config.headers.Authorization = `Bearer ${apiKey}`
@@ -22,20 +39,64 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Response interceptor: handle auth errors
+// Response interceptor: handle 401 with token refresh
 api.interceptors.response.use(
   (res) => res,
-  (err) => {
-    if (err.response?.status === 401) {
-      // Only clear auth for non-login requests
-      const isLogin = err.config?.url?.includes('/auth/login')
-      if (!isLogin) {
-        useAuthStore.getState().logout()
-        // Don't redirect here; let the component handle it via store state
-      }
+  async (err: AxiosError) => {
+    const originalRequest = err.config as InternalAxiosRequestConfig & { _retry?: boolean }
+
+    // Don't intercept login, refresh, or already-retried requests
+    if (!originalRequest || originalRequest._retry) {
+      return Promise.reject(err)
     }
-    return Promise.reject(err)
-  }
+    const url = originalRequest.url || ''
+    if (url.includes('/auth/login') || url.includes('/auth/refresh') || url.includes('/auth/register')) {
+      return Promise.reject(err)
+    }
+
+    if (err.response?.status !== 401) {
+      return Promise.reject(err)
+    }
+
+    const refreshToken = sessionStorage.getItem('refresh_token')
+    if (!refreshToken) {
+      useAuthStore.getState().logout()
+      return Promise.reject(err)
+    }
+
+    if (isRefreshing) {
+      return new Promise<string>((resolve, reject) => {
+        failedQueue.push({ resolve, reject })
+      }).then((token) => {
+        originalRequest.headers.Authorization = `Bearer ${token}`
+        return api(originalRequest)
+      })
+    }
+
+    originalRequest._retry = true
+    isRefreshing = true
+
+    try {
+      const res = await api.post<{ success: boolean; data: { token: string } }>(
+        '/auth/refresh',
+        { refreshToken },
+      )
+      if (!res.data.success || !res.data.data) {
+        throw new Error('Refresh failed')
+      }
+      const newToken = res.data.data.token
+      sessionStorage.setItem('auth_token', newToken)
+      processQueue(newToken, null)
+      originalRequest.headers.Authorization = `Bearer ${newToken}`
+      return api(originalRequest)
+    } catch (refreshErr) {
+      processQueue('', refreshErr)
+      useAuthStore.getState().logout()
+      return Promise.reject(refreshErr)
+    } finally {
+      isRefreshing = false
+    }
+  },
 )
 
 export default api

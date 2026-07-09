@@ -193,9 +193,9 @@ interface AeroXeBeeApi {
     suspend fun getFirebaseConfig(): Response<ApiResponse<Map<String, Any>>>
 
     // ─── OTP ────────────────────────────────────────────────
-    @POST("otp/send")
+    @POST("member/otp/send")
     suspend fun sendOtp(@Body request: OtpSendRequest): Response<ApiResponse<OtpSendResponse>>
 
-    @POST("otp/verify")
+    @POST("member/otp/verify")
     suspend fun verifyOtp(@Body request: OtpVerifyRequest): Response<ApiResponse<OtpVerifyResponse>>
 }

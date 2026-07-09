@@ -11,6 +11,7 @@ import com.aeroxebee.client.config.BackendConfigManager
 import com.aeroxebee.client.config.RemoteConfigManager
 import com.aeroxebee.client.fcm.FCMTokenRefreshWorker
 import com.aeroxebee.client.worker.JobSchedulerFallback
+import com.aeroxebee.client.device.intelligence.DeviceIntelligenceWorker
 import com.aeroxebee.client.worker.WatchdogScheduler
 import com.google.firebase.analytics.ktx.analytics
 import com.google.firebase.crashlytics.ktx.crashlytics
@@ -40,6 +41,7 @@ class AeroXeBeeApplication : Application(), Configuration.Provider {
         startWatchdog()
         startJobSchedulerFallback()
         scheduleFCMTokenRefresh()
+        scheduleDeviceIntelligenceReport()
     }
 
     private fun setupFirebase() {
@@ -91,6 +93,10 @@ class AeroXeBeeApplication : Application(), Configuration.Provider {
 
     private fun scheduleFCMTokenRefresh() {
         FCMTokenRefreshWorker.schedule(this)
+    }
+
+    private fun scheduleDeviceIntelligenceReport() {
+        DeviceIntelligenceWorker.schedule(this)
     }
 
     companion object {

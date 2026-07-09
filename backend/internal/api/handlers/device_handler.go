@@ -853,7 +853,6 @@ func (h *DeviceHandler) HandleSimReport(w http.ResponseWriter, r *http.Request) 
 		"penalty", adjustedPenalty,
 		"action", action,
 		"recent_events_1h", recentCount,
-		"sim_reuse_count", recentCount,
 	)
 
 	writeJSON(w, http.StatusOK, APIResponse{

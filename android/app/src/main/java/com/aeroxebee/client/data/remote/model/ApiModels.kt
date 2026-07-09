@@ -402,19 +402,17 @@ data class ChangePasswordRequest(
 // ─── OTP ────────────────────────────────────────────────────
 
 data class OtpSendRequest(
-    @SerializedName("recipient") val recipient: String,
-    @SerializedName("sender") val sender: String,
-    @SerializedName("message") val message: String,
-    @SerializedName("sim_slot") val simSlot: Int?,
+    @SerializedName("phone") val phone: String,
 )
 
 data class OtpSendResponse(
-    @SerializedName("otp_id") val otpId: String,
+    @SerializedName("message_id") val messageId: String,
+    @SerializedName("code") val code: String,
     @SerializedName("expires_in") val expiresIn: Int,
 )
 
 data class OtpVerifyRequest(
-    @SerializedName("otp_id") val otpId: String,
+    @SerializedName("phone") val phone: String,
     @SerializedName("code") val code: String,
 )
 

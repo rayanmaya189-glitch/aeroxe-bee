@@ -264,6 +264,32 @@ func (s *DeviceService) UpdateCircuitBreakerState(ctx context.Context, id string
 	return err
 }
 
+// MarkStaleDevicesOffline marks all ONLINE devices whose last_seen is older than
+// the given duration as OFFLINE. Returns the IDs of affected devices for SSE broadcasting.
+func (s *DeviceService) MarkStaleDevicesOffline(ctx context.Context, timeout time.Duration) ([]string, error) {
+	interval := fmt.Sprintf("%.0f seconds", timeout.Seconds())
+	rows, err := s.db.Query(ctx,
+		`UPDATE devices SET status='OFFLINE', updated_at=NOW()
+		 WHERE status='ONLINE' AND last_seen < NOW() - $1::INTERVAL
+		 RETURNING id`,
+		interval,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
 // DB returns the underlying database querier for raw queries
 func (s *DeviceService) DB() DatabaseQuerier {
 	return s.db

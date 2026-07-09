@@ -8,6 +8,8 @@ bin/
 build/
 dist/
 tmp/
+backend/server
+backend/cmd/server/server
 *.exe
 *.exe~
 *.dll

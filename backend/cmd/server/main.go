@@ -341,7 +341,7 @@ func main() {
 	)
 	go sched.Start(context.Background())
 
-	go startBackgroundJobs(context.Background(), svc, simHealthEngine, cbManager, queue, fcmHandler, fcmSender, metrics, logger)
+	go startBackgroundJobs(context.Background(), svc, simHealthEngine, cbManager, queue, fcmHandler, fcmSender, sseHandler, webhookDispatcher, metrics, logger)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -595,26 +595,37 @@ func dispatchWebhooks(
 
 	event := "message.delivered"
 	for _, wh := range webhooks {
-		state := dispatcher.DispatchWithRetry(ctx, wh, payload)
+		deliveryResult := dispatcher.DispatchWithRetry(ctx, wh, payload, 0)
 		logger.Info("webhook dispatched",
 			"webhook_id", wh.ID,
 			"message_id", msg.ID,
-			"status", state.LastStatus,
-			"attempts", state.Attempts,
+			"status", deliveryResult.Err,
+			"attempts", deliveryResult.Attempts,
 		)
 
-		// Persist delivery log
+		// Determine status and whether retries remain
 		now := time.Now()
+		lastStatus := "delivered"
+		completed := true
+		if deliveryResult.Err != nil {
+			lastStatus = fmt.Sprintf("failed: %v", deliveryResult.Err)
+			if deliveryResult.Attempts < dispatcher.Cfg().MaxAttempts {
+				completed = false // pending retry
+			} else {
+				lastStatus = "dead_letter"
+			}
+		}
+
 		delivery := &models.WebhookDelivery{
 			WebhookID:     wh.ID,
 			MessageID:     msg.ID,
 			Event:         event,
-			AttemptCount:  state.Attempts,
-			StatusCode:    state.StatusCode,
-			ResponseBody:  truncateString(state.ResponseBody, 500),
-			LastStatus:    truncateString(state.LastStatus, 200),
+			AttemptCount:  deliveryResult.Attempts,
+			StatusCode:    deliveryResult.StatusCode,
+			ResponseBody:  truncateString(deliveryResult.ResponseBody, 500),
+			LastStatus:    truncateString(lastStatus, 200),
 			LastAttemptAt: &now,
-			Completed:     state.Completed,
+			Completed:     completed,
 			CreatedAt:     now,
 		}
 		if err := svc.WebhookDeliveries.Create(ctx, delivery); err != nil {
@@ -638,6 +649,8 @@ func startBackgroundJobs(
 	queue *worker.Queue,
 	fcmHandler *handlers.FCMTokenHandler,
 	fcmSender *fcm.Sender,
+	sseHandler *handlers.SSEHandler,
+	webhookDispatcher *webhook.Dispatcher,
 	metrics *telemetry.Metrics,
 	logger *telemetry.Logger,
 ) {
@@ -701,6 +714,18 @@ func startBackgroundJobs(
 				}
 			}
 
+			// Mark devices OFFLINE if no heartbeat (last_seen) within 90s.
+			// This handles the case where a device disconnects without cleanly
+			// deregistering (e.g., network loss, crash, battery drain).
+			if staleIDs, err := svc.Devices.MarkStaleDevicesOffline(ctx, 90*time.Second); err != nil {
+				logger.Error("failed to mark stale devices offline", "error", err)
+			} else if len(staleIDs) > 0 {
+				logger.Info("marked stale devices offline", "count", len(staleIDs), "ids", staleIDs)
+				for _, id := range staleIDs {
+					sseHandler.BroadcastDeviceStatus(id, "OFFLINE")
+				}
+			}
+
 			if err := svc.Admin.RecordAnalyticsDaily(ctx); err != nil {
 				logger.Error("failed to record daily analytics", "error", err)
 			}
@@ -733,6 +758,65 @@ func startBackgroundJobs(
 			logger.Error("failed to cleanup old APK files", "error", err)
 		} else if cleaned > 0 {
 			logger.Info("cleaned up old APK files", "count", cleaned)
+		}
+
+		// Retry pending webhook deliveries. Query non-completed deliveries that are
+		// still within max attempts and re-dispatch those whose backoff has elapsed.
+		pendingRetries, err := svc.WebhookDeliveries.ListPendingRetries(ctx, webhookDispatcher.Cfg().MaxAttempts)
+		if err != nil {
+			logger.Error("failed to list pending webhook retries", "error", err)
+		} else {
+			for _, delivery := range pendingRetries {
+				// Compute expected backoff for the NEXT attempt (delivery.AttemptCount is
+				// the number already attempted; the next attempt would be attempt+1,
+				// so the wait before THIS retry is backoff for attempt = delivery.AttemptCount).
+				if delivery.LastAttemptAt == nil {
+					continue
+				}
+				backoff := webhookDispatcher.ComputeBackoff(delivery.AttemptCount)
+				if time.Since(*delivery.LastAttemptAt) < backoff {
+					continue // not yet due
+				}
+
+				wh, err := svc.Webhooks.GetByID(ctx, delivery.WebhookID)
+				if err != nil || wh == nil || !wh.Active {
+					// Webhook deleted or deactivated — mark completed
+					_ = svc.WebhookDeliveries.UpdateRetry(ctx, delivery.ID, 0, "", "webhook_unavailable", delivery.AttemptCount, true)
+					continue
+				}
+
+				// Re-dispatch; reconstruct minimal payload from delivery record
+				retryPayload := webhook.Payload{
+					Event:     delivery.Event,
+					MessageID: delivery.MessageID,
+				}
+				retryResult := webhookDispatcher.DispatchWithRetry(ctx, *wh, retryPayload, delivery.AttemptCount)
+
+				completed := false
+				lastStatus := "delivered"
+				if retryResult.Err != nil {
+					lastStatus = fmt.Sprintf("failed: %v", retryResult.Err)
+					if retryResult.Attempts >= webhookDispatcher.Cfg().MaxAttempts {
+						completed = true
+						lastStatus = "dead_letter"
+					}
+				} else {
+					completed = true
+				}
+
+				if err := svc.WebhookDeliveries.UpdateRetry(ctx, delivery.ID, retryResult.StatusCode,
+					truncateString(retryResult.ResponseBody, 500), truncateString(lastStatus, 200),
+					retryResult.Attempts, completed); err != nil {
+					logger.Error("failed to update webhook delivery retry", "error", err, "delivery_id", delivery.ID)
+				} else {
+					logger.Info("webhook delivery retried",
+						"delivery_id", delivery.ID,
+						"webhook_id", delivery.WebhookID,
+						"attempts", retryResult.Attempts,
+						"status", lastStatus,
+					)
+				}
+			}
 		}
 
 			// Send FCM revival notifications to offline devices (with cooldown).

@@ -36,6 +36,8 @@ fun ProfileScreen(
     onLoggedOut: () -> Unit = {},
     onNavigateToKyc: () -> Unit = {},
     onNavigateToChangePassword: () -> Unit = {},
+    onNavigateToWebhooks: () -> Unit = {},
+    onNavigateToPreferences: () -> Unit = {},
     onNavigateToOtp: () -> Unit = {},
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
@@ -303,6 +305,69 @@ fun ProfileScreen(
                 Icon(
                     imageVector = Icons.Outlined.ChevronRight,
                     contentDescription = "Change Password",
+                    tint = AppColors.TextMuted,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
+
+        Spacer(Modifier.height(AppSpacing.XXL))
+
+        // ─── Integrations ───────────────────────────────────────
+        SectionHeader(icon = Icons.Outlined.Webhook, title = "Integrations")
+
+        Spacer(Modifier.height(AppSpacing.MD))
+
+        GlassCard(onClick = onNavigateToWebhooks) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Webhooks",
+                        style = AppTypography.Body,
+                        color = AppColors.TextPrimary,
+                    )
+                    Text(
+                        text = "Forward events to your own server",
+                        style = AppTypography.Caption,
+                        color = AppColors.TextMuted,
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Outlined.ChevronRight,
+                    contentDescription = "Open Webhooks",
+                    tint = AppColors.TextMuted,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
+
+        Spacer(Modifier.height(AppSpacing.MD))
+
+        GlassCard(onClick = onNavigateToPreferences) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Preferences",
+                        style = AppTypography.Body,
+                        color = AppColors.TextPrimary,
+                    )
+                    Text(
+                        text = "Notification and alert settings",
+                        style = AppTypography.Caption,
+                        color = AppColors.TextMuted,
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Outlined.ChevronRight,
+                    contentDescription = "Open Preferences",
                     tint = AppColors.TextMuted,
                     modifier = Modifier.size(20.dp),
                 )

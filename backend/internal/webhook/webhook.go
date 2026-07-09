@@ -10,44 +10,33 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"sync"
 	"time"
-
-	"github.com/google/uuid"
 
 	"github.com/aeroxe-bee/backend/internal/config"
 	"github.com/aeroxe-bee/backend/internal/models"
 )
 
 type Dispatcher struct {
-	client     *http.Client
-	cfg        config.WebhookConfig
-	deliveries map[string]*deliveryState
-	mu         sync.Mutex
+	client *http.Client
+	cfg    config.WebhookConfig
 }
 
-type deliveryState struct {
-	WebhookID    string
-	MessageID    string
-	Event        string
-	Attempts     int
-	LastStatus   string
+type DeliveryResult struct {
 	StatusCode   int
 	ResponseBody string
-	LastAttempt  time.Time
-	NextRetry    time.Time
-	Completed    bool
+	Attempts     int
+	Err          error
 }
 
 type Payload struct {
-	Event           string                  `json:"event"`
-	MessageID       string                  `json:"message_id"`
-	Recipient       string                  `json:"recipient"`
-	Sender          string                  `json:"sender"`
-	MessageType     string                  `json:"message_type"`
-	DeliveryStatus  models.DeliveryStatus   `json:"delivery_status"`
-	ConfidenceScore float64                 `json:"confidence_score"`
-	Timestamp       time.Time               `json:"timestamp"`
+	Event           string                `json:"event"`
+	MessageID       string                `json:"message_id"`
+	Recipient       string                `json:"recipient"`
+	Sender          string                `json:"sender"`
+	MessageType     string                `json:"message_type"`
+	DeliveryStatus  models.DeliveryStatus `json:"delivery_status"`
+	ConfidenceScore float64               `json:"confidence_score"`
+	Timestamp       time.Time             `json:"timestamp"`
 }
 
 func NewDispatcher(cfg config.WebhookConfig) *Dispatcher {
@@ -60,28 +49,21 @@ func NewDispatcher(cfg config.WebhookConfig) *Dispatcher {
 				IdleConnTimeout:     30 * time.Second,
 			},
 		},
-		cfg:        cfg,
-		deliveries: make(map[string]*deliveryState),
+		cfg: cfg,
 	}
 }
 
-type dispatchResult struct {
-	StatusCode   int
-	ResponseBody string
-	Err          error
-}
-
-func (d *Dispatcher) Dispatch(ctx context.Context, webhook models.Webhook, payload Payload) dispatchResult {
+func (d *Dispatcher) Dispatch(ctx context.Context, webhook models.Webhook, payload Payload) DeliveryResult {
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return dispatchResult{Err: fmt.Errorf("marshal payload: %w", err)}
+		return DeliveryResult{Err: fmt.Errorf("marshal payload: %w", err)}
 	}
 
 	signature := SignPayload(body, webhook.Secret)
 
 	req, err := http.NewRequestWithContext(ctx, "POST", webhook.URL, bytes.NewReader(body))
 	if err != nil {
-		return dispatchResult{Err: fmt.Errorf("create request: %w", err)}
+		return DeliveryResult{Err: fmt.Errorf("create request: %w", err)}
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -91,12 +73,12 @@ func (d *Dispatcher) Dispatch(ctx context.Context, webhook models.Webhook, paylo
 
 	resp, err := d.client.Do(req)
 	if err != nil {
-		return dispatchResult{Err: fmt.Errorf("deliver webhook: %w", err)}
+		return DeliveryResult{Err: fmt.Errorf("deliver webhook: %w", err)}
 	}
 	defer resp.Body.Close()
 
 	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-	result := dispatchResult{
+	result := DeliveryResult{
 		StatusCode:   resp.StatusCode,
 		ResponseBody: string(respBody),
 	}
@@ -108,71 +90,41 @@ func (d *Dispatcher) Dispatch(ctx context.Context, webhook models.Webhook, paylo
 	return result
 }
 
-func (d *Dispatcher) DispatchWithRetry(ctx context.Context, webhook models.Webhook, payload Payload) *deliveryState {
-	d.mu.Lock()
-	key := fmt.Sprintf("%s:%s", webhook.ID, payload.MessageID)
-	state, exists := d.deliveries[key]
-	if !exists {
-		state = &deliveryState{
-			WebhookID:  webhook.ID,
-			MessageID:  payload.MessageID,
-			Event:      payload.Event,
-			NextRetry:  time.Now(),
-		}
-		d.deliveries[key] = state
-	}
-	d.mu.Unlock()
-
+// DispatchWithRetry dispatches the webhook and returns the result with the attempt count.
+// The caller is responsible for persisting the result and scheduling retries.
+func (d *Dispatcher) DispatchWithRetry(ctx context.Context, webhook models.Webhook, payload Payload, previousAttempts int) DeliveryResult {
 	result := d.Dispatch(ctx, webhook, payload)
-	state.LastAttempt = time.Now()
-	state.StatusCode = result.StatusCode
-	state.ResponseBody = result.ResponseBody
-
-	if result.Err != nil {
-		state.Attempts++
-		state.LastStatus = fmt.Sprintf("failed: %v", result.Err)
-		if state.Attempts < d.cfg.MaxAttempts {
-			backoff := d.cfg.BaseBackoff * (1 << (state.Attempts - 1))
-			if backoff > d.cfg.MaxBackoff {
-				backoff = d.cfg.MaxBackoff
-			}
-			state.NextRetry = time.Now().Add(backoff)
-		} else {
-			state.Completed = true
-			state.LastStatus = "dead_letter"
-		}
-	} else {
-		state.Completed = true
-		state.LastStatus = "delivered"
-	}
-
-	return state
+	result.Attempts = previousAttempts + 1
+	return result
 }
 
 // DispatchTest sends a test payload to the webhook endpoint and returns the result.
-func (d *Dispatcher) DispatchTest(ctx context.Context, webhook models.Webhook) dispatchResult {
+func (d *Dispatcher) DispatchTest(ctx context.Context, webhook models.Webhook) DeliveryResult {
 	payload := Payload{
-		Event:     "test.ping",
-		MessageID: "test-" + uuid.New().String(),
-		Recipient: "+1234567890",
-		Sender:    "TestSender",
-		MessageType: "test",
-		DeliveryStatus: models.DeliveryStatusSent,
+		Event:           "test.ping",
+		MessageID:       "test-" + fmt.Sprintf("%d", time.Now().UnixNano()),
+		Recipient:       "+1234567890",
+		Sender:          "TestSender",
+		MessageType:     "test",
+		DeliveryStatus:  models.DeliveryStatusSent,
 		ConfidenceScore: 1.0,
 		Timestamp:       time.Now(),
 	}
 	return d.Dispatch(ctx, webhook, payload)
 }
 
-func (d *Dispatcher) GetState(webhookID, messageID string) *deliveryState {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	return d.deliveries[fmt.Sprintf("%s:%s", webhookID, messageID)]
+// ComputeBackoff returns the backoff duration for the given attempt number (1-based).
+func (d *Dispatcher) ComputeBackoff(attempt int) time.Duration {
+	backoff := d.cfg.BaseBackoff * (1 << (attempt - 1))
+	if backoff > d.cfg.MaxBackoff {
+		backoff = d.cfg.MaxBackoff
+	}
+	return backoff
 }
 
-func (d *Dispatcher) RetryDeadLetters(ctx context.Context, webhook models.Webhook, payload Payload) error {
-	result := d.Dispatch(ctx, webhook, payload)
-	return result.Err
+// Cfg returns a copy of the dispatcher's configuration.
+func (d *Dispatcher) Cfg() config.WebhookConfig {
+	return d.cfg
 }
 
 func SignPayload(payload []byte, secret string) string {
