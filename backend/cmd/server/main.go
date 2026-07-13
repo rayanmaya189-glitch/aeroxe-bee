@@ -462,7 +462,7 @@ func processMessage(
 
 		logger.Debug("attempting device",
 			"msg_id", msg.ID, "device_id", device.ID,
-			"score", scoredDevice.Score, "carrier", device.Carrier)
+			"score", scoredDevice.TotalScore, "carrier", device.Carrier)
 
 		if cbManager.IsOpen(ctx, models.CBScopeDevice, device.ID) {
 			logger.Debug("device circuit breaker open, skipping",
