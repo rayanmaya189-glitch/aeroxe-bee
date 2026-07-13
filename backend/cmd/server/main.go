@@ -373,7 +373,15 @@ func processMessage(
 ) error {
 	startTime := time.Now()
 
+	logger.Debug("processing message",
+		"msg_id", msg.ID, "lane", string(lane),
+		"recipient", maskPhone(msg.Recipient),
+		"account_id", msg.AccountID,
+	)
+
 	if cbManager.IsOpen(ctx, models.CBScopeAccount, msg.AccountID) {
+		logger.Warn("process message blocked by account circuit breaker",
+			"msg_id", msg.ID, "account_id", msg.AccountID)
 		metrics.ObserveMessageFailed()
 		metrics.ObserveQueueProcessed(string(lane), false)
 		return fmt.Errorf("account circuit breaker open: %s", msg.AccountID)
@@ -416,10 +424,16 @@ func processMessage(
 		return fmt.Errorf("get eligible devices: %w", err)
 	}
 	if len(devices) == 0 {
+		logger.Warn("no eligible devices for account",
+			"msg_id", msg.ID, "account_id", msg.AccountID)
 		metrics.ObserveMessageFailed()
 		metrics.ObserveQueueProcessed(string(lane), false)
 		return fmt.Errorf("no eligible devices for account %s", msg.AccountID)
 	}
+
+	logger.Debug("eligible devices found",
+		"msg_id", msg.ID, "count", len(devices),
+		"device_ids", deviceIDs(devices))
 
 	costMap, err := svc.CostTracking.GetCostMap(ctx, deviceIDs(devices))
 	if err != nil {
@@ -435,6 +449,8 @@ func processMessage(
 	}
 	scored := selector.FilterAndScore(devices, opts, costMap)
 	if len(scored) == 0 {
+		logger.Warn("no device passed routing gates",
+			"msg_id", msg.ID, "devices_count", len(devices))
 		metrics.ObserveMessageFailed()
 		metrics.ObserveQueueProcessed(string(lane), false)
 		return fmt.Errorf("no device passed routing gates")
@@ -444,33 +460,49 @@ func processMessage(
 	for _, scoredDevice := range scored {
 		device := scoredDevice.Device
 
+		logger.Debug("attempting device",
+			"msg_id", msg.ID, "device_id", device.ID,
+			"score", scoredDevice.Score, "carrier", device.Carrier)
+
 		if cbManager.IsOpen(ctx, models.CBScopeDevice, device.ID) {
+			logger.Debug("device circuit breaker open, skipping",
+				"msg_id", msg.ID, "device_id", device.ID)
 			continue
 		}
 
 		carrierOK, err := rateMgr.CheckGlobalThrottle(ctx, "carrier", device.Carrier)
 		if err != nil {
 			lastErr = fmt.Errorf("throttle check failed: %w", err)
+			logger.Debug("carrier throttle check error",
+				"msg_id", msg.ID, "device_id", device.ID, "error", err)
 			continue
 		}
 		if !carrierOK {
 			lastErr = fmt.Errorf("carrier throttled: %s", device.Carrier)
+			logger.Debug("carrier throttled",
+				"msg_id", msg.ID, "device_id", device.ID, "carrier", device.Carrier)
 			continue
 		}
 
 		deviceOK, err := rateMgr.CheckDeviceRate(ctx, device.ID)
 		if err != nil {
 			lastErr = fmt.Errorf("rate check failed: %w", err)
+			logger.Debug("device rate check error",
+				"msg_id", msg.ID, "device_id", device.ID, "error", err)
 			continue
 		}
 		if !deviceOK {
 			lastErr = fmt.Errorf("device rate exceeded: %s", device.ID)
+			logger.Debug("device rate exceeded",
+				"msg_id", msg.ID, "device_id", device.ID)
 			continue
 		}
 
 		simStatus, slope := simHealth.EvaluateDevice(device.ID, device.SIMHealthStatus, device.SuccessRate24h)
 		if simStatus == models.SIMHealthBlocked {
 			lastErr = fmt.Errorf("sim blocked: %s", device.ID)
+			logger.Debug("SIM blocked",
+				"msg_id", msg.ID, "device_id", device.ID)
 			continue
 		}
 		if simStatus != device.SIMHealthStatus || slope != device.HealthTrendSlope {
@@ -481,6 +513,8 @@ func processMessage(
 
 		if mqttClient == nil || !mqttClient.IsConnected() {
 			lastErr = fmt.Errorf("mqtt broker not connected, cannot send SMS")
+			logger.Warn("MQTT broker not connected, cannot send",
+				"msg_id", msg.ID, "device_id", device.ID)
 			cbManager.RecordFailure(ctx, models.CBScopeDevice, device.ID)
 			simHealth.RecordDelivery(device.ID, false)
 			metrics.ObserveMessageFailed()
@@ -494,13 +528,23 @@ func processMessage(
 		case worker.LaneMarketing:
 			priority = "LOW"
 		}
+		logger.Debug("publishing MQTT SMS command",
+			"msg_id", msg.ID, "device_id", device.ID,
+			"topic", fmt.Sprintf("devices/%s/commands", device.ID),
+			"priority", priority)
+
 		if err := mqttClient.SendSMSCommand(ctx, device.ID, msg.ID, msg.AccountID, msg.Recipient, msg.Message, priority); err != nil {
+			logger.Warn("MQTT send failed",
+				"msg_id", msg.ID, "device_id", device.ID, "error", err)
 			cbManager.RecordFailure(ctx, models.CBScopeDevice, device.ID)
 			simHealth.RecordDelivery(device.ID, false)
 			lastErr = fmt.Errorf("mqtt send failed: %w", err)
 			metrics.ObserveMessageFailed()
 			continue
 		}
+
+		logger.Debug("MQTT publish succeeded",
+			"msg_id", msg.ID, "device_id", device.ID)
 		simHealth.RecordDelivery(device.ID, true)
 
 		hasDeliveryReport := device.LastPongAt != nil && device.SuccessRate24h > 0
@@ -917,6 +961,12 @@ func deviceIDs(devices []models.Device) []string {
 	}
 	return ids
 }
+
+func maskPhone(phone string) string {
+	if len(phone) < 6 {
+		return "***"
+	}
+	return phone[:3] + "****" + phone[len(phone)-3:]
 
 func getEnvOrDefault(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {

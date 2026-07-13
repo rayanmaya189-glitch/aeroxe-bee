@@ -1,0 +1,2 @@
+ALTER TABLE webhook_deliveries ADD COLUMN IF NOT EXISTS status_code INT NOT NULL DEFAULT 0;
+ALTER TABLE webhook_deliveries ADD COLUMN IF NOT EXISTS completed BOOLEAN NOT NULL DEFAULT false;

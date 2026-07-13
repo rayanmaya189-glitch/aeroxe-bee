@@ -7,6 +7,7 @@ PASSWD_FILE="$PASSWD_DIR/passwords"
 mkdir -p "$PASSWD_DIR"
 
 BACKEND_PASS="${MQTT_BACKEND_PASSWORD:-dev-backend-password}"
+DEVICE_PASS="${MQTT_DEVICE_PASSWORD:-dev-device-password}"
 
 # Remove any existing password file
 rm -f "$PASSWD_FILE"
@@ -14,6 +15,9 @@ rm -f "$PASSWD_FILE"
 # Create hashed password file with backend admin user
 # -b = batch mode (no prompts), -c = create new file
 mosquitto_passwd -b -c "$PASSWD_FILE" backend "$BACKEND_PASS"
+
+# Add shared device user (all Android devices use this same credential)
+mosquitto_passwd -b "$PASSWD_FILE" device "$DEVICE_PASS"
 
 # Fix ownership and permissions (mosquitto user = UID 1883)
 chown 1883:1883 "$PASSWD_FILE"
