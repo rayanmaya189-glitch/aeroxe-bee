@@ -967,6 +967,7 @@ func maskPhone(phone string) string {
 		return "***"
 	}
 	return phone[:3] + "****" + phone[len(phone)-3:]
+}
 
 func getEnvOrDefault(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
