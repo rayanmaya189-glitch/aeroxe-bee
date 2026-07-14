@@ -14,6 +14,7 @@ import com.aeroxebee.client.domain.model.SMSTask
 import com.aeroxebee.client.performance.PerformanceTracer
 import com.aeroxebee.client.util.RateLimiter
 import com.aeroxebee.client.util.SimManager
+import com.aeroxebee.client.util.TokenManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -27,6 +28,7 @@ class SMSEngine @Inject constructor(
     private val rateLimiter: RateLimiter,
     private val simManager: SimManager,
     private val tracer: PerformanceTracer,
+    private val tokenManager: TokenManager,
 ) {
     companion object {
         const val MAX_PARTS = 5
@@ -37,7 +39,7 @@ class SMSEngine @Inject constructor(
     suspend fun send(task: SMSTask): SMSTask.Status {
         if (!hasSmsPermission()) return SMSTask.Status.FAILED
 
-        val slot = task.simSlot
+        val slot = tokenManager.getSimSlot()
         if (!rateLimiter.canSend(slot)) {
             repository.addLog(task.id, "RATE_LIMITED", "SIM slot $slot rate limit exceeded")
             return SMSTask.Status.FAILED
@@ -56,12 +58,12 @@ class SMSEngine @Inject constructor(
             val trace = tracer.traceSmsSend(task.recipient, parts.size)
 
             try {
-                val sentIntent = PendingIntentHolder.createSentIntent(context, task.id)
-                val deliveryIntent = PendingIntentHolder.createDeliveryIntent(context, task.id)
+                val sentIntent = PendingIntentHolder.createSentIntent(context, task.id, slot)
+                val deliveryIntent = PendingIntentHolder.createDeliveryIntent(context, task.id, slot)
 
                 if (parts.size > 1) {
-                    val sentIntents = parts.map { PendingIntentHolder.createSentIntent(context, task.id) }
-                    val deliveryIntents = parts.map { PendingIntentHolder.createDeliveryIntent(context, task.id) }
+                    val sentIntents = parts.map { PendingIntentHolder.createSentIntent(context, task.id, slot) }
+                    val deliveryIntents = parts.map { PendingIntentHolder.createDeliveryIntent(context, task.id, slot) }
                     smsManager.sendMultipartTextMessage(task.recipient, null, parts, ArrayList(sentIntents), ArrayList(deliveryIntents))
                 } else {
                     smsManager.sendTextMessage(task.recipient, null, message, sentIntent, deliveryIntent)

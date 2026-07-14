@@ -119,7 +119,8 @@ class MqttManager @Inject constructor(
             }
 
             val connectToken = client?.connect(options)
-            val connected = connectToken?.waitForCompletion(CONNECT_TIMEOUT * 1000L) ?: false
+            connectToken?.waitForCompletion(CONNECT_TIMEOUT * 1000L)
+            val connected = client?.isConnected == true
             if (!connected) {
                 Log.w(TAG, "MQTT connect timed out, connection may still be establishing")
                 scheduleReconnect()

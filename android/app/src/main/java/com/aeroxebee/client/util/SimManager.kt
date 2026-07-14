@@ -51,7 +51,17 @@ class SimManager @Inject constructor(
         subManager.activeSubscriptionInfoList?.forEach { sub ->
             if (sub.simSlotIndex == slot) return sub.subscriptionId
         }
+        android.util.Log.w("SimManager", "Slot $slot not found in active subscriptions, falling back to default")
         return SubscriptionManager.getDefaultSubscriptionId()
+    }
+
+    fun getSlotSubscriptionId(slot: Int): Int? {
+        val subManager = context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as SubscriptionManager
+        subManager.activeSubscriptionInfoList?.forEach { sub ->
+            if (sub.simSlotIndex == slot) return sub.subscriptionId
+        }
+        android.util.Log.w("SimManager", "Slot $slot not found in active subscriptions")
+        return null
     }
 
     data class SimSlot(

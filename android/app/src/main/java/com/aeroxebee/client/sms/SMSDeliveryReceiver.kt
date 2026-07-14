@@ -26,6 +26,7 @@ class SMSDeliveryReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val taskId = intent.getStringExtra("task_id") ?: return
+        val simSlot = intent.getIntExtra("sim_slot", 0)
         val resultCode = resultCode
         val action = intent.action
 
@@ -51,15 +52,15 @@ class SMSDeliveryReceiver : BroadcastReceiver() {
                         mqttManager.publish(
                             "devices/$deviceId/status",
                             gson.toJson(
-                                StatusUpdateRequest(
-                                    messageId = taskId,
-                                    deviceId = deviceId,
-                                    status = "DELIVERED",
-                                    deliveryStatus = "DELIVERED",
-                                    confidenceScore = 1.0,
-                                    simSlot = 0,
-                                    timestamp = System.currentTimeMillis(),
-                                )
+                        StatusUpdateRequest(
+                            messageId = taskId,
+                            deviceId = deviceId,
+                            status = "DELIVERED",
+                            deliveryStatus = "DELIVERED",
+                            confidenceScore = 1.0,
+                            simSlot = simSlot,
+                            timestamp = System.currentTimeMillis(),
+                        )
                             )
                         )
                     }
@@ -77,10 +78,11 @@ object PendingIntentHolder {
     private const val REQUEST_CODE_SENT = 1000
     private const val REQUEST_CODE_DELIVERED = 2000
 
-    fun createSentIntent(context: Context, taskId: String): PendingIntent {
+    fun createSentIntent(context: Context, taskId: String, simSlot: Int = 0): PendingIntent {
         val intent = Intent(context, SMSDeliveryReceiver::class.java).apply {
             action = "com.aeroxebee.client.SMS_SENT"
             putExtra("task_id", taskId)
+            putExtra("sim_slot", simSlot)
         }
         return PendingIntent.getBroadcast(
             context, REQUEST_CODE_SENT + taskId.hashCode(),
@@ -88,10 +90,11 @@ object PendingIntentHolder {
         )
     }
 
-    fun createDeliveryIntent(context: Context, taskId: String): PendingIntent {
+    fun createDeliveryIntent(context: Context, taskId: String, simSlot: Int = 0): PendingIntent {
         val intent = Intent(context, SMSDeliveryReceiver::class.java).apply {
             action = "com.aeroxebee.client.SMS_DELIVERED"
             putExtra("task_id", taskId)
+            putExtra("sim_slot", simSlot)
         }
         return PendingIntent.getBroadcast(
             context, REQUEST_CODE_DELIVERED + taskId.hashCode(),

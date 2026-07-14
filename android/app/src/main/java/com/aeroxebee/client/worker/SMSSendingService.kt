@@ -64,7 +64,7 @@ class SMSSendingService : Service() {
                             deliveryStatus = if (isSuccess) "SENT" else "FAILED",
                             confidenceScore = if (isSuccess) 1.0 else 0.0,
                             error = if (isSuccess) null else "sms_send_failed",
-                            simSlot = 0,
+                            simSlot = task.simSlot,
                             timestamp = System.currentTimeMillis(),
                         )
                     )

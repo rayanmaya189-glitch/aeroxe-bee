@@ -10,6 +10,7 @@ import com.aeroxebee.client.data.remote.api.AeroXeBeeApi
 import com.aeroxebee.client.data.remote.model.QRLoginRequest
 import com.aeroxebee.client.data.repository.DeviceRepository
 import com.aeroxebee.client.fcm.FCMRegistrar
+import com.aeroxebee.client.util.SimManager
 import com.aeroxebee.client.util.TokenManager
 import com.aeroxebee.client.worker.MqttService
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -35,6 +36,7 @@ class QrScannerViewModel @Inject constructor(
     private val tokenManager: TokenManager,
     private val deviceRepository: DeviceRepository,
     private val fcmRegistrar: FCMRegistrar,
+    private val simManager: SimManager,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(QrScannerState())
@@ -99,7 +101,8 @@ class QrScannerViewModel @Inject constructor(
 
                     tokenManager.saveToken(data.token)
                     tokenManager.saveDeviceId(data.deviceId)
-                    tokenManager.saveSimSlot(0)
+                    val simSlot = simManager.getAvailableSlots().firstOrNull()?.slotId ?: 0
+                    tokenManager.saveSimSlot(simSlot)
                     tokenManager.saveAccountEmail(data.account?.email ?: "")
                     tokenManager.saveAccountName(data.account?.name ?: "")
                     tokenManager.saveAccountId(data.account?.id ?: "")

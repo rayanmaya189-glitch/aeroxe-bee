@@ -9,6 +9,8 @@ import com.aeroxebee.client.util.DeviceStateClassifier
 import com.aeroxebee.client.util.ExactAlarmHandler
 import com.aeroxebee.client.util.OEMBatteryGuide
 import com.aeroxebee.client.util.OEMBatteryGuideEntry
+import com.aeroxebee.client.util.SimManager
+import com.aeroxebee.client.util.TokenManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,6 +28,10 @@ data class DeviceUiState(
     val batteryGuide: OEMBatteryGuideEntry? = null,
     val canScheduleExactAlarms: Boolean = true,
     val isBatteryOptimized: Boolean = false,
+    val availableSimSlots: List<SimManager.SimSlot> = emptyList(),
+    val selectedSimSlot: Int = 0,
+    val isSimSwitching: Boolean = false,
+    val simSwitchSuccess: Boolean = false,
 )
 
 @HiltViewModel
@@ -33,6 +39,8 @@ class DeviceViewModel @Inject constructor(
     private val deviceRepository: DeviceRepository,
     private val deviceStateClassifier: DeviceStateClassifier,
     private val exactAlarmHandler: ExactAlarmHandler,
+    private val simManager: SimManager,
+    private val tokenManager: TokenManager,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(DeviceUiState())
@@ -50,6 +58,8 @@ class DeviceViewModel @Inject constructor(
                 val deviceState = deviceStateClassifier.classify()
                 val batteryGuide = OEMBatteryGuide.find(info.manufacturer)
                 val canScheduleExactAlarms = exactAlarmHandler.canScheduleExactAlarms()
+                val simSlots = simManager.getAvailableSlots()
+                val selectedSlot = tokenManager.getSimSlot()
                 _state.update {
                     it.copy(
                         deviceInfo = info,
@@ -59,10 +69,35 @@ class DeviceViewModel @Inject constructor(
                         batteryGuide = batteryGuide,
                         canScheduleExactAlarms = canScheduleExactAlarms,
                         isBatteryOptimized = deviceStateClassifier.isIgnoringBatteryOptimizations(),
+                        availableSimSlots = simSlots,
+                        selectedSimSlot = selectedSlot,
                     )
                 }
             } catch (e: Exception) {
                 _state.update { it.copy(isLoading = false, error = e.message ?: "Failed to load device info") }
+            }
+        }
+    }
+
+    fun switchSim(slotIndex: Int) {
+        viewModelScope.launch {
+            _state.update { it.copy(isSimSwitching = true, simSwitchSuccess = false) }
+            try {
+                tokenManager.saveSimSlot(slotIndex)
+                _state.update {
+                    it.copy(
+                        selectedSimSlot = slotIndex,
+                        isSimSwitching = false,
+                        simSwitchSuccess = true,
+                    )
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        isSimSwitching = false,
+                        error = "Failed to switch SIM: ${e.message}",
+                    )
+                }
             }
         }
     }

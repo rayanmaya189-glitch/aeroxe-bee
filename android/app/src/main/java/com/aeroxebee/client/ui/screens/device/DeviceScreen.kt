@@ -35,12 +35,14 @@ import com.aeroxebee.client.ui.components.SectionHeader
 import com.aeroxebee.client.ui.components.StatusBadge
 import com.aeroxebee.client.ui.theme.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DeviceScreen(
     viewModel: DeviceViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
+    var simMenuExpanded by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -87,11 +89,11 @@ fun DeviceScreen(
                 Spacer(Modifier.height(AppSpacing.XXL))
 
                 // ─── SIM Cards ──────────────────────────────
-                SectionHeader(icon = Icons.Outlined.SimCard, title = "SIM Cards")
+                SectionHeader(icon = Icons.Outlined.SimCard, title = "Active SIM")
 
                 Spacer(Modifier.height(AppSpacing.MD))
 
-                if (state.deviceInfo.simSlots.isEmpty()) {
+                if (state.availableSimSlots.isEmpty()) {
                     GlassCard {
                         Box(
                             modifier = Modifier.fillMaxWidth(),
@@ -105,14 +107,101 @@ fun DeviceScreen(
                         }
                     }
                 } else {
-                    state.deviceInfo.simSlots.forEachIndexed { index, slot ->
-                        SimSlotCard(
-                            slotNumber = slot.slot + 1,
-                            carrier = slot.carrier,
-                            phoneNumber = slot.phoneNumber,
-                        )
-                        if (index < state.deviceInfo.simSlots.lastIndex) {
-                            Spacer(Modifier.height(AppSpacing.SM))
+                    val selectedSlot = state.availableSimSlots.find { it.slotId == state.selectedSimSlot }
+                        ?: state.availableSimSlots.firstOrNull()
+
+                    ExposedDropdownMenuBox(
+                        expanded = simMenuExpanded,
+                        onExpandedChange = { simMenuExpanded = it },
+                    ) {
+                        GlassCard {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor()
+                                    .padding(AppSpacing.SM),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(AppSpacing.LG),
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(42.dp)
+                                        .clip(RoundedCornerShape(AppShapes.Medium))
+                                        .background(AppColors.Blue.copy(alpha = 0.15f)),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.SimCard,
+                                        contentDescription = "SIM",
+                                        tint = AppColors.Blue,
+                                        modifier = Modifier.size(22.dp),
+                                    )
+                                }
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Send via",
+                                        style = AppTypography.Caption,
+                                        color = AppColors.TextMuted,
+                                    )
+                                    Text(
+                                        text = selectedSlot?.let { "SIM ${it.slotId + 1} — ${it.carrierName}" } ?: "Select SIM",
+                                        style = AppTypography.Card,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = AppColors.TextPrimary,
+                                    )
+                                }
+
+                                Icon(
+                                    imageVector = if (simMenuExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                                    contentDescription = null,
+                                    tint = AppColors.TextMuted,
+                                )
+                            }
+                        }
+
+                        ExposedDropdownMenu(
+                            expanded = simMenuExpanded,
+                            onDismissRequest = { simMenuExpanded = false },
+                        ) {
+                            state.availableSimSlots.forEach { slot ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Column {
+                                            Text(
+                                                text = "SIM ${slot.slotId + 1}",
+                                                style = AppTypography.Card,
+                                                fontWeight = FontWeight.SemiBold,
+                                            )
+                                            Text(
+                                                text = slot.carrierName,
+                                                style = AppTypography.Caption,
+                                                color = AppColors.TextMuted,
+                                            )
+                                        }
+                                    },
+                                    onClick = {
+                                        viewModel.switchSim(slot.slotId)
+                                        simMenuExpanded = false
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Outlined.SimCard,
+                                            contentDescription = null,
+                                            tint = if (slot.slotId == state.selectedSimSlot) AppColors.Blue else AppColors.TextMuted,
+                                        )
+                                    },
+                                    trailingIcon = {
+                                        if (slot.slotId == state.selectedSimSlot) {
+                                            Icon(
+                                                imageVector = Icons.Filled.Check,
+                                                contentDescription = "Selected",
+                                                tint = AppColors.Blue,
+                                            )
+                                        }
+                                    },
+                                )
+                            }
                         }
                     }
                 }

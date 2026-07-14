@@ -47,6 +47,8 @@ import com.aeroxebee.client.ui.theme.*
 import com.aeroxebee.client.util.TokenManager
 import com.aeroxebee.client.analytics.AnalyticsHelper
 import com.aeroxebee.client.data.repository.SMSTaskRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -99,6 +101,12 @@ private fun slideExitForRoute(exitRoute: String, targetRoute: String?): ExitTran
     }
 }
 
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface TokenManagerEntryPoint {
+    fun tokenManager(): TokenManager
+}
+
 @Composable
 fun AppNavHost() {
     val navController = rememberNavController()
@@ -107,6 +115,15 @@ fun AppNavHost() {
     val hideBottomBarRoutes = listOf("splash", "onboarding", "registration")
     val showBottomBar = currentDestination?.route !in hideBottomBarRoutes
     val currentRoute = currentDestination?.route
+
+    val tokenManager = remember { EntryPointAccessors.fromApplication(
+        navController.context.applicationContext,
+        TokenManagerEntryPoint::class.java,
+    ).tokenManager() }
+
+    val initialRoute = remember {
+        if (tokenManager.isRegistered()) Screen.Dashboard.route else "splash"
+    }
 
     // ─── In-app update checker ─────────────────────────────
     val updateViewModel: UpdateCheckerViewModel = hiltViewModel()
@@ -149,7 +166,7 @@ fun AppNavHost() {
     val navHostContent: @Composable (Modifier) -> Unit = { modifier ->
         NavHost(
             navController = navController,
-            startDestination = "splash",
+            startDestination = initialRoute,
             modifier = modifier,
             enterTransition = {
                 slideTransitionForRoute(
