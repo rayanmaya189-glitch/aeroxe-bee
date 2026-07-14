@@ -17,9 +17,9 @@ func NewWebhookDeliveryService(db DatabaseQuerier) *WebhookDeliveryService {
 
 func (s *WebhookDeliveryService) Create(ctx context.Context, d *models.WebhookDelivery) error {
 	_, err := s.db.Exec(ctx,
-		`INSERT INTO webhook_deliveries (webhook_id, message_id, event, attempt_count, status_code, response_body, last_status, last_attempt_at, completed, created_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-		d.WebhookID, d.MessageID, d.Event, d.AttemptCount, d.StatusCode, d.ResponseBody, d.LastStatus, d.LastAttemptAt, d.Completed, d.CreatedAt)
+		`INSERT INTO webhook_deliveries (webhook_id, message_id, event, attempt_count, status_code, response_body, last_status, last_attempt_at, completed, created_at, payload)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+		d.WebhookID, d.MessageID, d.Event, d.AttemptCount, d.StatusCode, d.ResponseBody, d.LastStatus, d.LastAttemptAt, d.Completed, d.CreatedAt, d.Payload)
 	return err
 }
 
@@ -53,7 +53,7 @@ func (s *WebhookDeliveryService) ListByWebhookID(ctx context.Context, webhookID 
 // (attempt_count < maxAttempts and enough time has passed since last_attempt_at).
 func (s *WebhookDeliveryService) ListPendingRetries(ctx context.Context, maxAttempts int) ([]models.WebhookDelivery, error) {
 	rows, err := s.db.Query(ctx,
-		`SELECT id, webhook_id, message_id, event, attempt_count, status_code, response_body, last_status, last_attempt_at, completed, created_at
+		`SELECT id, webhook_id, message_id, event, attempt_count, status_code, response_body, last_status, last_attempt_at, completed, created_at, payload
 		 FROM webhook_deliveries
 		 WHERE completed = false AND attempt_count < $1
 		 ORDER BY last_attempt_at ASC`, maxAttempts)
@@ -65,7 +65,7 @@ func (s *WebhookDeliveryService) ListPendingRetries(ctx context.Context, maxAtte
 	var deliveries []models.WebhookDelivery
 	for rows.Next() {
 		var d models.WebhookDelivery
-		if err := rows.Scan(&d.ID, &d.WebhookID, &d.MessageID, &d.Event, &d.AttemptCount, &d.StatusCode, &d.ResponseBody, &d.LastStatus, &d.LastAttemptAt, &d.Completed, &d.CreatedAt); err != nil {
+		if err := rows.Scan(&d.ID, &d.WebhookID, &d.MessageID, &d.Event, &d.AttemptCount, &d.StatusCode, &d.ResponseBody, &d.LastStatus, &d.LastAttemptAt, &d.Completed, &d.CreatedAt, &d.Payload); err != nil {
 			return nil, err
 		}
 		deliveries = append(deliveries, d)

@@ -253,6 +253,7 @@ func NewRouter(
 	mux.Handle("PUT /api/v1/member/devices/{id}", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.UpdateDevice))))
 	mux.Handle("DELETE /api/v1/member/devices/{id}", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.DeleteDevice))))
 	mux.Handle("GET /api/v1/member/messages", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.GetMessages))))
+	mux.Handle("GET /api/v1/member/inbound", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.GetInboundMessages))))
 	mux.Handle("POST /api/v1/member/send", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(messageHandler.MemberSend))))
 	mux.Handle("GET /api/v1/member/analytics", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.GetAnalytics))))
 	mux.Handle("GET /api/v1/member/stats", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(memberHandler.GetStats))))

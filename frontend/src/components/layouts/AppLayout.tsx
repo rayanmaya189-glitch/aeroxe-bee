@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
 import { useUIStore } from '@/store/uiStore'
@@ -10,6 +11,7 @@ export function AppLayout() {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen)
   const isMobile = useIsMobile()
   const { addToast } = useToast()
+  const queryClient = useQueryClient()
 
   useEffect(() => {
     const token = sessionStorage.getItem('auth_token')
@@ -28,10 +30,46 @@ export function AppLayout() {
       }
     })
 
+    // Device online/offline transitions — refresh device lists and dashboards live.
+    es.addEventListener('device.status', (e) => {
+      try {
+        const data = JSON.parse(e.data)
+        queryClient.invalidateQueries({ queryKey: ['member-devices'] })
+        queryClient.invalidateQueries({ queryKey: ['member-dashboard'] })
+        queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+        if (data.status === 'OFFLINE') {
+          addToast(`Device ${data.device_id ?? ''} went offline`, 'warning')
+        } else if (data.status === 'ONLINE') {
+          addToast(`Device ${data.device_id ?? ''} is online`, 'success')
+        }
+      } catch {
+        // ignore parse errors
+      }
+    })
+
+    // Live message delivery updates — refresh message lists and dashboards.
+    es.addEventListener('message.status', () => {
+      queryClient.invalidateQueries({ queryKey: ['member-messages'] })
+      queryClient.invalidateQueries({ queryKey: ['member-dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+    })
+
+    // Inbound (received) SMS — refresh the inbox and notify.
+    es.addEventListener('message.inbound', (e) => {
+      queryClient.invalidateQueries({ queryKey: ['member-inbound'] })
+      try {
+        const data = JSON.parse(e.data)
+        const from = data.sender ? `from ${data.sender}` : ''
+        addToast(`New SMS received ${from}`, 'info')
+      } catch {
+        // ignore parse errors
+      }
+    })
+
     return () => {
       es.close()
     }
-  }, [addToast])
+  }, [addToast, queryClient])
 
   return (
     <div className="min-h-screen bg-[#030712]">

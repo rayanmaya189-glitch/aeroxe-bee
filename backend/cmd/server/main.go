@@ -127,13 +127,14 @@ func main() {
 
 		if err := mqttClient.Subscribe("devices/+/status", func(topic string, payload []byte) {
 			var statusReport struct {
-				MessageID      string  `json:"message_id"`
-				DeviceID       string  `json:"device_id"`
-				Status         string  `json:"status"`
-				DeliveryStatus string  `json:"delivery_status"`
-				Error          *string `json:"error,omitempty"`
-				SIMSlot        int     `json:"sim_slot"`
-				Timestamp      int64   `json:"timestamp"`
+				MessageID       string   `json:"message_id"`
+				DeviceID        string   `json:"device_id"`
+				Status          string   `json:"status"`
+				DeliveryStatus  string   `json:"delivery_status"`
+				ConfidenceScore *float64 `json:"confidence_score,omitempty"`
+				Error           *string  `json:"error,omitempty"`
+				SIMSlot         int      `json:"sim_slot"`
+				Timestamp       int64    `json:"timestamp"`
 			}
 			if err := json.Unmarshal(payload, &statusReport); err != nil {
 				logger.Error("failed to parse device status", "topic", topic, "error", err)
@@ -141,8 +142,16 @@ func main() {
 			}
 			switch statusReport.Status {
 			case "SENT", "DELIVERED":
+				// Honor the device-reported confidence when present; otherwise fall back to a
+				// status-based default so a carrier-confirmed DELIVERED outranks a mere SENT.
+				confidence := 1.0
+				if statusReport.ConfidenceScore != nil {
+					confidence = *statusReport.ConfidenceScore
+				} else if statusReport.Status == "SENT" {
+					confidence = 0.85
+				}
 				if err := svc.Messages.UpdateDeliveryStatus(context.Background(), statusReport.MessageID,
-					models.DeliveryStatus(statusReport.DeliveryStatus), 1.0); err != nil {
+					models.DeliveryStatus(statusReport.DeliveryStatus), confidence); err != nil {
 					logger.Error("mqtt status: update delivery failed", "msg_id", statusReport.MessageID, "error", err)
 				}
 				if statusReport.DeviceID != "" {
@@ -150,7 +159,7 @@ func main() {
 						logger.Error("mqtt status: update pong failed", "device_id", statusReport.DeviceID, "error", err)
 					}
 					if sseHandler != nil {
-						sseHandler.BroadcastMessageStatus(statusReport.MessageID, statusReport.DeviceID, statusReport.Status, statusReport.DeliveryStatus, 1.0)
+						sseHandler.BroadcastMessageStatus(statusReport.MessageID, statusReport.DeviceID, statusReport.Status, statusReport.DeliveryStatus, confidence)
 						sseHandler.BroadcastDeviceStatus(statusReport.DeviceID, "ONLINE")
 					}
 				}
@@ -212,6 +221,62 @@ func main() {
 		}); err != nil {
 			logger.Warn("failed to subscribe to device ack", "error", err)
 		}
+
+		// Inbound (received) SMS forwarded by device nodes — enables two-way SMS.
+		if err := mqttClient.Subscribe("devices/+/inbox", func(topic string, payload []byte) {
+			var inbound struct {
+				DeviceID  string `json:"device_id"`
+				Sender    string `json:"sender"`
+				Recipient string `json:"recipient"`
+				Body      string `json:"body"`
+				SIMSlot   int    `json:"sim_slot"`
+				Timestamp int64  `json:"timestamp"`
+			}
+			if err := json.Unmarshal(payload, &inbound); err != nil {
+				logger.Error("failed to parse inbound sms", "topic", topic, "error", err)
+				return
+			}
+			if inbound.DeviceID == "" {
+				return
+			}
+			bgctx := context.Background()
+			device, err := svc.Devices.GetByID(bgctx, inbound.DeviceID)
+			if err != nil || device == nil {
+				logger.Error("inbound sms: unknown device", "device_id", inbound.DeviceID, "error", err)
+				return
+			}
+			// Encrypt the body at rest, mirroring outbound message storage.
+			body := inbound.Body
+			if encMgr != nil {
+				if enc, encErr := encMgr.Encrypt([]byte(inbound.Body)); encErr == nil {
+					body = enc
+				} else {
+					logger.Error("inbound sms: encrypt failed", "device_id", inbound.DeviceID, "error", encErr)
+				}
+			}
+			im := &models.InboundMessage{
+				DeviceID:   inbound.DeviceID,
+				AccountID:  device.AccountID,
+				Sender:     inbound.Sender,
+				Recipient:  inbound.Recipient,
+				Body:       body,
+				SIMSlot:    inbound.SIMSlot,
+				ReceivedAt: time.Now(),
+			}
+			if err := svc.InboundMessages.Create(bgctx, im); err != nil {
+				logger.Error("inbound sms: persist failed", "device_id", inbound.DeviceID, "error", err)
+				return
+			}
+			// Keep the device marked alive on inbound activity.
+			if err := svc.Devices.UpdatePong(bgctx, inbound.DeviceID); err != nil {
+				logger.Error("inbound sms: update pong failed", "device_id", inbound.DeviceID, "error", err)
+			}
+			if sseHandler != nil {
+				sseHandler.BroadcastInboundMessage(device.AccountID, inbound.DeviceID, inbound.Sender, inbound.Body)
+			}
+		}); err != nil {
+			logger.Warn("failed to subscribe to device inbox", "error", err)
+		}
 	}
 
 	workerCount := cfg.Queue.WorkerCount
@@ -253,7 +318,7 @@ func main() {
 	fraudHandler := handlers.NewFraudHandler(fraudDetector)
 	preferencesService := services.NewUserPreferencesService(postgres.Pool)
 	kycService := services.NewKycService(postgres.Pool)
-	memberHandler := handlers.NewMemberHandler(svc.Accounts, svc.Devices, svc.Messages, svc.Billing, svc.Subscriptions, svc.Templates, svc.Webhooks, svc.WebhookDeliveries, webhookDispatcher, preferencesService, kycService)
+	memberHandler := handlers.NewMemberHandler(svc.Accounts, svc.Devices, svc.Messages, svc.Billing, svc.Subscriptions, svc.Templates, svc.Webhooks, svc.WebhookDeliveries, webhookDispatcher, preferencesService, kycService, svc.InboundMessages, encMgr)
 	qrPairingHandler := handlers.NewQRPairingHandler(svc.Devices, svc.Accounts, svc.MQTTCredentials, encMgr, cfg.MQTT.BrokerURL(), authMiddleware, cfg.MQTT.DevicePassword)
 	releaseService := services.NewAppReleaseService(postgres.Pool)
 	firebaseConfigService := services.NewFirebaseConfigService(postgres.Pool)
@@ -595,10 +660,22 @@ func processMessage(
 	if lastErr != nil {
 		metrics.ObserveMessageFailed()
 		metrics.ObserveQueueProcessed(string(lane), false)
+
+		// Fire the "message.failed" webhook only on the terminal attempt (the
+		// consumer increments Attempts after we return and dead-letters at
+		// MaxDeliveryAttempts), so transient retries don't spam subscribers.
+		maxAttempts := cfg.Queue.MaxDeliveryAttempts
+		if maxAttempts < 1 {
+			maxAttempts = 1
+		}
+		if msg.Attempts+1 >= maxAttempts {
+			go dispatchMessageFailedWebhooks(context.Background(), svc, webhookDispatcher, msg, lastErr.Error(), logger)
+		}
 	}
 	return lastErr
 }
 
+// dispatchWebhooks fires the "message.delivered" event for a successfully sent message.
 func dispatchWebhooks(
 	ctx context.Context,
 	svc *services.ServiceRegistry,
@@ -608,15 +685,6 @@ func dispatchWebhooks(
 	result deliveryconf.ConfidenceResult,
 	logger *telemetry.Logger,
 ) {
-	webhooks, err := svc.Webhooks.GetActiveByAccountAndEvent(ctx, msg.AccountID, "message.delivered")
-	if err != nil {
-		logger.Error("failed to fetch webhooks", "error", err)
-		return
-	}
-	if len(webhooks) == 0 {
-		return
-	}
-
 	payload := webhook.Payload{
 		Event:           "message.delivered",
 		MessageID:       msg.ID,
@@ -627,13 +695,65 @@ func dispatchWebhooks(
 		ConfidenceScore: result.Score,
 		Timestamp:       time.Now(),
 	}
+	dispatchWebhookEvent(ctx, svc, dispatcher, msg.AccountID, "message.delivered", payload, logger)
+}
 
-	event := "message.delivered"
+// dispatchMessageFailedWebhooks fires the "message.failed" event when a message
+// could not be delivered after exhausting all eligible devices.
+func dispatchMessageFailedWebhooks(
+	ctx context.Context,
+	svc *services.ServiceRegistry,
+	dispatcher *webhook.Dispatcher,
+	msg *worker.QueueMessage,
+	reason string,
+	logger *telemetry.Logger,
+) {
+	payload := webhook.Payload{
+		Event:          "message.failed",
+		MessageID:      msg.ID,
+		Recipient:      msg.Recipient,
+		Sender:         msg.Sender,
+		MessageType:    string(msg.MessageType),
+		DeliveryStatus: models.DeliveryStatusFailed,
+		FailureReason:  reason,
+		Timestamp:      time.Now(),
+	}
+	dispatchWebhookEvent(ctx, svc, dispatcher, msg.AccountID, "message.failed", payload, logger)
+}
+
+// dispatchWebhookEvent delivers a payload to every active webhook subscribed to
+// the given event for an account, persisting the full payload for retry replay.
+func dispatchWebhookEvent(
+	ctx context.Context,
+	svc *services.ServiceRegistry,
+	dispatcher *webhook.Dispatcher,
+	accountID string,
+	event string,
+	payload webhook.Payload,
+	logger *telemetry.Logger,
+) {
+	webhooks, err := svc.Webhooks.GetActiveByAccountAndEvent(ctx, accountID, event)
+	if err != nil {
+		logger.Error("failed to fetch webhooks", "error", err, "event", event)
+		return
+	}
+	if len(webhooks) == 0 {
+		return
+	}
+
+	// Serialize once so the retry job can re-send the identical body.
+	payloadJSON, err := json.Marshal(payload)
+	if err != nil {
+		logger.Error("failed to marshal webhook payload", "error", err, "event", event)
+		return
+	}
+
 	for _, wh := range webhooks {
 		deliveryResult := dispatcher.DispatchWithRetry(ctx, wh, payload, 0)
 		logger.Info("webhook dispatched",
 			"webhook_id", wh.ID,
-			"message_id", msg.ID,
+			"message_id", payload.MessageID,
+			"event", event,
 			"status", deliveryResult.Err,
 			"attempts", deliveryResult.Attempts,
 		)
@@ -653,7 +773,7 @@ func dispatchWebhooks(
 
 		delivery := &models.WebhookDelivery{
 			WebhookID:     wh.ID,
-			MessageID:     msg.ID,
+			MessageID:     payload.MessageID,
 			Event:         event,
 			AttemptCount:  deliveryResult.Attempts,
 			StatusCode:    deliveryResult.StatusCode,
@@ -662,9 +782,10 @@ func dispatchWebhooks(
 			LastAttemptAt: &now,
 			Completed:     completed,
 			CreatedAt:     now,
+			Payload:       string(payloadJSON),
 		}
 		if err := svc.WebhookDeliveries.Create(ctx, delivery); err != nil {
-			logger.Error("failed to persist webhook delivery", "error", err, "webhook_id", wh.ID, "message_id", msg.ID)
+			logger.Error("failed to persist webhook delivery", "error", err, "webhook_id", wh.ID, "message_id", payload.MessageID)
 		}
 	}
 }
@@ -820,12 +941,20 @@ func startBackgroundJobs(
 						continue
 					}
 
-					// Re-dispatch; reconstruct minimal payload from delivery record
-					retryPayload := webhook.Payload{
-						Event:     delivery.Event,
-						MessageID: delivery.MessageID,
+					// Re-dispatch. Prefer replaying the full payload captured on the
+					// first attempt; fall back to a minimal payload for rows created
+					// before the payload column existed.
+					var retryResult webhook.DeliveryResult
+					if delivery.Payload != "" {
+						retryResult = webhookDispatcher.DispatchRaw(ctx, *wh, []byte(delivery.Payload))
+						retryResult.Attempts = delivery.AttemptCount + 1
+					} else {
+						retryPayload := webhook.Payload{
+							Event:     delivery.Event,
+							MessageID: delivery.MessageID,
+						}
+						retryResult = webhookDispatcher.DispatchWithRetry(ctx, *wh, retryPayload, delivery.AttemptCount)
 					}
-					retryResult := webhookDispatcher.DispatchWithRetry(ctx, *wh, retryPayload, delivery.AttemptCount)
 
 					completed := false
 					lastStatus := "delivered"

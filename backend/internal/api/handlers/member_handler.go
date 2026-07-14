@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/aeroxe-bee/backend/internal/api/middleware"
+	"github.com/aeroxe-bee/backend/internal/encryption"
 	"github.com/aeroxe-bee/backend/internal/models"
 	"github.com/aeroxe-bee/backend/internal/services"
 	"github.com/aeroxe-bee/backend/internal/webhook"
@@ -26,6 +27,8 @@ type MemberHandler struct {
 	webhookDispatcher      *webhook.Dispatcher
 	preferencesService     *services.UserPreferencesService
 	kycService             *services.KycService
+	inboundService         *services.InboundMessageService
+	encMgr                 *encryption.Manager
 }
 
 func NewMemberHandler(
@@ -40,6 +43,8 @@ func NewMemberHandler(
 	webhookDispatcher *webhook.Dispatcher,
 	preferencesService *services.UserPreferencesService,
 	kycService *services.KycService,
+	inboundService *services.InboundMessageService,
+	encMgr *encryption.Manager,
 ) *MemberHandler {
 	return &MemberHandler{
 		accountService:         accountService,
@@ -53,6 +58,8 @@ func NewMemberHandler(
 		webhookDispatcher:      webhookDispatcher,
 		preferencesService:     preferencesService,
 		kycService:             kycService,
+		inboundService:         inboundService,
+		encMgr:                 encMgr,
 	}
 }
 
@@ -294,6 +301,60 @@ func (h *MemberHandler) GetMessages(w http.ResponseWriter, r *http.Request) {
 	total, err := h.messageService.CountByAccountFiltered(r.Context(), accountID, statusFilter, typeFilter)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to count messages"})
+		return
+	}
+
+	totalPages := total / pageSize
+	if total%pageSize > 0 {
+		totalPages++
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Data: map[string]interface{}{
+			"data":        msgs,
+			"total":       total,
+			"page":        page,
+			"page_size":   pageSize,
+			"total_pages": totalPages,
+		},
+	})
+}
+
+// GetInboundMessages returns SMS received by the member's device nodes (two-way SMS).
+func (h *MemberHandler) GetInboundMessages(w http.ResponseWriter, r *http.Request) {
+	accountID := middleware.GetAccountID(r.Context())
+
+	page := parseIntOrDefault(r.URL.Query().Get("page"), 1)
+	pageSize := parseIntOrDefault(r.URL.Query().Get("pageSize"), 20)
+	if pageSize > 100 {
+		pageSize = 100
+	}
+	offset := (page - 1) * pageSize
+
+	msgs, err := h.inboundService.ListByAccount(r.Context(), accountID, offset, pageSize)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to get inbound messages"})
+		return
+	}
+
+	// Decrypt bodies for presentation (stored encrypted at rest).
+	if h.encMgr != nil {
+		for i := range msgs {
+			if msgs[i].Body == "" {
+				continue
+			}
+			if plain, decErr := h.encMgr.Decrypt(msgs[i].Body); decErr == nil {
+				msgs[i].Body = string(plain)
+			}
+			// On decrypt failure leave the stored value; avoids leaking a 500 on
+			// legacy/plaintext rows.
+		}
+	}
+
+	total, err := h.inboundService.CountByAccount(r.Context(), accountID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to count inbound messages"})
 		return
 	}
 

@@ -35,6 +35,7 @@ type ServiceRegistry struct {
 	SubscriptionRequests *SubscriptionRequestService
 	Kyc                  *KycService
 	Preferences          *UserPreferencesService
+	InboundMessages      *InboundMessageService
 }
 
 func NewServiceRegistry(db DatabaseQuerier, rdb *redis.Client, otpCfg config.OTPConfig) *ServiceRegistry {
@@ -58,5 +59,6 @@ func NewServiceRegistry(db DatabaseQuerier, rdb *redis.Client, otpCfg config.OTP
 		SubscriptionRequests: NewSubscriptionRequestService(db),
 		Kyc:                  NewKycService(db),
 		Preferences:          NewUserPreferencesService(db),
+		InboundMessages:      NewInboundMessageService(db),
 	}
 }

@@ -122,7 +122,8 @@ func (h *DeviceHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Track credential in DB for audit trail (actual MQTT auth uses shared "devices" credentials)
+	// Track credential in DB for audit trail only. Actual MQTT auth uses the shared
+	// "device" user (password = MQTT_DEVICE_PASSWORD), which the ACL grants readwrite on devices/#.
 	if _, _, err := h.mqttCredentialService.Create(r.Context(), deviceID); err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to create MQTT credentials"})
 		return
@@ -254,7 +255,8 @@ func (h *DeviceHandler) DeviceLogin(w http.ResponseWriter, r *http.Request) {
 		)
 	}
 
-	// Track credential in DB for audit trail (actual MQTT auth uses shared "devices" credentials)
+	// Track credential in DB for audit trail only. Actual MQTT auth uses the shared
+	// "device" user (password = MQTT_DEVICE_PASSWORD), which the ACL grants readwrite on devices/#.
 	// Use deviceID (composite: androidId-sim1) — must match devices.id for FK constraint
 	if _, _, err := h.mqttCredentialService.CreateWithEncryptedPassword(
 		r.Context(),

@@ -352,6 +352,23 @@ type WebhookDelivery struct {
 	LastAttemptAt *time.Time `db:"last_attempt_at" json:"last_attempt_at,omitempty"`
 	Completed     bool      `db:"completed" json:"completed"`
 	CreatedAt     time.Time `db:"created_at" json:"created_at"`
+	// Payload holds the full JSON webhook payload sent on the first attempt so
+	// retries can re-send identical content. Empty for pre-migration rows.
+	Payload string `db:"payload" json:"-"`
+}
+
+// InboundMessage is an SMS received by a device node and forwarded to the
+// backend over the devices/{id}/inbox MQTT topic (two-way SMS).
+type InboundMessage struct {
+	ID         string    `db:"id" json:"id"`
+	DeviceID   string    `db:"device_id" json:"device_id"`
+	AccountID  string    `db:"account_id" json:"account_id"`
+	Sender     string    `db:"sender" json:"sender"`
+	Recipient  string    `db:"recipient" json:"recipient"`
+	Body       string    `db:"body" json:"body"`
+	SIMSlot    int       `db:"sim_slot" json:"sim_slot"`
+	ReceivedAt time.Time `db:"received_at" json:"received_at"`
+	CreatedAt  time.Time `db:"created_at" json:"created_at"`
 }
 
 // Plan represents a pricing plan

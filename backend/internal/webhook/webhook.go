@@ -36,6 +36,7 @@ type Payload struct {
 	MessageType     string                `json:"message_type"`
 	DeliveryStatus  models.DeliveryStatus `json:"delivery_status"`
 	ConfidenceScore float64               `json:"confidence_score"`
+	FailureReason   string                `json:"failure_reason,omitempty"`
 	Timestamp       time.Time             `json:"timestamp"`
 }
 
@@ -58,7 +59,12 @@ func (d *Dispatcher) Dispatch(ctx context.Context, webhook models.Webhook, paylo
 	if err != nil {
 		return DeliveryResult{Err: fmt.Errorf("marshal payload: %w", err)}
 	}
+	return d.DispatchRaw(ctx, webhook, body)
+}
 
+// DispatchRaw POSTs a pre-serialized JSON body to the webhook endpoint. Used by
+// retries to re-send the exact payload captured on the first attempt.
+func (d *Dispatcher) DispatchRaw(ctx context.Context, webhook models.Webhook, body []byte) DeliveryResult {
 	signature := SignPayload(body, webhook.Secret)
 
 	req, err := http.NewRequestWithContext(ctx, "POST", webhook.URL, bytes.NewReader(body))

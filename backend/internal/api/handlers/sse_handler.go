@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -41,6 +42,13 @@ type ScheduledReleasedEvent struct {
 	Recipient       string    `json:"recipient"`
 	ScheduledFor    string    `json:"scheduled_for"`
 	ReleasedAt      string    `json:"released_at"`
+}
+
+type InboundMessageEvent struct {
+	DeviceID   string `json:"device_id"`
+	Sender     string `json:"sender"`
+	Preview    string `json:"preview"`
+	ReceivedAt string `json:"received_at"`
 }
 
 func NewSSEHandler(svc *services.ServiceRegistry) *SSEHandler {
@@ -150,6 +158,41 @@ func (h *SSEHandler) BroadcastMessageStatus(msgID, deviceID, status, deliverySta
 	}
 
 	for _, ch := range h.connections {
+		select {
+		case ch <- event:
+		default:
+			// Skip slow consumers
+		}
+	}
+}
+
+// BroadcastInboundMessage notifies an account's connected clients that one of
+// its devices received an inbound SMS. Scoped to the owning account since the
+// event carries message content; connection IDs are prefixed with the accountID.
+func (h *SSEHandler) BroadcastInboundMessage(accountID, deviceID, sender, body string) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	preview := body
+	if len(preview) > 80 {
+		preview = preview[:80]
+	}
+
+	event := SSEEvent{
+		Event: "message.inbound",
+		Data: InboundMessageEvent{
+			DeviceID:   deviceID,
+			Sender:     sender,
+			Preview:    preview,
+			ReceivedAt: time.Now().UTC().Format(time.RFC3339),
+		},
+	}
+
+	prefix := accountID + "-"
+	for connID, ch := range h.connections {
+		if !strings.HasPrefix(connID, prefix) {
+			continue
+		}
 		select {
 		case ch <- event:
 		default:
