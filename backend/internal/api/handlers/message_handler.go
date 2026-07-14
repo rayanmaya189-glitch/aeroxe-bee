@@ -806,8 +806,6 @@ func (h *MessageHandler) MemberSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_ = h.deviceService.RecordSent(r.Context(), req.DeviceID)
-
 	queueMsg := worker.QueueMessage{
 		ID:              msgID,
 		AccountID:       accountID,
