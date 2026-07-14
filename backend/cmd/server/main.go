@@ -218,6 +218,9 @@ func main() {
 				if err := svc.Devices.UpdatePong(context.Background(), ackReport.DeviceID); err != nil {
 					logger.Error("mqtt ack: update pong failed", "device_id", ackReport.DeviceID, "error", err)
 				}
+				if sseHandler != nil {
+					sseHandler.BroadcastDeviceStatus(ackReport.DeviceID, "ONLINE")
+				}
 			}
 		}); err != nil {
 			logger.Warn("failed to subscribe to device ack", "error", err)

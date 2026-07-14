@@ -222,7 +222,7 @@ func (s *DeviceService) UpdateHealthStatus(ctx context.Context, id string, statu
 func (s *DeviceService) UpdatePong(ctx context.Context, id string) error {
 	now := time.Now()
 	_, err := s.db.Exec(ctx,
-		`UPDATE devices SET last_pong_at=$1, status='ONLINE', updated_at=NOW() WHERE id=$2`, now, id)
+		`UPDATE devices SET last_pong_at=$1, last_seen=$1, status='ONLINE', updated_at=NOW() WHERE id=$2`, now, id)
 	return err
 }
 

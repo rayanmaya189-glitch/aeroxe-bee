@@ -57,8 +57,9 @@ func (s *MessageService) GetByIDAndAccount(ctx context.Context, id, accountID st
 		        m.message_type, m.priority_lane, m.template_id, m.status, m.delivery_status, m.confidence_score,
 		        m.error_reason, m.scheduled_at, m.created_at, m.delivered_at, m.purge_after, m.idempotency_key, m.routing_strategy_used
 		 FROM messages m
-		 JOIN api_keys ak ON m.api_key_id = ak.id
-		 WHERE m.id = $1 AND ak.account_id = $2`, id, accountID,
+		 WHERE m.id = $1
+		   AND (EXISTS (SELECT 1 FROM api_keys ak WHERE ak.id = m.api_key_id AND ak.account_id = $2)
+		        OR EXISTS (SELECT 1 FROM devices dev WHERE dev.id = m.device_id AND dev.account_id = $2))`, id, accountID,
 	).Scan(&msg.ID, &msg.DeviceID, &msg.APIKeyID, &msg.Direction, &msg.Recipient, &msg.Sender,
 		&msg.EncryptedMessage, &msg.MessageType, &msg.PriorityLane, &msg.TemplateID,
 		&msg.Status, &msg.DeliveryStatus, &msg.ConfidenceScore, &msg.ErrorReason,
@@ -77,8 +78,8 @@ func (s *MessageService) ListByAccount(ctx context.Context, accountID string, of
 		        m.message_type, m.priority_lane, m.template_id, m.status, m.delivery_status, m.confidence_score,
 		        m.error_reason, m.scheduled_at, m.created_at, m.delivered_at, m.purge_after, m.idempotency_key, m.routing_strategy_used
 		 FROM messages m
-		 JOIN api_keys ak ON m.api_key_id = ak.id
-		 WHERE ak.account_id = $1
+		 WHERE EXISTS (SELECT 1 FROM api_keys ak WHERE ak.id = m.api_key_id AND ak.account_id = $1)
+		    OR EXISTS (SELECT 1 FROM devices dev WHERE dev.id = m.device_id AND dev.account_id = $1)
 		 ORDER BY m.created_at DESC LIMIT $2 OFFSET $3`, accountID, limit, offset)
 	if err != nil {
 		return nil, err
@@ -189,7 +190,9 @@ func (s *MessageService) ListPendingByAccount(ctx context.Context, accountID str
 func (s *MessageService) CountByAccount(ctx context.Context, accountID string) (int, error) {
 	var count int
 	err := s.db.QueryRow(ctx,
-		`SELECT COUNT(*) FROM messages m JOIN api_keys ak ON m.api_key_id = ak.id WHERE ak.account_id = $1`,
+		`SELECT COUNT(*) FROM messages m
+		 WHERE EXISTS (SELECT 1 FROM api_keys ak WHERE ak.id = m.api_key_id AND ak.account_id = $1)
+		    OR EXISTS (SELECT 1 FROM devices dev WHERE dev.id = m.device_id AND dev.account_id = $1)`,
 		accountID).Scan(&count)
 	return count, err
 }
@@ -239,13 +242,16 @@ func (s *MessageService) ReleaseScheduled(ctx context.Context, id string) error 
 func (s *MessageService) CountScheduledByAccount(ctx context.Context, accountID string) (int, error) {
 	var count int
 	err := s.db.QueryRow(ctx,
-		`SELECT COUNT(*) FROM messages m JOIN api_keys ak ON m.api_key_id = ak.id
-		 WHERE ak.account_id = $1 AND m.status = 'scheduled'`, accountID).Scan(&count)
+		`SELECT COUNT(*) FROM messages m
+		 WHERE (EXISTS (SELECT 1 FROM api_keys ak WHERE ak.id = m.api_key_id AND ak.account_id = $1)
+		        OR EXISTS (SELECT 1 FROM devices dev WHERE dev.id = m.device_id AND dev.account_id = $1))
+		   AND m.status = 'scheduled'`, accountID).Scan(&count)
 	return count, err
 }
 
 func (s *MessageService) ListByAccountFiltered(ctx context.Context, accountID string, offset, limit int, statusFilter, typeFilter string) ([]models.Message, error) {
-	conditions := []string{"ak.account_id = $1"}
+	conditions := []string{`(EXISTS (SELECT 1 FROM api_keys ak WHERE ak.id = m.api_key_id AND ak.account_id = $1)
+		 OR EXISTS (SELECT 1 FROM devices dev WHERE dev.id = m.device_id AND dev.account_id = $1))`}
 	args := []interface{}{accountID}
 	argIdx := 2
 
@@ -268,7 +274,6 @@ func (s *MessageService) ListByAccountFiltered(ctx context.Context, accountID st
 	        m.message_type, m.priority_lane, m.template_id, m.status, m.delivery_status, m.confidence_score,
 	        m.error_reason, m.scheduled_at, m.created_at, m.delivered_at, m.purge_after, m.idempotency_key, m.routing_strategy_used
 	 FROM messages m
-	 JOIN api_keys ak ON m.api_key_id = ak.id
 	 WHERE %s
 	 ORDER BY m.created_at DESC LIMIT $%d OFFSET $%d`, whereClause, argIdx, argIdx+1),
 		args...)
@@ -293,7 +298,8 @@ func (s *MessageService) ListByAccountFiltered(ctx context.Context, accountID st
 
 // CountByAccountFiltered returns count with optional filters
 func (s *MessageService) CountByAccountFiltered(ctx context.Context, accountID string, statusFilter, typeFilter string) (int, error) {
-	conditions := []string{"ak.account_id = $1"}
+	conditions := []string{`(EXISTS (SELECT 1 FROM api_keys ak WHERE ak.id = m.api_key_id AND ak.account_id = $1)
+		 OR EXISTS (SELECT 1 FROM devices dev WHERE dev.id = m.device_id AND dev.account_id = $1))`}
 	args := []interface{}{accountID}
 	argIdx := 2
 
@@ -311,7 +317,7 @@ func (s *MessageService) CountByAccountFiltered(ctx context.Context, accountID s
 	whereClause := strings.Join(conditions, " AND ")
 	var count int
 	err := s.db.QueryRow(ctx,
-		fmt.Sprintf(`SELECT COUNT(*) FROM messages m JOIN api_keys ak ON m.api_key_id = ak.id WHERE %s`, whereClause),
+		fmt.Sprintf(`SELECT COUNT(*) FROM messages m WHERE %s`, whereClause),
 		args...).Scan(&count)
 	return count, err
 }

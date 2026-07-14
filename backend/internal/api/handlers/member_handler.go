@@ -111,8 +111,8 @@ func (h *MemberHandler) GetDashboard(w http.ResponseWriter, r *http.Request) {
 		    COUNT(*) FILTER (WHERE delivery_status IN ('CARRIER_ACCEPTED','PROBABLE_DELIVERED')) as total_delivered,
 		    COUNT(*) FILTER (WHERE delivery_status = 'FAILED') as total_failed
 		 FROM messages m
-		 JOIN api_keys ak ON m.api_key_id = ak.id
-		 WHERE ak.account_id = $1`, accountID,
+		 WHERE (EXISTS (SELECT 1 FROM api_keys ak WHERE ak.id = m.api_key_id AND ak.account_id = $1)
+		        OR EXISTS (SELECT 1 FROM devices dev WHERE dev.id = m.device_id AND dev.account_id = $1))`, accountID,
 	).Scan(&totalSent, &totalDelivered, &totalFailed)
 	if err != nil {
 		// Fallback: if query fails (e.g. no api_keys yet), return zeros
@@ -389,7 +389,8 @@ func (h *MemberHandler) GetAnalytics(w http.ResponseWriter, r *http.Request) {
 		       COUNT(*) FILTER (WHERE message_type = 'transactional') as transactional,
 		       COUNT(*) FILTER (WHERE message_type = 'marketing') as marketing
 		 FROM messages
-		 WHERE api_key_id IN (SELECT id FROM api_keys WHERE account_id = $1)
+		 WHERE (EXISTS (SELECT 1 FROM api_keys ak WHERE ak.id = messages.api_key_id AND ak.account_id = $1)
+		        OR EXISTS (SELECT 1 FROM devices dev WHERE dev.id = messages.device_id AND dev.account_id = $1))
 		   AND created_at >= NOW() - INTERVAL '30 days'
 		 GROUP BY DATE(created_at)
 		 ORDER BY date DESC`, accountID)
