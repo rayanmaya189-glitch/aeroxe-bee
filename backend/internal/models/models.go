@@ -276,7 +276,7 @@ type MQTTCredential struct {
 type Message struct {
 	ID                string        `db:"id" json:"id"`
 	DeviceID          *string       `db:"device_id" json:"device_id,omitempty"`
-	APIKeyID          string        `db:"api_key_id" json:"api_key_id"`
+	APIKeyID          *string       `db:"api_key_id" json:"api_key_id"`
 	Direction         string        `db:"direction" json:"direction"`
 	Recipient         string        `db:"recipient" json:"recipient"`
 	Sender            string        `db:"sender" json:"sender"`

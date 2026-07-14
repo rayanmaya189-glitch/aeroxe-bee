@@ -24,7 +24,7 @@ const (
 type QueueMessage struct {
 	ID              string            `json:"id"`
 	AccountID       string            `json:"account_id"`
-	APIKeyID        string            `json:"api_key_id"`
+	APIKeyID        *string           `json:"api_key_id"`
 	Recipient       string            `json:"recipient"`
 	Sender          string            `json:"sender"`
 	Message         string            `json:"message"`

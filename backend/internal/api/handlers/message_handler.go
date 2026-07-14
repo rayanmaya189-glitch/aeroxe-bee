@@ -172,7 +172,7 @@ func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
 	msg := models.Message{
 		ID:                  msgID,
 		DeviceID:            stringPtr(req.DeviceID),
-		APIKeyID:            apiKeyID,
+		APIKeyID:            &apiKeyID,
 		Direction:           "outbound",
 		Recipient:           req.Recipient,
 		Sender:              req.Sender,
@@ -202,7 +202,7 @@ func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
 	queueMsg := worker.QueueMessage{
 		ID:              msgID,
 		AccountID:       accountID,
-		APIKeyID:        apiKeyID,
+		APIKeyID:        &apiKeyID,
 		Recipient:       req.Recipient,
 		Sender:          req.Sender,
 		Message:         req.Message,
@@ -456,7 +456,7 @@ func (h *MessageHandler) BulkSend(w http.ResponseWriter, r *http.Request) {
 		msg := models.Message{
 			ID:                  msgID,
 			DeviceID:            stringPtr(req.DeviceID),
-			APIKeyID:            apiKeyID,
+			APIKeyID:            &apiKeyID,
 			Direction:           "outbound",
 			Recipient:           recipient,
 			Sender:              req.Sender,
@@ -489,7 +489,7 @@ func (h *MessageHandler) BulkSend(w http.ResponseWriter, r *http.Request) {
 		queueMsg := worker.QueueMessage{
 			ID:              msgID,
 			AccountID:       accountID,
-			APIKeyID:        apiKeyID,
+			APIKeyID:        &apiKeyID,
 			Recipient:       recipient,
 			Sender:          req.Sender,
 			Message:         req.Message,
@@ -618,7 +618,7 @@ func (h *MessageHandler) ScheduleSend(w http.ResponseWriter, r *http.Request) {
 	msg := models.Message{
 		ID:                  msgID,
 		DeviceID:            stringPtr(req.DeviceID),
-		APIKeyID:            apiKeyID,
+		APIKeyID:            &apiKeyID,
 		Direction:           "outbound",
 		Recipient:           req.Recipient,
 		Sender:              req.Sender,
@@ -781,7 +781,7 @@ func (h *MessageHandler) MemberSend(w http.ResponseWriter, r *http.Request) {
 	msg := models.Message{
 		ID:                  msgID,
 		DeviceID:            &req.DeviceID,
-		APIKeyID:            "", // member portal sends without API key
+		APIKeyID:            nil, // member portal sends without API key
 		Direction:           "outbound",
 		Recipient:           req.Recipient,
 		Sender:              req.Sender,
@@ -812,7 +812,7 @@ func (h *MessageHandler) MemberSend(w http.ResponseWriter, r *http.Request) {
 	queueMsg := worker.QueueMessage{
 		ID:              msgID,
 		AccountID:       accountID,
-		APIKeyID:        "",
+		APIKeyID:        nil,
 		Recipient:       req.Recipient,
 		Sender:          req.Sender,
 		Message:         req.Message,
