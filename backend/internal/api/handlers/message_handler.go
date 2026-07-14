@@ -198,8 +198,6 @@ func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_ = h.accountService.IncrementUsage(r.Context(), accountID)
-
 	queueMsg := worker.QueueMessage{
 		ID:              msgID,
 		AccountID:       accountID,
@@ -485,8 +483,6 @@ func (h *MessageHandler) BulkSend(w http.ResponseWriter, r *http.Request) {
 			})
 			continue
 		}
-
-		_ = h.accountService.IncrementUsage(r.Context(), accountID)
 
 		queueMsg := worker.QueueMessage{
 			ID:              msgID,
@@ -810,7 +806,6 @@ func (h *MessageHandler) MemberSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_ = h.accountService.IncrementUsage(r.Context(), accountID)
 	_ = h.deviceService.RecordSent(r.Context(), req.DeviceID)
 
 	queueMsg := worker.QueueMessage{

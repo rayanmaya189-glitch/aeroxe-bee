@@ -107,6 +107,7 @@ CREATE TABLE IF NOT EXISTS templates (
 CREATE TABLE IF NOT EXISTS messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     device_id VARCHAR(255) REFERENCES devices(id) ON DELETE SET NULL,
+    account_id UUID REFERENCES accounts(id) ON DELETE SET NULL,
     api_key_id UUID NOT NULL REFERENCES api_keys(id) ON DELETE CASCADE,
     direction VARCHAR(10) NOT NULL DEFAULT 'outbound',
     recipient VARCHAR(50) NOT NULL,
