@@ -100,7 +100,11 @@ class MqttService : Service() {
         mqttManager.subscribe("devices/$deviceId/pong")
 
         isReconnecting = false
-        updateNotification("Connected to broker")
+        if (mqttManager.isConnected()) {
+            updateNotification("Connected to broker")
+        } else {
+            updateNotification("Connecting to broker...")
+        }
     }
 
     private fun startConnectionMonitor() {
@@ -374,7 +378,11 @@ class MqttService : Service() {
             when (action) {
                 "send_sms" -> {
                     val cmd = gson.fromJson(payload, SMSCommand::class.java)
-                    if (cmd.id.isBlank()) return
+                    if (cmd.id.isBlank()) {
+                        Log.w(TAG, "Received send_sms with blank id, ignoring")
+                        return
+                    }
+                    Log.i(TAG, "Received send_sms command: id=${cmd.id} recipient=${cmd.recipient} priority=${cmd.priority}")
 
                     scope.launch {
                         val targetSimSlot = if (cmd.simSlot >= 0) cmd.simSlot else tokenManager.getSimSlot()

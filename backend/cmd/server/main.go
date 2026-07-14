@@ -64,6 +64,7 @@ func main() {
 
 	// Ensure critical schema changes exist (defensive migration for non-Docker setups)
 	ensureMQTTCredentialsMigration(context.Background(), postgres.Pool, logger)
+	ensureWebhookDeliveriesMigration(context.Background(), postgres.Pool, logger)
 
 	redisDB, err := database.NewRedis(cfg.Redis)
 	if err != nil {
@@ -1334,4 +1335,27 @@ func ensureMQTTCredentialsMigration(ctx context.Context, pool *pgxpool.Pool, log
 		}
 	}
 	logger.Debug("mqtt_credentials schema check complete")
+}
+
+// ensureWebhookDeliveriesMigration adds the response_body column to
+// webhook_deliveries if it was missed by the migration runner.  Migration 001
+// created the table without this column; migration 019 intended to add it via
+// CREATE TABLE IF NOT EXISTS but that is a no-op when the table already exists.
+func ensureWebhookDeliveriesMigration(ctx context.Context, pool *pgxpool.Pool, logger *telemetry.Logger) {
+	migrations := []struct {
+		name string
+		sql  string
+	}{
+		{
+			name: "add response_body to webhook_deliveries",
+			sql:  `ALTER TABLE webhook_deliveries ADD COLUMN IF NOT EXISTS response_body TEXT NOT NULL DEFAULT ''`,
+		},
+	}
+
+	for _, m := range migrations {
+		if _, err := pool.Exec(ctx, m.sql); err != nil {
+			logger.Warn("webhook deliveries auto-migration failed", "step", m.name, "error", err)
+		}
+	}
+	logger.Debug("webhook_deliveries schema check complete")
 }
