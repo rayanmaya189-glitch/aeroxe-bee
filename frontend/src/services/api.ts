@@ -106,6 +106,7 @@ export default api
 
 export interface OnlineDevice {
   id: string
+  physical_device_id: string
   name: string
   phone_number: string
   carrier: string

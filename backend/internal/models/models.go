@@ -86,6 +86,7 @@ type DeviceStatus string
 const (
 	DeviceStatusOnline  DeviceStatus = "ONLINE"
 	DeviceStatusOffline DeviceStatus = "OFFLINE"
+	DeviceStatusDeleted DeviceStatus = "DELETED"
 )
 
 type SIMHealthStatus string
@@ -275,6 +276,7 @@ type MQTTCredential struct {
 // Message represents an SMS message
 type Message struct {
 	ID                string        `db:"id" json:"id"`
+	AccountID         string        `db:"account_id" json:"account_id"`
 	DeviceID          *string       `db:"device_id" json:"device_id,omitempty"`
 	APIKeyID          *string       `db:"api_key_id" json:"api_key_id"`
 	Direction         string        `db:"direction" json:"direction"`

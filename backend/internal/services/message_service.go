@@ -20,11 +20,11 @@ func NewMessageService(db DatabaseQuerier) *MessageService {
 
 func (s *MessageService) Create(ctx context.Context, msg *models.Message) error {
 	_, err := s.db.Exec(ctx,
-		`INSERT INTO messages (id, device_id, api_key_id, direction, recipient, sender, encrypted_message,
+		`INSERT INTO messages (id, account_id, device_id, api_key_id, direction, recipient, sender, encrypted_message,
 		 message_type, priority_lane, template_id, status, delivery_status, confidence_score,
 		 error_reason, scheduled_at, created_at, delivered_at, purge_after, idempotency_key, routing_strategy_used)
-		 VALUES ($1,$2,NULLIF($3,'')::UUID,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
-		msg.ID, msg.DeviceID, msg.APIKeyID, msg.Direction, msg.Recipient, msg.Sender,
+		 VALUES ($1,$2,$3,NULLIF($4,'')::UUID,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)`,
+		msg.ID, msg.AccountID, msg.DeviceID, msg.APIKeyID, msg.Direction, msg.Recipient, msg.Sender,
 		msg.EncryptedMessage, msg.MessageType, msg.PriorityLane, msg.TemplateID,
 		msg.Status, msg.DeliveryStatus, msg.ConfidenceScore, msg.ErrorReason,
 		msg.ScheduledAt, msg.CreatedAt, msg.DeliveredAt, msg.PurgeAfter, msg.IdempotencyKey, msg.RoutingStrategyUsed)
@@ -34,11 +34,11 @@ func (s *MessageService) Create(ctx context.Context, msg *models.Message) error 
 func (s *MessageService) GetByID(ctx context.Context, id string) (*models.Message, error) {
 	msg := &models.Message{}
 	err := s.db.QueryRow(ctx,
-		`SELECT id, device_id, api_key_id, direction, recipient, sender, encrypted_message,
+		`SELECT id, account_id, device_id, api_key_id, direction, recipient, sender, encrypted_message,
 		        message_type, priority_lane, template_id, status, delivery_status, confidence_score,
 		        error_reason, scheduled_at, created_at, delivered_at, purge_after, idempotency_key, routing_strategy_used
 		 FROM messages WHERE id = $1`, id,
-	).Scan(&msg.ID, &msg.DeviceID, &msg.APIKeyID, &msg.Direction, &msg.Recipient, &msg.Sender,
+	).Scan(&msg.ID, &msg.AccountID, &msg.DeviceID, &msg.APIKeyID, &msg.Direction, &msg.Recipient, &msg.Sender,
 		&msg.EncryptedMessage, &msg.MessageType, &msg.PriorityLane, &msg.TemplateID,
 		&msg.Status, &msg.DeliveryStatus, &msg.ConfidenceScore, &msg.ErrorReason,
 		&msg.ScheduledAt, &msg.CreatedAt, &msg.DeliveredAt, &msg.PurgeAfter, &msg.IdempotencyKey, &msg.RoutingStrategyUsed)
@@ -53,14 +53,12 @@ func (s *MessageService) GetByID(ctx context.Context, id string) (*models.Messag
 func (s *MessageService) GetByIDAndAccount(ctx context.Context, id, accountID string) (*models.Message, error) {
 	msg := &models.Message{}
 	err := s.db.QueryRow(ctx,
-		`SELECT m.id, m.device_id, m.api_key_id, m.direction, m.recipient, m.sender, m.encrypted_message,
-		        m.message_type, m.priority_lane, m.template_id, m.status, m.delivery_status, m.confidence_score,
-		        m.error_reason, m.scheduled_at, m.created_at, m.delivered_at, m.purge_after, m.idempotency_key, m.routing_strategy_used
-		 FROM messages m
-		 WHERE m.id = $1
-		   AND (EXISTS (SELECT 1 FROM api_keys ak WHERE ak.id = m.api_key_id AND ak.account_id = $2)
-		        OR EXISTS (SELECT 1 FROM devices dev WHERE dev.id = m.device_id AND dev.account_id = $2))`, id, accountID,
-	).Scan(&msg.ID, &msg.DeviceID, &msg.APIKeyID, &msg.Direction, &msg.Recipient, &msg.Sender,
+		`SELECT id, account_id, device_id, api_key_id, direction, recipient, sender, encrypted_message,
+		        message_type, priority_lane, template_id, status, delivery_status, confidence_score,
+		        error_reason, scheduled_at, created_at, delivered_at, purge_after, idempotency_key, routing_strategy_used
+		 FROM messages
+		 WHERE id = $1 AND account_id = $2`, id, accountID,
+	).Scan(&msg.ID, &msg.AccountID, &msg.DeviceID, &msg.APIKeyID, &msg.Direction, &msg.Recipient, &msg.Sender,
 		&msg.EncryptedMessage, &msg.MessageType, &msg.PriorityLane, &msg.TemplateID,
 		&msg.Status, &msg.DeliveryStatus, &msg.ConfidenceScore, &msg.ErrorReason,
 		&msg.ScheduledAt, &msg.CreatedAt, &msg.DeliveredAt, &msg.PurgeAfter, &msg.IdempotencyKey, &msg.RoutingStrategyUsed)
@@ -74,13 +72,12 @@ func (s *MessageService) GetByIDAndAccount(ctx context.Context, id, accountID st
 
 func (s *MessageService) ListByAccount(ctx context.Context, accountID string, offset, limit int) ([]models.Message, error) {
 	rows, err := s.db.Query(ctx,
-		`SELECT m.id, m.device_id, m.api_key_id, m.direction, m.recipient, m.sender, m.encrypted_message,
-		        m.message_type, m.priority_lane, m.template_id, m.status, m.delivery_status, m.confidence_score,
-		        m.error_reason, m.scheduled_at, m.created_at, m.delivered_at, m.purge_after, m.idempotency_key, m.routing_strategy_used
-		 FROM messages m
-		 WHERE EXISTS (SELECT 1 FROM api_keys ak WHERE ak.id = m.api_key_id AND ak.account_id = $1)
-		    OR EXISTS (SELECT 1 FROM devices dev WHERE dev.id = m.device_id AND dev.account_id = $1)
-		 ORDER BY m.created_at DESC LIMIT $2 OFFSET $3`, accountID, limit, offset)
+		`SELECT id, account_id, device_id, api_key_id, direction, recipient, sender, encrypted_message,
+		        message_type, priority_lane, template_id, status, delivery_status, confidence_score,
+		        error_reason, scheduled_at, created_at, delivered_at, purge_after, idempotency_key, routing_strategy_used
+		 FROM messages
+		 WHERE account_id = $1
+		 ORDER BY created_at DESC LIMIT $2 OFFSET $3`, accountID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +86,7 @@ func (s *MessageService) ListByAccount(ctx context.Context, accountID string, of
 	var msgs []models.Message
 	for rows.Next() {
 		var m models.Message
-		if err := rows.Scan(&m.ID, &m.DeviceID, &m.APIKeyID, &m.Direction, &m.Recipient, &m.Sender,
+		if err := rows.Scan(&m.ID, &m.AccountID, &m.DeviceID, &m.APIKeyID, &m.Direction, &m.Recipient, &m.Sender,
 			&m.EncryptedMessage, &m.MessageType, &m.PriorityLane, &m.TemplateID,
 			&m.Status, &m.DeliveryStatus, &m.ConfidenceScore, &m.ErrorReason,
 			&m.ScheduledAt, &m.CreatedAt, &m.DeliveredAt, &m.PurgeAfter, &m.IdempotencyKey, &m.RoutingStrategyUsed); err != nil {
@@ -157,17 +154,16 @@ func (s *MessageService) DeleteOld(ctx context.Context) error {
 
 func (s *MessageService) ListPendingByAccount(ctx context.Context, accountID string, limit int) ([]models.Message, error) {
 	rows, err := s.db.Query(ctx,
-		`SELECT m.id, m.device_id, m.api_key_id, m.direction, m.recipient, m.sender, m.encrypted_message,
-		        m.message_type, m.priority_lane, m.template_id, m.status, m.delivery_status, m.confidence_score,
-		        m.error_reason, m.scheduled_at, m.created_at, m.delivered_at, m.purge_after, m.idempotency_key, m.routing_strategy_used
-		 FROM messages m
-		 JOIN api_keys ak ON m.api_key_id = ak.id
-		 WHERE ak.account_id = $1
-		   AND m.status = 'pending'
-		   AND m.delivery_status = 'SENT'
-		   AND m.device_id IS NULL
-		 ORDER BY CASE m.priority_lane WHEN 'otp' THEN 0 WHEN 'transactional' THEN 1 ELSE 2 END,
-		          m.created_at ASC LIMIT $2`, accountID, limit)
+		`SELECT id, account_id, device_id, api_key_id, direction, recipient, sender, encrypted_message,
+		        message_type, priority_lane, template_id, status, delivery_status, confidence_score,
+		        error_reason, scheduled_at, created_at, delivered_at, purge_after, idempotency_key, routing_strategy_used
+		 FROM messages
+		 WHERE account_id = $1
+		   AND status = 'pending'
+		   AND delivery_status = 'SENT'
+		   AND device_id IS NULL
+		 ORDER BY CASE priority_lane WHEN 'otp' THEN 0 WHEN 'transactional' THEN 1 ELSE 2 END,
+		          created_at ASC LIMIT $2`, accountID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +172,7 @@ func (s *MessageService) ListPendingByAccount(ctx context.Context, accountID str
 	var msgs []models.Message
 	for rows.Next() {
 		var m models.Message
-		if err := rows.Scan(&m.ID, &m.DeviceID, &m.APIKeyID, &m.Direction, &m.Recipient, &m.Sender,
+		if err := rows.Scan(&m.ID, &m.AccountID, &m.DeviceID, &m.APIKeyID, &m.Direction, &m.Recipient, &m.Sender,
 			&m.EncryptedMessage, &m.MessageType, &m.PriorityLane, &m.TemplateID,
 			&m.Status, &m.DeliveryStatus, &m.ConfidenceScore, &m.ErrorReason,
 			&m.ScheduledAt, &m.CreatedAt, &m.DeliveredAt, &m.PurgeAfter, &m.IdempotencyKey, &m.RoutingStrategyUsed); err != nil {
@@ -190,9 +186,7 @@ func (s *MessageService) ListPendingByAccount(ctx context.Context, accountID str
 func (s *MessageService) CountByAccount(ctx context.Context, accountID string) (int, error) {
 	var count int
 	err := s.db.QueryRow(ctx,
-		`SELECT COUNT(*) FROM messages m
-		 WHERE EXISTS (SELECT 1 FROM api_keys ak WHERE ak.id = m.api_key_id AND ak.account_id = $1)
-		    OR EXISTS (SELECT 1 FROM devices dev WHERE dev.id = m.device_id AND dev.account_id = $1)`,
+		`SELECT COUNT(*) FROM messages WHERE account_id = $1`,
 		accountID).Scan(&count)
 	return count, err
 }
@@ -206,7 +200,7 @@ func (s *MessageService) DB() DatabaseQuerier {
 // GetScheduledMessages returns messages scheduled to be sent at or before the given time.
 func (s *MessageService) GetScheduledMessages(ctx context.Context, before time.Time, limit int) ([]models.Message, error) {
 	rows, err := s.db.Query(ctx,
-		`SELECT id, device_id, api_key_id, direction, recipient, sender, encrypted_message,
+		`SELECT id, account_id, device_id, api_key_id, direction, recipient, sender, encrypted_message,
 		        message_type, priority_lane, template_id, status, delivery_status, confidence_score,
 		        error_reason, scheduled_at, created_at, delivered_at, purge_after, idempotency_key, routing_strategy_used
 		 FROM messages
@@ -220,7 +214,7 @@ func (s *MessageService) GetScheduledMessages(ctx context.Context, before time.T
 	var msgs []models.Message
 	for rows.Next() {
 		var m models.Message
-		if err := rows.Scan(&m.ID, &m.DeviceID, &m.APIKeyID, &m.Direction, &m.Recipient, &m.Sender,
+		if err := rows.Scan(&m.ID, &m.AccountID, &m.DeviceID, &m.APIKeyID, &m.Direction, &m.Recipient, &m.Sender,
 			&m.EncryptedMessage, &m.MessageType, &m.PriorityLane, &m.TemplateID,
 			&m.Status, &m.DeliveryStatus, &m.ConfidenceScore, &m.ErrorReason,
 			&m.ScheduledAt, &m.CreatedAt, &m.DeliveredAt, &m.PurgeAfter, &m.IdempotencyKey, &m.RoutingStrategyUsed); err != nil {
@@ -242,26 +236,23 @@ func (s *MessageService) ReleaseScheduled(ctx context.Context, id string) error 
 func (s *MessageService) CountScheduledByAccount(ctx context.Context, accountID string) (int, error) {
 	var count int
 	err := s.db.QueryRow(ctx,
-		`SELECT COUNT(*) FROM messages m
-		 WHERE (EXISTS (SELECT 1 FROM api_keys ak WHERE ak.id = m.api_key_id AND ak.account_id = $1)
-		        OR EXISTS (SELECT 1 FROM devices dev WHERE dev.id = m.device_id AND dev.account_id = $1))
-		   AND m.status = 'scheduled'`, accountID).Scan(&count)
+		`SELECT COUNT(*) FROM messages
+		 WHERE account_id = $1 AND status = 'scheduled'`, accountID).Scan(&count)
 	return count, err
 }
 
 func (s *MessageService) ListByAccountFiltered(ctx context.Context, accountID string, offset, limit int, statusFilter, typeFilter string) ([]models.Message, error) {
-	conditions := []string{`(EXISTS (SELECT 1 FROM api_keys ak WHERE ak.id = m.api_key_id AND ak.account_id = $1)
-		 OR EXISTS (SELECT 1 FROM devices dev WHERE dev.id = m.device_id AND dev.account_id = $1))`}
+	conditions := []string{"account_id = $1"}
 	args := []interface{}{accountID}
 	argIdx := 2
 
 	if statusFilter != "" {
-		conditions = append(conditions, "m.delivery_status = "+fmt.Sprintf("$%d", argIdx))
+		conditions = append(conditions, "delivery_status = "+fmt.Sprintf("$%d", argIdx))
 		args = append(args, statusFilter)
 		argIdx++
 	}
 	if typeFilter != "" {
-		conditions = append(conditions, "m.message_type = "+fmt.Sprintf("$%d", argIdx))
+		conditions = append(conditions, "message_type = "+fmt.Sprintf("$%d", argIdx))
 		args = append(args, typeFilter)
 		argIdx++
 	}
@@ -270,12 +261,12 @@ func (s *MessageService) ListByAccountFiltered(ctx context.Context, accountID st
 	args = append(args, limit, offset)
 
 	rows, err := s.db.Query(ctx,
-		fmt.Sprintf(`SELECT m.id, m.device_id, m.api_key_id, m.direction, m.recipient, m.sender, m.encrypted_message,
-	        m.message_type, m.priority_lane, m.template_id, m.status, m.delivery_status, m.confidence_score,
-	        m.error_reason, m.scheduled_at, m.created_at, m.delivered_at, m.purge_after, m.idempotency_key, m.routing_strategy_used
-	 FROM messages m
+		fmt.Sprintf(`SELECT id, account_id, device_id, api_key_id, direction, recipient, sender, encrypted_message,
+	        message_type, priority_lane, template_id, status, delivery_status, confidence_score,
+	        error_reason, scheduled_at, created_at, delivered_at, purge_after, idempotency_key, routing_strategy_used
+	 FROM messages
 	 WHERE %s
-	 ORDER BY m.created_at DESC LIMIT $%d OFFSET $%d`, whereClause, argIdx, argIdx+1),
+	 ORDER BY created_at DESC LIMIT $%d OFFSET $%d`, whereClause, argIdx, argIdx+1),
 		args...)
 	if err != nil {
 		return nil, err
@@ -285,7 +276,7 @@ func (s *MessageService) ListByAccountFiltered(ctx context.Context, accountID st
 	var msgs []models.Message
 	for rows.Next() {
 		var m models.Message
-		if err := rows.Scan(&m.ID, &m.DeviceID, &m.APIKeyID, &m.Direction, &m.Recipient, &m.Sender,
+		if err := rows.Scan(&m.ID, &m.AccountID, &m.DeviceID, &m.APIKeyID, &m.Direction, &m.Recipient, &m.Sender,
 			&m.EncryptedMessage, &m.MessageType, &m.PriorityLane, &m.TemplateID,
 			&m.Status, &m.DeliveryStatus, &m.ConfidenceScore, &m.ErrorReason,
 			&m.ScheduledAt, &m.CreatedAt, &m.DeliveredAt, &m.PurgeAfter, &m.IdempotencyKey, &m.RoutingStrategyUsed); err != nil {
@@ -298,18 +289,17 @@ func (s *MessageService) ListByAccountFiltered(ctx context.Context, accountID st
 
 // CountByAccountFiltered returns count with optional filters
 func (s *MessageService) CountByAccountFiltered(ctx context.Context, accountID string, statusFilter, typeFilter string) (int, error) {
-	conditions := []string{`(EXISTS (SELECT 1 FROM api_keys ak WHERE ak.id = m.api_key_id AND ak.account_id = $1)
-		 OR EXISTS (SELECT 1 FROM devices dev WHERE dev.id = m.device_id AND dev.account_id = $1))`}
+	conditions := []string{"account_id = $1"}
 	args := []interface{}{accountID}
 	argIdx := 2
 
 	if statusFilter != "" {
-		conditions = append(conditions, "m.delivery_status = "+fmt.Sprintf("$%d", argIdx))
+		conditions = append(conditions, "delivery_status = "+fmt.Sprintf("$%d", argIdx))
 		args = append(args, statusFilter)
 		argIdx++
 	}
 	if typeFilter != "" {
-		conditions = append(conditions, "m.message_type = "+fmt.Sprintf("$%d", argIdx))
+		conditions = append(conditions, "message_type = "+fmt.Sprintf("$%d", argIdx))
 		args = append(args, typeFilter)
 		argIdx++
 	}
@@ -317,7 +307,7 @@ func (s *MessageService) CountByAccountFiltered(ctx context.Context, accountID s
 	whereClause := strings.Join(conditions, " AND ")
 	var count int
 	err := s.db.QueryRow(ctx,
-		fmt.Sprintf(`SELECT COUNT(*) FROM messages m WHERE %s`, whereClause),
+		fmt.Sprintf(`SELECT COUNT(*) FROM messages WHERE %s`, whereClause),
 		args...).Scan(&count)
 	return count, err
 }

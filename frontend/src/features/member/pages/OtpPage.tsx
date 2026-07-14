@@ -154,7 +154,7 @@ export function OtpPage() {
                   <option value="">Display code only (no SMS)</option>
                   {devices.map((d) => (
                     <option key={d.id} value={d.id}>
-                      {d.name} {d.phone_number ? `(${d.phone_number})` : ''} · {d.carrier}
+                      {d.name} · {d.carrier} · SIM {d.sim_slot}{d.phone_number ? ` · ${d.phone_number}` : ''}
                     </option>
                   ))}
                 </select>

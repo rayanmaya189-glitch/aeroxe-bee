@@ -99,7 +99,12 @@ export function MemberDevicesPage() {
                 <Badge variant={device.status === 'ONLINE' ? 'success' : 'default'} dot size="sm">{device.status.toLowerCase()}</Badge>
               </div>
               <div className="mt-4 space-y-2 text-xs">
-                {[['SIM slot', device.sim_slot], ['Reliability', `${(device.reliability_score * 100).toFixed(0)}%`], ['24h success', `${(device.success_rate_24h * 100).toFixed(0)}%`], ['Last seen', device.last_seen ? new Date(device.last_seen).toLocaleDateString() : 'Never']].map(([l, v]) => (
+                {[
+                  ['SIM slot', String(device.sim_slot ?? '-')],
+                  ['Reliability', device.reliability_score != null && device.reliability_score > 0 ? `${(device.reliability_score * 100).toFixed(0)}%` : 'N/A'],
+                  ['24h success', device.success_rate_24h != null && device.success_rate_24h > 0 ? `${(device.success_rate_24h * 100).toFixed(0)}%` : 'N/A'],
+                  ['Last seen', device.last_seen ? new Date(device.last_seen).toLocaleDateString() : 'Never'],
+                ].map(([l, v]) => (
                   <div key={l} className="flex justify-between text-gray-400"><span>{l}</span><span className="font-medium text-gray-300">{v}</span></div>
                 ))}
               </div>

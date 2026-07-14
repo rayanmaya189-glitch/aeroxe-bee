@@ -57,6 +57,10 @@ class DeviceRepository @Inject constructor(
             // Save auth token
             tokenManager.saveToken(data.token)
 
+            // Save the raw ANDROID_ID for use in auto-relogin (backend expects
+            // the physical device ID, not the composite deviceId-simN)
+            tokenManager.saveAndroidId(deviceId)
+
             // Save device info — use backend-returned device ID (e.g. "androidid-sim1")
             tokenManager.saveDeviceId(data.deviceId)
             tokenManager.saveSimSlot(simSlot)

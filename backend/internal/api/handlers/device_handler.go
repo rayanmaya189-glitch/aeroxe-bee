@@ -156,6 +156,8 @@ type DeviceLoginRequest struct {
 	Password string `json:"password"`
 	DeviceID string `json:"device_id"`
 	SIMSlot  int    `json:"sim_slot"`
+	Carrier  string `json:"carrier,omitempty"`
+	PhoneNumber string `json:"phone_number,omitempty"`
 }
 
 // DeviceLogin handles POST /api/v1/devices/login
@@ -227,7 +229,9 @@ func (h *DeviceHandler) DeviceLogin(w http.ResponseWriter, r *http.Request) {
 		ID:                  deviceID,
 		PhysicalDeviceID:    req.DeviceID,
 		AccountID:           account.ID,
-		SIMSlot:             1,
+		SIMSlot:             simSlot,
+		Carrier:             req.Carrier,
+		PhoneNumber:         req.PhoneNumber,
 		Name:                req.DeviceID,
 		Status:              models.DeviceStatusOnline,
 		SIMHealthStatus:     models.SIMHealthHealthy,
@@ -243,8 +247,15 @@ func (h *DeviceHandler) DeviceLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	isNewDevice = true
 } else {
-	// Existing device — update to online
+	// Existing device — update status to online and refresh info
 	_ = h.deviceService.UpdateStatus(r.Context(), deviceID, models.DeviceStatusOnline)
+	// Update carrier and phone_number on login (re-activation)
+	if req.Carrier != "" {
+		_ = h.deviceService.UpdateCarrier(r.Context(), deviceID, req.Carrier)
+	}
+	if req.PhoneNumber != "" {
+		_ = h.deviceService.UpdatePhoneNumber(r.Context(), deviceID, req.PhoneNumber)
+	}
 }
 
 	// Revoke any existing active MQTT credentials for this device

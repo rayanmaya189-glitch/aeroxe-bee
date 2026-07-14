@@ -101,13 +101,31 @@ class AuthInterceptor(
         }
     }
 
+    /**
+     * Extracts the raw physical ANDROID_ID from a composite device ID.
+     * The composite format is "{ANDROID_ID}-sim{slot}" (e.g. "abc123-sim1").
+     */
+    private fun extractRawAndroidId(compositeId: String): String {
+        val idx = compositeId.lastIndexOf("-sim")
+        return if (idx > 0) compositeId.substring(0, idx) else compositeId
+    }
+
     private fun attemptAutoRelogin(email: String, password: String, androidId: String): String? {
         return try {
+            // Use the raw ANDROID_ID (physical device id), NOT the composite
+            // deviceId-simN stored in tokenManager.getDeviceId(), because the
+            // backend constructs the composite ID itself (androidId-sim{slot}).
+            // Sending a composite ID would cause a malformed "androidId-sim1-sim1".
+            //
+            // Try stored raw ID first; for existing users upgrading, extract it
+            // from the composite ID by stripping the "-sim{N}" suffix.
+            val rawAndroidId = tokenManager.getAndroidId()
+                ?: extractRawAndroidId(androidId)
             val simSlot = tokenManager.getSimSlot() + 1
             val request = DeviceLoginRequest(
                 email = email,
                 password = password,
-                deviceId = androidId,
+                deviceId = rawAndroidId,
                 simSlot = simSlot,
             )
             val body = gson.toJson(request)

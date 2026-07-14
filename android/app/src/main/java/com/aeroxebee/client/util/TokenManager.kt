@@ -82,6 +82,9 @@ class TokenManager @Inject constructor(
     fun getDeviceName(): String? = prefs.getString(KEY_DEVICE_NAME, null)
 
     // Device identity (fingerprint) stored after successful registration
+    fun saveAndroidId(id: String) = prefs.edit().putString(KEY_ANDROID_ID, id).apply()
+    fun getAndroidId(): String? = prefs.getString(KEY_ANDROID_ID, null)
+
     fun saveDeviceFingerprint(hash: String) = prefs.edit().putString(KEY_DEVICE_FINGERPRINT, hash).apply()
     fun getDeviceFingerprint(): String? = prefs.getString(KEY_DEVICE_FINGERPRINT, null)
 
@@ -106,6 +109,7 @@ class TokenManager @Inject constructor(
         private const val KEY_ACCOUNT_ID = "account_id"
         private const val KEY_FCM_TOKEN = "fcm_token"
         private const val KEY_DEVICE_NAME = "device_name"
+        private const val KEY_ANDROID_ID = "android_id"
         private const val KEY_DEVICE_FINGERPRINT = "device_fingerprint"
         private const val KEY_DEVICE_IDENTITY_REGISTERED = "device_identity_registered"
     }

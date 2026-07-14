@@ -171,6 +171,7 @@ func (h *MessageHandler) Send(w http.ResponseWriter, r *http.Request) {
 
 	msg := models.Message{
 		ID:                  msgID,
+		AccountID:           accountID,
 		DeviceID:            stringPtr(req.DeviceID),
 		APIKeyID:            &apiKeyID,
 		Direction:           "outbound",
@@ -455,6 +456,7 @@ func (h *MessageHandler) BulkSend(w http.ResponseWriter, r *http.Request) {
 
 		msg := models.Message{
 			ID:                  msgID,
+			AccountID:           accountID,
 			DeviceID:            stringPtr(req.DeviceID),
 			APIKeyID:            &apiKeyID,
 			Direction:           "outbound",
@@ -617,6 +619,7 @@ func (h *MessageHandler) ScheduleSend(w http.ResponseWriter, r *http.Request) {
 
 	msg := models.Message{
 		ID:                  msgID,
+		AccountID:           accountID,
 		DeviceID:            stringPtr(req.DeviceID),
 		APIKeyID:            &apiKeyID,
 		Direction:           "outbound",
@@ -780,6 +783,7 @@ func (h *MessageHandler) MemberSend(w http.ResponseWriter, r *http.Request) {
 
 	msg := models.Message{
 		ID:                  msgID,
+		AccountID:           accountID,
 		DeviceID:            &req.DeviceID,
 		APIKeyID:            nil, // member portal sends without API key
 		Direction:           "outbound",

@@ -110,9 +110,8 @@ func (h *MemberHandler) GetDashboard(w http.ResponseWriter, r *http.Request) {
 		    COUNT(*) as total_sent,
 		    COUNT(*) FILTER (WHERE delivery_status IN ('CARRIER_ACCEPTED','PROBABLE_DELIVERED')) as total_delivered,
 		    COUNT(*) FILTER (WHERE delivery_status = 'FAILED') as total_failed
-		 FROM messages m
-		 WHERE (EXISTS (SELECT 1 FROM api_keys ak WHERE ak.id = m.api_key_id AND ak.account_id = $1)
-		        OR EXISTS (SELECT 1 FROM devices dev WHERE dev.id = m.device_id AND dev.account_id = $1))`, accountID,
+		 FROM messages
+		 WHERE account_id = $1`, accountID,
 	).Scan(&totalSent, &totalDelivered, &totalFailed)
 	if err != nil {
 		// Fallback: if query fails (e.g. no api_keys yet), return zeros
@@ -169,17 +168,20 @@ func (h *MemberHandler) GetDevices(w http.ResponseWriter, r *http.Request) {
 
 	// Build response with enriched device info
 	type DeviceResponse struct {
-		ID              string  `json:"id"`
-		Name            string  `json:"name"`
-		PhoneNumber     string  `json:"phone_number"`
-		Model           string  `json:"model"`
-		OSVersion       string  `json:"os_version"`
-		Status          string  `json:"status"`
-		Online          bool    `json:"online"`
-		LastSeen        *string `json:"last_seen"`
-		SIMSlot         int     `json:"sim_slot"`
-		Carrier         string  `json:"carrier"`
-		SignalStrength  int     `json:"signal_strength"`
+		ID                string   `json:"id"`
+		PhysicalDeviceID  string   `json:"physical_device_id"`
+		Name              string   `json:"name"`
+		PhoneNumber       string   `json:"phone_number"`
+		Model             string   `json:"model"`
+		OSVersion         string   `json:"os_version"`
+		Status            string   `json:"status"`
+		Online            bool     `json:"online"`
+		LastSeen          *string  `json:"last_seen"`
+		SIMSlot           int      `json:"sim_slot"`
+		Carrier           string   `json:"carrier"`
+		SignalStrength    int      `json:"signal_strength"`
+		ReliabilityScore  float64  `json:"reliability_score"`
+		SuccessRate24h    float64  `json:"success_rate_24h"`
 	}
 
 	result := make([]DeviceResponse, 0, len(devices))
@@ -197,17 +199,20 @@ func (h *MemberHandler) GetDevices(w http.ResponseWriter, r *http.Request) {
 			lastSeen = &s
 		}
 		result = append(result, DeviceResponse{
-			ID:             d.ID,
-			Name:           name,
-			PhoneNumber:    d.PhoneNumber,
-			Model:          "Android",
-			OSVersion:      "",
-			Status:         string(d.Status),
-			Online:         d.Status == models.DeviceStatusOnline,
-			LastSeen:       lastSeen,
-			SIMSlot:        d.SIMSlot,
-			Carrier:        d.Carrier,
-			SignalStrength: 0,
+			ID:                d.ID,
+			PhysicalDeviceID:  d.PhysicalDeviceID,
+			Name:              name,
+			PhoneNumber:       d.PhoneNumber,
+			Model:             "Android",
+			OSVersion:         "",
+			Status:            string(d.Status),
+			Online:            d.Status == models.DeviceStatusOnline,
+			LastSeen:          lastSeen,
+			SIMSlot:           d.SIMSlot,
+			Carrier:           d.Carrier,
+			SignalStrength:    0,
+			ReliabilityScore:  d.ReliabilityScore,
+			SuccessRate24h:    d.SuccessRate24h,
 		})
 	}
 
@@ -275,6 +280,36 @@ func (h *MemberHandler) DeleteDevice(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: map[string]string{
 		"status":  "disconnected",
 		"message": "Device has been disconnected",
+	}})
+}
+
+// RecycleDevice re-activates a soft-deleted device back to OFFLINE status
+func (h *MemberHandler) RecycleDevice(w http.ResponseWriter, r *http.Request) {
+	accountID := middleware.GetAccountID(r.Context())
+	deviceID := r.PathValue("id")
+
+	device, err := h.deviceService.GetByID(r.Context(), deviceID)
+	if err != nil || device == nil {
+		writeJSON(w, http.StatusNotFound, APIResponse{Error: "device not found"})
+		return
+	}
+	if device.AccountID != accountID {
+		writeJSON(w, http.StatusForbidden, APIResponse{Error: "access denied"})
+		return
+	}
+	if device.Status != models.DeviceStatusDeleted {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "device is not in DELETED status"})
+		return
+	}
+
+	if err := h.deviceService.Recycle(r.Context(), deviceID); err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Error: "failed to recycle device"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: map[string]string{
+		"status":  "recycled",
+		"message": "Device has been re-activated and is now OFFLINE. Login to bring it online.",
 	}})
 }
 
@@ -389,8 +424,7 @@ func (h *MemberHandler) GetAnalytics(w http.ResponseWriter, r *http.Request) {
 		       COUNT(*) FILTER (WHERE message_type = 'transactional') as transactional,
 		       COUNT(*) FILTER (WHERE message_type = 'marketing') as marketing
 		 FROM messages
-		 WHERE (EXISTS (SELECT 1 FROM api_keys ak WHERE ak.id = messages.api_key_id AND ak.account_id = $1)
-		        OR EXISTS (SELECT 1 FROM devices dev WHERE dev.id = messages.device_id AND dev.account_id = $1))
+		 WHERE account_id = $1
 		   AND created_at >= NOW() - INTERVAL '30 days'
 		 GROUP BY DATE(created_at)
 		 ORDER BY date DESC`, accountID)

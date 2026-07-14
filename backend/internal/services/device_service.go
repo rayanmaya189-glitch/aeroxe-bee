@@ -65,7 +65,7 @@ func (s *DeviceService) ListByAccount(ctx context.Context, accountID string) ([]
 		        mqtt_credential_id, reliability_score, reputation_score, complaint_count, block_event_count,
 		        fraud_flag_weight, name, success_rate_24h, uptime_ratio_24h, avg_latency_ms, country_code, region,
 		        max_per_minute, max_per_hour, isolated_pool_id, circuit_breaker_state, created_at, updated_at
-		 FROM devices WHERE account_id = $1 ORDER BY created_at DESC`, accountID)
+		 FROM devices WHERE account_id = $1 AND status != 'DELETED' ORDER BY created_at DESC`, accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +97,7 @@ func (s *DeviceService) ListAll(ctx context.Context) ([]models.Device, error) {
 		        mqtt_credential_id, reliability_score, reputation_score, complaint_count, block_event_count,
 		        fraud_flag_weight, name, success_rate_24h, uptime_ratio_24h, avg_latency_ms, country_code, region,
 		        max_per_minute, max_per_hour, isolated_pool_id, circuit_breaker_state, created_at, updated_at
-		 FROM devices ORDER BY created_at DESC`)
+		 FROM devices WHERE status != 'DELETED' ORDER BY created_at DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -138,6 +138,9 @@ func (s *DeviceService) GetEligibleDevices(ctx context.Context, opts DeviceFilte
 		args = append(args, opts.AccountID)
 		argIdx++
 	}
+	// Always exclude DELETED devices
+	query += " AND status != 'DELETED'"
+
 	if opts.Status != "" {
 		query += fmt.Sprintf(" AND status = $%d", argIdx)
 		args = append(args, opts.Status)
@@ -240,9 +243,23 @@ func (s *DeviceService) UpdateName(ctx context.Context, id string, name string) 
 	return err
 }
 
-func (s *DeviceService) Delete(ctx context.Context, id string) error {
+func (s *DeviceService) UpdateCarrier(ctx context.Context, id string, carrier string) error {
 	_, err := s.db.Exec(ctx,
-		`DELETE FROM devices WHERE id=$1`, id)
+		`UPDATE devices SET carrier=$1, updated_at=NOW() WHERE id=$2`, carrier, id)
+	return err
+}
+
+func (s *DeviceService) Delete(ctx context.Context, id string) error {
+	// Soft delete: mark device as DELETED instead of removing it
+	_, err := s.db.Exec(ctx,
+		`UPDATE devices SET status='DELETED', updated_at=NOW() WHERE id=$1`, id)
+	return err
+}
+
+func (s *DeviceService) Recycle(ctx context.Context, id string) error {
+	// Re-activate a soft-deleted device back to OFFLINE status
+	_, err := s.db.Exec(ctx,
+		`UPDATE devices SET status='OFFLINE', updated_at=NOW() WHERE id=$1 AND status='DELETED'`, id)
 	return err
 }
 
