@@ -41,6 +41,17 @@ type MemberOTPSendResponse struct {
 	ExpiresIn int    `json:"expires_in"`
 }
 
+type OTPStatusResponse struct {
+	MessageID string    `json:"message_id"`
+	Phone     string    `json:"phone"`
+	Verified  bool      `json:"verified"`
+	Attempts  int       `json:"attempts"`
+	ExpiresAt time.Time `json:"expires_at"`
+	Status    string    `json:"status"` // active, expired, verified
+}
+
+// Send generates an OTP and stores it. Returns the message_id for status
+// tracking but NOT the code — code is only exposed through the member portal.
 func (h *OTPHandler) Send(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
 	accountID := middleware.GetAccountID(r.Context())
@@ -55,7 +66,6 @@ func (h *OTPHandler) Send(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate phone number format
 	if !fraud.IsValidPhoneNumber(req.Phone) {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "invalid phone number format"})
 		return
@@ -85,6 +95,8 @@ func (h *OTPHandler) Send(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// MemberSend generates an OTP and returns the code — intended for the member
+// portal where the member/admin needs the code to include in an SMS.
 func (h *OTPHandler) MemberSend(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
 	accountID := middleware.GetAccountID(r.Context())
@@ -168,4 +180,37 @@ func (h *OTPHandler) Verify(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// Status returns the current state of an OTP by message_id — lets merchants
+// check whether an OTP was sent, verified, or expired.
+func (h *OTPHandler) Status(w http.ResponseWriter, r *http.Request) {
+	messageID := r.PathValue("id")
+	if messageID == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Error: "message_id is required"})
+		return
+	}
 
+	meta, err := h.otpService.GetMetadata(r.Context(), messageID)
+	if err != nil {
+		writeJSON(w, http.StatusNotFound, APIResponse{Error: "OTP not found"})
+		return
+	}
+
+	status := "active"
+	if meta.Verified {
+		status = "verified"
+	} else if time.Now().After(meta.ExpiresAt) {
+		status = "expired"
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Data: OTPStatusResponse{
+			MessageID: meta.MessageID,
+			Phone:     meta.Phone,
+			Verified:  meta.Verified,
+			Attempts:  meta.Attempts,
+			ExpiresAt: meta.ExpiresAt,
+			Status:    status,
+		},
+	})
+}

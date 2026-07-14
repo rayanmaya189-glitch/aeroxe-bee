@@ -180,6 +180,7 @@ func NewRouter(
 	// OTP routes (plan-checked + rate-limited)
 	mux.Handle("POST /api/v1/otp/send", authMiddleware.APIKeyAuth(apiKeyPlanChain(http.HandlerFunc(otpHandler.Send))))
 	mux.Handle("POST /api/v1/otp/verify", authMiddleware.APIKeyAuth(apiKeyPlanChain(http.HandlerFunc(otpHandler.Verify))))
+	mux.Handle("GET /api/v1/otp/{id}/status", authMiddleware.APIKeyAuth(http.HandlerFunc(otpHandler.Status)))
 
 	// Device routes — brute force protected
 	mux.Handle("POST /api/v1/devices/login", bfProtector.Protect("device-login")(http.HandlerFunc(deviceHandler.DeviceLogin)))
@@ -346,6 +347,7 @@ func NewRouter(
 	// Member OTP routes (JWT auth — for frontend portal)
 	mux.Handle("POST /api/v1/member/otp/send", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(otpHandler.MemberSend))))
 	mux.Handle("POST /api/v1/member/otp/verify", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(otpHandler.Verify))))
+	mux.Handle("GET /api/v1/member/otp/{id}/status", authMiddleware.JWTAuth(memberChain(http.HandlerFunc(otpHandler.Status))))
 
 	// Session management routes
 	mux.Handle("GET /api/v1/auth/sessions", authMiddleware.JWTAuth(http.HandlerFunc(sessionHandler.ListSessions)))

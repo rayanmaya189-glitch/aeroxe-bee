@@ -1163,7 +1163,7 @@
         "tags": [
           "OTP"
         ],
-        "summary": "Send an OTP message",
+        "summary": "Generate and store an OTP code for a phone number",
         "operationId": "sendOtp",
         "security": [
           {
@@ -1177,19 +1177,13 @@
               "schema": {
                 "type": "object",
                 "required": [
-                  "recipient"
+                  "phone"
                 ],
                 "properties": {
-                  "recipient": {
-                    "type": "string"
-                  },
-                  "message": {
+                  "phone": {
                     "type": "string",
-                    "description": "Optional custom template. Default: 'Your OTP is {{otp}}'"
-                  },
-                  "expiry_minutes": {
-                    "type": "integer",
-                    "default": 5
+                    "example": "+855365655136",
+                    "description": "Recipient phone number (E.164 format)"
                   }
                 }
               }
@@ -1197,8 +1191,34 @@
           }
         },
         "responses": {
-          "202": {
-            "description": "OTP sent"
+          "200": {
+            "description": "OTP generated (code is NOT returned — only accessible via member portal)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message_id": {
+                      "type": "string",
+                      "description": "UUID for tracking the OTP"
+                    },
+                    "expires_in": {
+                      "type": "integer",
+                      "description": "TTL in seconds"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid phone number"
+          },
+          "401": {
+            "description": "Invalid API key"
+          },
+          "500": {
+            "description": "Failed to store OTP"
           }
         }
       }
@@ -1208,7 +1228,7 @@
         "tags": [
           "OTP"
         ],
-        "summary": "Verify an OTP",
+        "summary": "Verify an OTP code by phone number",
         "operationId": "verifyOtp",
         "security": [
           {
@@ -1222,15 +1242,17 @@
               "schema": {
                 "type": "object",
                 "required": [
-                  "message_id",
-                  "otp"
+                  "phone",
+                  "code"
                 ],
                 "properties": {
-                  "message_id": {
-                    "type": "string"
+                  "phone": {
+                    "type": "string",
+                    "description": "Recipient phone number"
                   },
-                  "otp": {
-                    "type": "string"
+                  "code": {
+                    "type": "string",
+                    "description": "6-digit OTP code"
                   }
                 }
               }
@@ -1239,10 +1261,93 @@
         },
         "responses": {
           "200": {
-            "description": "OTP verified"
+            "description": "OTP verified",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "verified": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
           },
           "400": {
-            "description": "Invalid OTP"
+            "description": "Invalid or expired OTP"
+          },
+          "404": {
+            "description": "OTP expired or not found"
+          },
+          "429": {
+            "description": "Too many failed attempts, account locked"
+          }
+        }
+      }
+    },
+    "/api/v1/otp/{id}/status": {
+      "get": {
+        "tags": [
+          "OTP"
+        ],
+        "summary": "Check OTP send status by message ID",
+        "operationId": "getOtpStatus",
+        "security": [
+          {
+            "APIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Message ID returned from /otp/send"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OTP status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message_id": {
+                      "type": "string"
+                    },
+                    "phone": {
+                      "type": "string"
+                    },
+                    "verified": {
+                      "type": "boolean"
+                    },
+                    "attempts": {
+                      "type": "integer"
+                    },
+                    "expires_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": ["active", "verified", "expired"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "OTP not found"
           }
         }
       }
@@ -1350,6 +1455,68 @@
           },
           "429": {
             "description": "Too many failed attempts, account locked"
+          }
+        }
+      }
+    },
+    "/api/v1/member/otp/{id}/status": {
+      "get": {
+        "tags": [
+          "Member"
+        ],
+        "summary": "Check OTP send status by message ID (member portal)",
+        "operationId": "memberGetOtpStatus",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Message ID returned from /member/otp/send"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OTP status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message_id": {
+                      "type": "string"
+                    },
+                    "phone": {
+                      "type": "string"
+                    },
+                    "verified": {
+                      "type": "boolean"
+                    },
+                    "attempts": {
+                      "type": "integer"
+                    },
+                    "expires_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": ["active", "verified", "expired"]
+                    }
+                  }
+                }
+              }
+          }
+          },
+          "404": {
+            "description": "OTP not found"
           }
         }
       }
