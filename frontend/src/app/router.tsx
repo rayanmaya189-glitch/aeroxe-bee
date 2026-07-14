@@ -20,7 +20,6 @@ const NotFoundPage = lazy(() => import('@/pages/NotFoundPage').then((m) => ({ de
 const MemberDashboardPage = lazy(() => import('@/features/member/pages/MemberDashboardPage').then((m) => ({ default: m.MemberDashboardPage })))
 const MemberDevicesPage = lazy(() => import('@/features/member/pages/MemberDevicesPage').then((m) => ({ default: m.MemberDevicesPage })))
 const MemberMessagesPage = lazy(() => import('@/features/member/pages/MemberMessagesPage').then((m) => ({ default: m.MemberMessagesPage })))
-const MemberInboxPage = lazy(() => import('@/features/member/pages/MemberInboxPage').then((m) => ({ default: m.MemberInboxPage })))
 const SendSmsPage = lazy(() => import('@/features/member/pages/SendSmsPage').then((m) => ({ default: m.SendSmsPage })))
 const BulkSmsPage = lazy(() => import('@/features/member/pages/BulkSmsPage').then((m) => ({ default: m.BulkSmsPage })))
 const MemberAnalyticsPage = lazy(() => import('@/features/member/pages/MemberAnalyticsPage').then((m) => ({ default: m.MemberAnalyticsPage })))
@@ -202,7 +201,6 @@ const routes: RouteObject[] = [
           { path: 'member', element: <LazyLoader><MemberDashboardPage /></LazyLoader> },
           { path: 'member/devices', element: <LazyLoader><MemberDevicesPage /></LazyLoader> },
           { path: 'member/messages', element: <LazyLoader><MemberMessagesPage /></LazyLoader> },
-          { path: 'member/inbox', element: <LazyLoader><MemberInboxPage /></LazyLoader> },
           { path: 'member/send', element: <LazyLoader><SendSmsPage /></LazyLoader> },
           { path: 'member/bulk-sms', element: <LazyLoader><BulkSmsPage /></LazyLoader> },
           { path: 'member/analytics', element: <LazyLoader><MemberAnalyticsPage /></LazyLoader> },

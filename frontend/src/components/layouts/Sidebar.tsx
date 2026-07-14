@@ -12,7 +12,7 @@ import {
   LayoutDashboard, TrendingUp, Users, BarChart3, FileText, Webhook,
   CreditCard, Settings, Zap, ChevronLeft, ChevronDown,
   MessageSquare, MessageCircleWarning, AlertTriangle, BrainCircuit, UserCog,
-  Receipt, Crown, Shield, Tags, AppWindow, Settings2, Send, KeyRound, FileCheck, Inbox,
+  Receipt, Crown, Shield, Tags, AppWindow, Settings2, Send, KeyRound, FileCheck,
 } from 'lucide-react'
 
 interface NavItem {
@@ -86,7 +86,6 @@ const memberNav: NavItem[] = [
   { label: 'Devices', path: '/member/devices', icon: <Zap className="h-[18px] w-[18px]" /> },
   { label: 'KYC', path: '/member/kyc', icon: <FileCheck className="h-[18px] w-[18px]" /> },
   { label: 'Messages', path: '/member/messages', icon: <MessageSquare className="h-[18px] w-[18px]" /> },
-  { label: 'Inbox', path: '/member/inbox', icon: <Inbox className="h-[18px] w-[18px]" /> },
   { label: 'Send SMS', path: '/member/send', icon: <Send className="h-[18px] w-[18px]" /> },
   { label: 'Analytics', path: '/member/analytics', icon: <BarChart3 className="h-[18px] w-[18px]" /> },
   { label: 'Templates', path: '/member/templates', icon: <FileText className="h-[18px] w-[18px]" /> },
