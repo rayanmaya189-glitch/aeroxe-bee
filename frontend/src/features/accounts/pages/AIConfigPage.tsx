@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { PageTransition } from '@/components/ui/PageTransition'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getAIConfigs, createAIConfig, updateAIConfig, deleteAIConfig, getAIChangeRequests, approveAIChangeRequest, rejectAIChangeRequest } from '@/services/dashboard'
-import type { AIConfig, AIConfigChangeRequest } from '@/services/dashboard'
+import type { AIConfig } from '@/services/dashboard'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -13,7 +13,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { PageSkeleton } from '@/components/ui/Skeleton'
 import { staggerContainer, fadeInUp, itemVariants } from '@/components/animations/variants'
-import { Brain, Plus, Trash2, Power, PowerOff, CheckCircle, XCircle, Clock } from 'lucide-react'
+import { Brain, Plus, CheckCircle, XCircle, Clock } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
 
 export function AIConfigPage() {
@@ -221,7 +221,7 @@ export function AIConfigPage() {
                   <p className="text-xs text-gray-500 truncate">
                     <span className="text-gray-400">Endpoint:</span> {config.endpoint_url}
                   </p>
-                  {config.api_key && <p className="text-xs text-gray-500">API key: {'•'.repeat(24)}</p>}
+                  {config.has_api_key && <p className="text-xs text-gray-500">API key: {'•'.repeat(24)}</p>}
                 </div>
                 <div className="mt-4 flex gap-2 border-t border-white/[0.06] pt-4">
                   <Button variant="ghost" size="xs" onClick={() => openForm(config)}>Edit</Button>

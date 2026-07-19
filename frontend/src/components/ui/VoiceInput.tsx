@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Mic, MicOff, Loader2 } from 'lucide-react'
+import { Mic, MicOff } from 'lucide-react'
 
 interface VoiceInputProps {
   onResult: (text: string) => void
@@ -10,8 +10,8 @@ interface VoiceInputProps {
 
 declare global {
   interface Window {
-    SpeechRecognition: typeof SpeechRecognition
-    webkitSpeechRecognition: typeof SpeechRecognition
+    SpeechRecognition: new () => SpeechRecognition
+    webkitSpeechRecognition: new () => SpeechRecognition
   }
 }
 
@@ -21,6 +21,7 @@ interface SpeechRecognition extends EventTarget {
   lang: string
   start(): void
   stop(): void
+  abort(): void
   onresult: ((event: SpeechRecognitionEvent) => void) | null
   onerror: ((event: SpeechRecognitionErrorEvent) => void) | null
   onend: (() => void) | null
@@ -71,7 +72,7 @@ export function VoiceInput({ onResult, disabled = false, className = '' }: Voice
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       const transcript = Array.from(event.results)
-        .map((result) => result[0].transcript)
+        .map((result) => result[0]?.transcript ?? '')
         .join('')
       if (event.results[event.results.length - 1]?.isFinal) {
         onResult(transcript)
@@ -90,7 +91,7 @@ export function VoiceInput({ onResult, disabled = false, className = '' }: Voice
     recognitionRef.current = recognition
 
     return () => {
-      try { recognition.abort() } catch { recognition.stop() }
+      try { recognition.abort?.() } catch { recognition.stop() }
     }
   }, [onResult])
 

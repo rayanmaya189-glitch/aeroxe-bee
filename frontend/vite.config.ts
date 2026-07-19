@@ -14,7 +14,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://192.168.18.13:8080',
+        target: 'https://bee-api.nexoracrms.com',
         changeOrigin: true,
       },
     },

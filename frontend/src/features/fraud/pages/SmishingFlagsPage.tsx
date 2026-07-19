@@ -34,7 +34,7 @@ function getCategoryTheme(flagType: string) {
 function extractCategory(flagType: string): string {
   // FlagType format: "sensitive content detected: smishing (3 violations)"
   const match = flagType.match(/sensitive content detected:\s*(\w+)/i)
-  return match ? match[1] : 'unknown'
+  return match?.[1] ?? 'unknown'
 }
 
 const categoryOptions = [
@@ -120,6 +120,8 @@ export function SmishingFlagsPage() {
   const [showBulkReview, setShowBulkReview] = useState(false)
   const [filters, setFilters] = useState<Record<string, string>>({})
 
+  const filteredFlags = useMemo(() => filterFlags(flags, filters), [flags, filters])
+
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev)
@@ -153,8 +155,6 @@ export function SmishingFlagsPage() {
   }
 
   const resetFilters = () => setFilters({})
-
-  const filteredFlags = useMemo(() => filterFlags(flags, filters), [flags, filters])
 
   if (isLoading) return <PageTransition><PageSkeleton /></PageTransition>
 
