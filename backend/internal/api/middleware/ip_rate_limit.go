@@ -12,11 +12,11 @@ import (
 // IPRateLimiter applies per-IP rate limiting using a fixed-window counter.
 // Used to protect public endpoints from abuse (e.g. version-check, firebase-config).
 type IPRateLimiter struct {
-	rdb       *redis.Client
+	rdb       *redis.ClusterClient
 	maxPerMin int
 }
 
-func NewIPRateLimiter(rdb *redis.Client, maxPerMin int) *IPRateLimiter {
+func NewIPRateLimiter(rdb *redis.ClusterClient, maxPerMin int) *IPRateLimiter {
 	return &IPRateLimiter{rdb: rdb, maxPerMin: maxPerMin}
 }
 

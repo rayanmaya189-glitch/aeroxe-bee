@@ -9,7 +9,7 @@ import (
 )
 
 type Store struct {
-	client *redis.Client
+	client *redis.ClusterClient
 	ttl    time.Duration
 }
 
@@ -18,7 +18,7 @@ type Result struct {
 	Status    string `json:"status"`
 }
 
-func NewStore(client *redis.Client, ttl time.Duration) *Store {
+func NewStore(client *redis.ClusterClient, ttl time.Duration) *Store {
 	return &Store{client: client, ttl: ttl}
 }
 

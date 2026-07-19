@@ -12,13 +12,13 @@ import (
 // BruteForceProtector provides rate limiting for authentication endpoints
 // to prevent credential stuffing and brute force attacks (OWASP A07).
 type BruteForceProtector struct {
-	client       *redis.Client
+	client       *redis.ClusterClient
 	maxAttempts  int
 	windowDuration time.Duration
 	lockoutDuration time.Duration
 }
 
-func NewBruteForceProtector(client *redis.Client, maxAttempts int, windowDuration, lockoutDuration time.Duration) *BruteForceProtector {
+func NewBruteForceProtector(client *redis.ClusterClient, maxAttempts int, windowDuration, lockoutDuration time.Duration) *BruteForceProtector {
 	return &BruteForceProtector{
 		client:          client,
 		maxAttempts:     maxAttempts,

@@ -5,22 +5,25 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/aeroxe-bee/backend/internal/config"
+	"github.com/redis/go-redis/v9"
 )
 
 type RedisDB struct {
-	Client *redis.Client
+	Client *redis.ClusterClient
 }
 
 func NewRedis(cfg config.RedisConfig) (*RedisDB, error) {
-	client := redis.NewClient(&redis.Options{
-		Addr:         fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
-		Password:     cfg.Password,
-		DB:           cfg.DB,
+
+	client := redis.NewClusterClient(&redis.ClusterOptions{
+		Addrs: []string{fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)},
+
+		Password: cfg.Password,
+
 		DialTimeout:  5 * time.Second,
 		ReadTimeout:  3 * time.Second,
 		WriteTimeout: 3 * time.Second,
+
 		PoolSize:     100,
 		MinIdleConns: 10,
 	})
@@ -29,10 +32,12 @@ func NewRedis(cfg config.RedisConfig) (*RedisDB, error) {
 	defer cancel()
 
 	if err := client.Ping(ctx).Err(); err != nil {
-		return nil, fmt.Errorf("ping redis: %w", err)
+		return nil, fmt.Errorf("ping redis cluster: %w", err)
 	}
 
-	return &RedisDB{Client: client}, nil
+	return &RedisDB{
+		Client: client,
+	}, nil
 }
 
 func (r *RedisDB) Close() error {

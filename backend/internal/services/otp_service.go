@@ -11,23 +11,23 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/aeroxe-bee/backend/internal/config"
 	"github.com/aeroxe-bee/backend/internal/models"
+	"github.com/redis/go-redis/v9"
 )
 
 var (
-	ErrOTPNotFound     = errors.New("no OTP found or expired")
+	ErrOTPNotFound      = errors.New("no OTP found or expired")
 	ErrOTPAccountLocked = errors.New("account locked due to too many attempts")
 )
 
 type OTPService struct {
-	redis      *redis.Client
-	pg         DatabaseQuerier
-	cfg        config.OTPConfig
+	redis *redis.ClusterClient
+	pg    DatabaseQuerier
+	cfg   config.OTPConfig
 }
 
-func NewOTPService(redis *redis.Client, pg DatabaseQuerier, cfg config.OTPConfig) *OTPService {
+func NewOTPService(redis *redis.ClusterClient, pg DatabaseQuerier, cfg config.OTPConfig) *OTPService {
 	return &OTPService{redis: redis, pg: pg, cfg: cfg}
 }
 

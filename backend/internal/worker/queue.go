@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/aeroxe-bee/backend/internal/config"
 	"github.com/aeroxe-bee/backend/internal/models"
+	"github.com/redis/go-redis/v9"
 )
 
 type Priority int
@@ -22,18 +22,18 @@ const (
 )
 
 type QueueMessage struct {
-	ID              string            `json:"id"`
-	AccountID       string            `json:"account_id"`
-	APIKeyID        *string           `json:"api_key_id"`
-	Recipient       string            `json:"recipient"`
-	Sender          string            `json:"sender"`
-	Message         string            `json:"message"`
-	MessageType     models.MessageType `json:"message_type"`
-	Priority        PriorityLane      `json:"priority"`
-	IdempotencyKey  string            `json:"idempotency_key"`
-	CreatedAt       time.Time         `json:"created_at"`
-	MaxAge          time.Duration     `json:"max_age"`
-	Attempts        int               `json:"attempts"`
+	ID             string             `json:"id"`
+	AccountID      string             `json:"account_id"`
+	APIKeyID       *string            `json:"api_key_id"`
+	Recipient      string             `json:"recipient"`
+	Sender         string             `json:"sender"`
+	Message        string             `json:"message"`
+	MessageType    models.MessageType `json:"message_type"`
+	Priority       PriorityLane       `json:"priority"`
+	IdempotencyKey string             `json:"idempotency_key"`
+	CreatedAt      time.Time          `json:"created_at"`
+	MaxAge         time.Duration      `json:"max_age"`
+	Attempts       int                `json:"attempts"`
 }
 
 type PriorityLane string
@@ -45,7 +45,7 @@ const (
 )
 
 type Queue struct {
-	client            *redis.Client
+	client            *redis.ClusterClient
 	cfg               config.QueueConfig
 	streams           map[PriorityLane]string
 	mu                sync.Mutex
@@ -55,7 +55,7 @@ type Queue struct {
 	AntiStarvationCnt int
 }
 
-func NewQueue(client *redis.Client, cfg config.QueueConfig, logger *slog.Logger) *Queue {
+func NewQueue(client *redis.ClusterClient, cfg config.QueueConfig, logger *slog.Logger) *Queue {
 	return &Queue{
 		client: client,
 		cfg:    cfg,
@@ -85,12 +85,12 @@ func (q *Queue) Enqueue(ctx context.Context, lane PriorityLane, msg QueueMessage
 	msgID, err := q.client.XAdd(ctx, &redis.XAddArgs{
 		Stream: stream,
 		Values: map[string]interface{}{
-			"payload":   string(data),
+			"payload":    string(data),
 			"created_at": time.Now().Unix(),
-			"max_age":   msg.MaxAge.Milliseconds(),
+			"max_age":    msg.MaxAge.Milliseconds(),
 		},
-		MaxLen:       int64(q.cfg.MaxQueueDepth),
-		Approx:       true,
+		MaxLen: int64(q.cfg.MaxQueueDepth),
+		Approx: true,
 	}).Result()
 	if err != nil {
 		return "", fmt.Errorf("xadd to %s: %w", stream, err)
@@ -160,10 +160,10 @@ func (q *Queue) DeadLetter(ctx context.Context, lane PriorityLane, msg QueueMess
 	_, err = q.client.XAdd(ctx, &redis.XAddArgs{
 		Stream: q.cfg.DeadLetterStream,
 		Values: map[string]interface{}{
-			"payload":     string(data),
-			"reason":      reason,
+			"payload":         string(data),
+			"reason":          reason,
 			"original_stream": originalStream,
-			"failed_at":   time.Now().Unix(),
+			"failed_at":       time.Now().Unix(),
 		},
 	}).Result()
 	return err
@@ -208,11 +208,11 @@ func (q *Queue) CreateConsumerGroup(ctx context.Context) error {
 func (q *Queue) ClaimStale(ctx context.Context, consumerName string) error {
 	for _, stream := range q.streams {
 		pending, err := q.client.XPendingExt(ctx, &redis.XPendingExtArgs{
-			Stream:   stream,
-			Group:    q.cfg.ConsumerGroupName,
-			Start:    "-",
-			End:      "+",
-			Count:    10,
+			Stream: stream,
+			Group:  q.cfg.ConsumerGroupName,
+			Start:  "-",
+			End:    "+",
+			Count:  10,
 		}).Result()
 		if err != nil {
 			continue
@@ -241,12 +241,12 @@ func (q *Queue) Close() {
 }
 
 type Consumer struct {
-	Queue        *Queue
-	Name         string
-	Group        string
-	Handler      func(context.Context, PriorityLane, *QueueMessage) error
-	MaxAttempts  int
-	StopCh       chan struct{}
+	Queue       *Queue
+	Name        string
+	Group       string
+	Handler     func(context.Context, PriorityLane, *QueueMessage) error
+	MaxAttempts int
+	StopCh      chan struct{}
 }
 
 func (q *Queue) NewConsumer(name string, handler func(context.Context, PriorityLane, *QueueMessage) error) *Consumer {

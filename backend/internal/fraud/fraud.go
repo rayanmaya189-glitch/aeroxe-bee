@@ -7,18 +7,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/aeroxe-bee/backend/internal/models"
+	"github.com/redis/go-redis/v9"
 )
 
 type Detector struct {
-	client         *redis.Client
-	flags          []models.FraudFlag
-	contentFilter  *ContentFilter
-	mu             sync.RWMutex
+	client        *redis.ClusterClient
+	flags         []models.FraudFlag
+	contentFilter *ContentFilter
+	mu            sync.RWMutex
 }
 
-func NewDetector(client *redis.Client) *Detector {
+func NewDetector(client *redis.ClusterClient) *Detector {
 	return &Detector{
 		client:        client,
 		flags:         make([]models.FraudFlag, 0),
@@ -27,12 +27,12 @@ func NewDetector(client *redis.Client) *Detector {
 }
 
 type DetectionInput struct {
-	AccountID      string
-	DeviceID       string
-	Recipient      string
-	Sender         string
-	Message        string
-	MessageType    models.MessageType
+	AccountID   string
+	DeviceID    string
+	Recipient   string
+	Sender      string
+	Message     string
+	MessageType models.MessageType
 }
 
 type DetectionResult struct {

@@ -12,11 +12,11 @@ import (
 
 // APIKeyRateLimiter applies per-API-key rate limiting using a fixed-window counter.
 type APIKeyRateLimiter struct {
-	rdb       *redis.Client
+	rdb       *redis.ClusterClient
 	maxPerMin int
 }
 
-func NewAPIKeyRateLimiter(rdb *redis.Client, maxPerMin int) *APIKeyRateLimiter {
+func NewAPIKeyRateLimiter(rdb *redis.ClusterClient, maxPerMin int) *APIKeyRateLimiter {
 	return &APIKeyRateLimiter{rdb: rdb, maxPerMin: maxPerMin}
 }
 
@@ -85,4 +85,3 @@ func extractAPIKey(r *http.Request) string {
 
 	return ""
 }
-

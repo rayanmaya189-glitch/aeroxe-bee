@@ -6,16 +6,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/aeroxe-bee/backend/internal/config"
 	"github.com/aeroxe-bee/backend/internal/models"
+	"github.com/redis/go-redis/v9"
 )
 
 type StateManager struct {
-	client          *redis.Client
-	cfg             config.CircuitBreakerConfig
-	state           map[string]*circuitState
-	mu              sync.RWMutex
+	client *redis.ClusterClient
+	cfg    config.CircuitBreakerConfig
+	state  map[string]*circuitState
+	mu     sync.RWMutex
 }
 
 type circuitState struct {
@@ -30,7 +30,7 @@ type circuitState struct {
 	Reason          string
 }
 
-func NewStateManager(client *redis.Client, cfg config.CircuitBreakerConfig) *StateManager {
+func NewStateManager(client *redis.ClusterClient, cfg config.CircuitBreakerConfig) *StateManager {
 	return &StateManager{
 		client: client,
 		cfg:    cfg,

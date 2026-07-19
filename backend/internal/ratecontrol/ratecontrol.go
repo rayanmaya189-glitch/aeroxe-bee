@@ -7,26 +7,26 @@ import (
 	"sync"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/aeroxe-bee/backend/internal/config"
+	"github.com/redis/go-redis/v9"
 )
 
 type Manager struct {
-	client      *redis.Client
-	devicePerMin int
+	client        *redis.ClusterClient
+	devicePerMin  int
 	devicePerHour int
-	pacingMin   time.Duration
-	pacingMax   time.Duration
-	mu          sync.Mutex
+	pacingMin     time.Duration
+	pacingMax     time.Duration
+	mu            sync.Mutex
 }
 
-func NewManager(client *redis.Client, cfg config.RateLimitConfig) *Manager {
+func NewManager(client *redis.ClusterClient, cfg config.RateLimitConfig) *Manager {
 	return &Manager{
-		client:       client,
-		devicePerMin: cfg.DeviceMaxPerMinute,
+		client:        client,
+		devicePerMin:  cfg.DeviceMaxPerMinute,
 		devicePerHour: cfg.DeviceMaxPerHour,
-		pacingMin:    cfg.SendPacingMin,
-		pacingMax:    cfg.SendPacingMax,
+		pacingMin:     cfg.SendPacingMin,
+		pacingMax:     cfg.SendPacingMax,
 	}
 }
 

@@ -3,10 +3,10 @@ package services
 import (
 	"context"
 
+	"github.com/aeroxe-bee/backend/internal/config"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/redis/go-redis/v9"
-	"github.com/aeroxe-bee/backend/internal/config"
 )
 
 type DatabaseQuerier interface {
@@ -38,7 +38,7 @@ type ServiceRegistry struct {
 	InboundMessages      *InboundMessageService
 }
 
-func NewServiceRegistry(db DatabaseQuerier, rdb *redis.Client, otpCfg config.OTPConfig) *ServiceRegistry {
+func NewServiceRegistry(db DatabaseQuerier, rdb *redis.ClusterClient, otpCfg config.OTPConfig) *ServiceRegistry {
 	return &ServiceRegistry{
 		Accounts:             NewAccountService(db),
 		APIKeys:              NewAPIKeyService(db),

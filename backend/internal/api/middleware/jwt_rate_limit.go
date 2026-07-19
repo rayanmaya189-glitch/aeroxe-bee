@@ -12,11 +12,11 @@ import (
 // JWTRateLimiter applies per-account rate limiting using a fixed-window counter.
 // Used to protect member and admin endpoints from abuse.
 type JWTRateLimiter struct {
-	rdb       *redis.Client
+	rdb       *redis.ClusterClient
 	maxPerMin int
 }
 
-func NewJWTRateLimiter(rdb *redis.Client, maxPerMin int) *JWTRateLimiter {
+func NewJWTRateLimiter(rdb *redis.ClusterClient, maxPerMin int) *JWTRateLimiter {
 	return &JWTRateLimiter{rdb: rdb, maxPerMin: maxPerMin}
 }
 
