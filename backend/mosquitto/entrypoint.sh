@@ -3,8 +3,24 @@ set -e
 
 PASSWD_DIR="/mosquitto/auth"
 PASSWD_FILE="$PASSWD_DIR/passwords"
+CERT_DIR="/mosquitto/certs"
 
 mkdir -p "$PASSWD_DIR"
+
+# =============================================================================
+# TLS Certificate Check
+# =============================================================================
+# Certbot certs should be mounted at /mosquitto/certs/ from the host:
+#   /etc/letsencrypt/live/bee-mqtt.nexoracrms.com/fullchain.pem -> /mosquitto/certs/fullchain.pem
+#   /etc/letsencrypt/live/bee-mqtt.nexoracrms.com/privkey.pem   -> /mosquitto/certs/privkey.pem
+if [ -f "$CERT_DIR/fullchain.pem" ] && [ -f "$CERT_DIR/privkey.pem" ]; then
+    echo "[tls] Certbot certificates found, TLS listeners will work"
+else
+    echo "[tls] WARNING: No certbot certificates found at $CERT_DIR/"
+    echo "[tls] TLS listeners (8883/9883) will fail to start."
+    echo "[tls] Mount certbot certs: -v /etc/letsencrypt/live/bee-mqtt.nexoracrms.com:/mosquitto/certs:ro"
+    echo "[tls] At minimum, the plain MQTT listener on port 1883 will still work."
+fi
 
 BACKEND_PASS="${MQTT_BACKEND_PASSWORD:-dev-backend-password}"
 DEVICE_PASS="${MQTT_DEVICE_PASSWORD:-dev-device-password}"

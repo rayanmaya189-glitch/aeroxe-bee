@@ -268,19 +268,27 @@ class MqttManager @Inject constructor(
 
     /**
      * Creates a TLS SocketFactory for secure MQTT connections (mqtts:// or ssl://).
-     * Uses the system default trust store for certificate validation.
-     * Supports custom CA certificates via MQTT_CA_CERT_PATH env/config if needed.
+     * Uses the system default trust store (Android's bundled CAs including Let's Encrypt).
+     * Tries TLSv1.3 first (better perf/security), falls back to TLSv1.2 for older devices.
      */
     private fun createTLSSocketFactory(): javax.net.ssl.SSLSocketFactory {
-        // Use system default trust store (includes Android's bundled CAs)
         val trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
         trustManagerFactory.init(null as KeyStore?)
 
-        val sslContext = SSLContext.getInstance("TLSv1.2")
-        sslContext.init(null, trustManagerFactory.trustManagers, SecureRandom())
+        // Try TLSv1.3 first (API 29+), fall back to TLSv1.2 for older devices
+        val sslContext = try {
+            SSLContext.getInstance("TLSv1.3").also {
+                it.init(null, trustManagerFactory.trustManagers, SecureRandom())
+            }
+        } catch (_: Exception) {
+            SSLContext.getInstance("TLSv1.2").also {
+                it.init(null, trustManagerFactory.trustManagers, SecureRandom())
+            }
+        }
 
-        Log.i(TAG, "TLS socket factory created for secure MQTT connection")
-        return sslContext.socketFactory
+        val factory = sslContext.socketFactory
+        Log.i(TAG, "TLS socket factory created (${sslContext.protocol}) for secure MQTT connection")
+        return factory
     }
 
     fun destroy() {

@@ -71,8 +71,11 @@ class DeviceRepository @Inject constructor(
             tokenManager.saveAccountName(data.account?.name ?: email)
             tokenManager.saveAccountId(data.account?.id ?: "")
 
-            // Save MQTT connection details — broker URL from BuildConfig, credentials from login response
-            tokenManager.saveMqttBrokerUrl(BuildConfig.MQTT_BROKER_URL)
+            // Save MQTT connection details — prefer server-returned broker URL,
+            // fall back to BuildConfig for local dev when server doesn't return one
+            val mqttBrokerUrl = data.mqtt?.brokerUrl?.takeIf { it.isNotBlank() }
+                ?: BuildConfig.MQTT_BROKER_URL
+            tokenManager.saveMqttBrokerUrl(mqttBrokerUrl)
             data.mqtt?.let { mqtt ->
                 tokenManager.saveMqttUsername(mqtt.username)
                 tokenManager.saveMqttPassword(mqtt.password)

@@ -1,9 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
+    <!-- Development: allow cleartext for local/dev servers -->
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">10.0.2.2</domain>
         <domain includeSubdomains="true">10.10.13.148</domain>
         <domain includeSubdomains="true">localhost</domain>
     </domain-config>
-    <base-config cleartextTrafficPermitted="true" />
+
+    <!-- Production: enforce HTTPS/cleartext policy -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Production MQTT domain - explicitly allow with system trust store -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">bee-mqtt.nexoracrms.com</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+
+    <!-- Production API domain -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">bee-api.nexoracrms.com</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+
+    <!-- Production frontend domain -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">bee.nexoracrms.com</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
 </network-security-config>

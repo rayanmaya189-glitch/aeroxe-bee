@@ -37,7 +37,9 @@ services:
       dockerfile: mosquitto/Dockerfile
     ports:
       - "1883:1883"
+      - "8883:8883"
       - "9001:9001"
+      - "9883:9883"
     environment:
       MQTT_BACKEND_PASSWORD: e02afdd3b70dbd399c156a08278f70ac0c5eebe55619aafe188b5be764db9de4
       MQTT_DEVICE_PASSWORD: 1a0dd0d6a1899fac462303d0fac5804df106894da79440c5d27265123f0459ce
@@ -46,6 +48,10 @@ services:
       - ./backend/mosquitto/acl:/mosquitto/auth/acl
       - mqttdata:/mosquitto/data
       - mqtt_auth:/mosquitto/auth
+      # Certbot certs: mounted read-only so auto-renewal updates Mosquitto TLS
+      # without restart. Mosquitto reads certs on each new TLS connection,
+      # so renewed certs take effect immediately.
+      - /etc/letsencrypt/live/bee-mqtt.nexoracrms.com:/mosquitto/certs:ro
     healthcheck:
       test: ["CMD-SHELL", "mosquitto_pub -t healthcheck -m ping -u backend -P $${MQTT_BACKEND_PASSWORD} || exit 1"]
       interval: 10s
@@ -92,3 +98,4 @@ volumes:
   redisdata:
   mqttdata:
   mqtt_auth:
+  mqtt_certs:

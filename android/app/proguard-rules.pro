@@ -39,6 +39,32 @@
 -keep class org.eclipse.paho.client.mqttv3.** { *; }
 -dontwarn org.eclipse.paho.client.mqttv3.**
 
+# --- SSL/TLS (critical for MQTT TLS in release builds) ---
+-keep class javax.net.ssl.** { *; }
+-keep class javax.net.ssl.SSLContext { *; }
+-keep class javax.net.ssl.TrustManagerFactory { *; }
+-keep class javax.net.ssl.KeyManagerFactory { *; }
+-keep class javax.net.ssl.SSLSocketFactory { *; }
+-keep class javax.net.ssl.SSLSocket { *; }
+-keep class javax.net.ssl.SSLSession { *; }
+-keep class javax.net.ssl.X509TrustManager { *; }
+-keep class javax.net.ssl.HostnameVerifier { *; }
+-keep class javax.net.ssl.HttpsURLConnection { *; }
+-dontwarn javax.net.ssl.**
+
+# Java Security / Crypto (used by TLS and Paho internals)
+-keep class java.security.** { *; }
+-keep class java.security.cert.** { *; }
+-dontwarn java.security.**
+-keep class org.conscrypt.** { *; }
+-dontwarn org.conscrypt.**
+-keep class com.android.org.conscrypt.** { *; }
+-dontwarn com.android.org.conscrypt.**
+-keep class org.bouncycastle.** { *; }
+-dontwarn org.bouncycastle.**
+-keep class org.apache.harmony.** { *; }
+-dontwarn org.apache.harmony.**
+
 # --- Hilt / Dagger (bundles own rules, suppress warnings only) ---
 -dontwarn dagger.hilt.**
 -keep class * extends dagger.hilt.android.internal.managers.ViewComponentManager$FragmentContextWrapper { *; }
