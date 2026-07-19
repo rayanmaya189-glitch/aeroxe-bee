@@ -66,6 +66,8 @@ object AppModule {
 
         // Certificate pinning for release builds — prevents MITM via forged CA
         // Obtain hashes: openssl s_client -connect api.aeroxe.com:443 -servername api.aeroxe.com </dev/null 2>/dev/null | openssl x509 -pubkey -noout | openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | base64
+        // FIXME: Pinning is currently disabled because the hash in build.gradle.kts is a placeholder.
+        /*
         if (!BuildConfig.DEBUG && BuildConfig.BASE_URL.startsWith("https")) {
             val host = java.net.URI(BuildConfig.BASE_URL).host
             if (host != null) {
@@ -76,6 +78,7 @@ object AppModule {
                 )
             }
         }
+        */
 
         return builder.build()
     }

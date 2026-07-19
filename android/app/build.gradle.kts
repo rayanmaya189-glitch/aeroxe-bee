@@ -37,6 +37,7 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             buildConfigField("String", "BASE_URL", "\"https://bee-api.nexoracrms.com/api/v1/\"")
             buildConfigField("String", "MQTT_BROKER_URL", "\"ssl://bee-mqtt.nexoracrms.com:8883\"")
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
