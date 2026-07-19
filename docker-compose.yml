@@ -39,8 +39,8 @@ services:
       - "1883:1883"
       - "9001:9001"
     environment:
-      MQTT_BACKEND_PASSWORD: dev-backend-password
-      MQTT_DEVICE_PASSWORD: dev-device-password
+      MQTT_BACKEND_PASSWORD: e02afdd3b70dbd399c156a08278f70ac0c5eebe55619aafe188b5be764db9de4
+      MQTT_DEVICE_PASSWORD: 1a0dd0d6a1899fac462303d0fac5804df106894da79440c5d27265123f0459ce
     volumes:
       - ./backend/mosquitto.conf:/mosquitto/config/mosquitto.conf
       - ./backend/mosquitto/acl:/mosquitto/auth/acl
@@ -52,10 +52,7 @@ services:
       timeout: 5s
       retries: 3
       start_period: 5s
-    depends_on:
-      postgres:
-        condition: service_healthy
-
+    
   backend:
     build: ./backend
     ports:
