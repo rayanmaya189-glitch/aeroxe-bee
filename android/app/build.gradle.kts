@@ -28,10 +28,12 @@ android {
 
     buildTypes {
         debug {
+            isDebuggable = true
             buildConfigField("String", "BASE_URL", "\"http://10.10.13.148:8080/api/v1/\"")
             buildConfigField("String", "MQTT_BROKER_URL", "\"tcp://10.10.13.148:1883\"")
         }
         release {
+            isDebuggable = false
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
