@@ -19,6 +19,7 @@ import com.aeroxebee.client.ui.theme.*
 fun TemplateEditDialog(
     existing: MemberTemplate?,
     isSaving: Boolean,
+    error: String? = null,
     onSave: (name: String, body: String, variables: String) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -69,6 +70,14 @@ fun TemplateEditDialog(
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     placeholder = "e.g. name, otp, amount",
                 )
+
+                error?.let { err ->
+                    Text(
+                        text = err,
+                        style = AppTypography.Caption,
+                        color = AppColors.Error,
+                    )
+                }
             }
         },
         confirmButton = {

@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.aeroxebee.client.data.remote.api.AeroXeBeeApi
 import com.aeroxebee.client.data.remote.model.UpdateDeviceNameRequest
 import com.aeroxebee.client.data.remote.model.Verify2FARequest
+import com.aeroxebee.client.data.remote.model.errorMessage
 import com.aeroxebee.client.device.behavior.BehaviorEventManager
 import com.aeroxebee.client.util.TokenManager
 import com.aeroxebee.client.worker.MqttService
@@ -81,10 +82,17 @@ class ProfileViewModel @Inject constructor(
             try {
                 val deviceId = tokenManager.getDeviceId()
                 if (deviceId != null) {
-                    api.updateMemberDevice(deviceId, UpdateDeviceNameRequest(name))
+                    val response = api.updateMemberDevice(deviceId, UpdateDeviceNameRequest(name))
+                    if (response.isSuccessful && response.body()?.success == true) {
+                        tokenManager.saveDeviceName(name)
+                        _state.value = _state.value.copy(isSavingName = false, nameSaved = true, nameError = null)
+                    } else {
+                        _state.value = _state.value.copy(isSavingName = false, nameSaved = false, nameError = response.errorMessage("Failed to save device name"))
+                    }
+                } else {
+                    tokenManager.saveDeviceName(name)
+                    _state.value = _state.value.copy(isSavingName = false, nameSaved = true, nameError = null)
                 }
-                tokenManager.saveDeviceName(name)
-                _state.value = _state.value.copy(isSavingName = false, nameSaved = true, nameError = null)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(
                     isSavingName = false,
@@ -156,10 +164,10 @@ class ProfileViewModel @Inject constructor(
                         )
                     }
                 } else {
-                    _state.update { it.copy(isLoading2FA = false, twoFAError = "Failed to setup 2FA") }
+                    _state.update { it.copy(isLoading2FA = false, twoFAError = response.errorMessage("Failed to setup 2FA")) }
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(isLoading2FA = false, twoFAError = e.message) }
+                _state.update { it.copy(isLoading2FA = false, twoFAError = e.message ?: "Network error") }
             }
         }
     }
@@ -190,10 +198,10 @@ class ProfileViewModel @Inject constructor(
                         )
                     }
                 } else {
-                    _state.update { it.copy(isLoading2FA = false, twoFAError = "Invalid code. Try again.") }
+                    _state.update { it.copy(isLoading2FA = false, twoFAError = response.errorMessage("Invalid code. Try again.")) }
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(isLoading2FA = false, twoFAError = e.message) }
+                _state.update { it.copy(isLoading2FA = false, twoFAError = e.message ?: "Network error") }
             }
         }
     }
@@ -220,10 +228,10 @@ class ProfileViewModel @Inject constructor(
                         )
                     }
                 } else {
-                    _state.update { it.copy(isLoading2FA = false, twoFAError = "Invalid code. Try again.") }
+                    _state.update { it.copy(isLoading2FA = false, twoFAError = response.errorMessage("Invalid code. Try again.")) }
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(isLoading2FA = false, twoFAError = e.message) }
+                _state.update { it.copy(isLoading2FA = false, twoFAError = e.message ?: "Network error") }
             }
         }
     }

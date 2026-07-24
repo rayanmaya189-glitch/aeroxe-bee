@@ -49,6 +49,15 @@ fun DashboardScreen(
     ) {
         Spacer(Modifier.height(AppSpacing.XL))
 
+        state.error?.let { error ->
+            Text(
+                text = error,
+                style = AppTypography.Caption,
+                color = AppColors.Error,
+                modifier = Modifier.padding(bottom = AppSpacing.MD),
+            )
+        }
+
         // ─── Loading / Content transition ─────────────────────
         AnimatedVisibility(
             visible = state.isLoading,

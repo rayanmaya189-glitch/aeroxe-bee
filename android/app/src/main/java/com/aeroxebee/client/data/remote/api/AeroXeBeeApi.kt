@@ -76,7 +76,7 @@ interface AeroXeBeeApi {
 
     // ─── Member Templates ───────────────────────────────────
     @GET("member/templates")
-    suspend fun getMemberTemplates(): Response<ApiResponse<List<MemberTemplate>>>
+    suspend fun getMemberTemplates(): Response<ApiResponse<MemberPaginatedResponse<MemberTemplate>>>
 
     @POST("member/templates")
     suspend fun createMemberTemplate(@Body request: CreateTemplateRequest): Response<ApiResponse<MemberTemplate>>
@@ -89,7 +89,7 @@ interface AeroXeBeeApi {
 
     // ─── Member Webhooks ────────────────────────────────────
     @GET("member/webhooks")
-    suspend fun getMemberWebhooks(): Response<ApiResponse<List<MemberWebhook>>>
+    suspend fun getMemberWebhooks(): Response<ApiResponse<MemberPaginatedResponse<MemberWebhook>>>
 
     @POST("member/webhooks")
     suspend fun createMemberWebhook(@Body request: CreateWebhookRequest): Response<ApiResponse<MemberWebhook>>

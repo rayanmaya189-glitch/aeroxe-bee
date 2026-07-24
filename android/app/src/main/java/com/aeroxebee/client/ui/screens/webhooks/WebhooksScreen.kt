@@ -126,6 +126,7 @@ fun WebhooksScreen(
             isActive = state.editActive,
             isSaving = state.isSaving,
             isEditing = state.editingWebhook != null,
+            error = state.error,
             onUrlChange = viewModel::updateEditUrl,
             onActiveChange = viewModel::updateEditActive,
             onSave = viewModel::saveWebhook,
@@ -163,6 +164,7 @@ private fun WebhookEditDialog(
     isActive: Boolean,
     isSaving: Boolean,
     isEditing: Boolean,
+    error: String? = null,
     onUrlChange: (String) -> Unit,
     onActiveChange: (Boolean) -> Unit,
     onSave: () -> Unit,
@@ -200,6 +202,14 @@ private fun WebhookEditDialog(
                             uncheckedThumbColor = AppColors.TextMuted,
                             uncheckedTrackColor = AppColors.Glass,
                         ),
+                    )
+                }
+
+                error?.let { err ->
+                    Text(
+                        text = err,
+                        style = AppTypography.Caption,
+                        color = AppColors.Error,
                     )
                 }
             }

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aeroxebee.client.data.remote.api.AeroXeBeeApi
 import com.aeroxebee.client.data.remote.model.SubmitKycRequest
+import com.aeroxebee.client.data.remote.model.errorMessage
 import com.aeroxebee.client.device.behavior.BehaviorEventManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -59,7 +60,7 @@ class KycViewModel @Inject constructor(
                         _state.update { it.copy(status = "not_submitted") }
                     }
                 } else {
-                    _state.update { it.copy(status = "not_submitted") }
+                    _state.update { it.copy(status = "not_submitted", error = response.errorMessage("Failed to load KYC status")) }
                 }
             } catch (_: Exception) {
                 _state.update { it.copy(status = "not_submitted") }
@@ -107,8 +108,7 @@ class KycViewModel @Inject constructor(
                         it.copy(isLoading = false, isSuccess = true, status = "pending", isSubmitted = true)
                     }
                 } else {
-                    val msg = response.body()?.error ?: "Failed to submit KYC"
-                    _state.update { it.copy(isLoading = false, error = msg) }
+                    _state.update { it.copy(isLoading = false, error = response.errorMessage("Failed to submit KYC")) }
                 }
             } catch (e: Exception) {
                 _state.update { it.copy(isLoading = false, error = e.message ?: "Network error") }

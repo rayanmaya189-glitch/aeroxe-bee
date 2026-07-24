@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.aeroxebee.client.data.remote.api.AeroXeBeeApi
 import com.aeroxebee.client.data.remote.model.OtpSendRequest
 import com.aeroxebee.client.data.remote.model.OtpVerifyRequest
+import com.aeroxebee.client.data.remote.model.errorMessage
 import com.aeroxebee.client.device.behavior.BehaviorEventManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -74,8 +75,7 @@ class OtpViewModel @Inject constructor(
                         )
                     }
                 } else {
-                    val msg = response.body()?.error ?: "Failed to send OTP"
-                    _state.update { it.copy(isSending = false, error = msg) }
+                    _state.update { it.copy(isSending = false, error = response.errorMessage("Failed to send OTP")) }
                 }
             } catch (e: Exception) {
                 _state.update { it.copy(isSending = false, error = e.message ?: "Network error") }
@@ -107,8 +107,7 @@ class OtpViewModel @Inject constructor(
                     }
                     _state.update { it.copy(isVerifying = false, isVerified = verified) }
                 } else {
-                    val msg = response.body()?.error ?: "Invalid code"
-                    _state.update { it.copy(isVerifying = false, error = msg) }
+                    _state.update { it.copy(isVerifying = false, error = response.errorMessage("Invalid code")) }
                 }
             } catch (e: Exception) {
                 _state.update { it.copy(isVerifying = false, error = e.message ?: "Network error") }

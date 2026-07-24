@@ -13,6 +13,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aeroxebee.client.data.remote.api.AeroXeBeeApi
 import com.aeroxebee.client.data.remote.model.MemberMessage
+import com.aeroxebee.client.data.remote.model.errorMessage
 import com.aeroxebee.client.data.remote.mqtt.MqttManager
 import com.aeroxebee.client.data.repository.SMSTaskRepository
 import com.aeroxebee.client.domain.model.Stats
@@ -118,22 +119,25 @@ class DashboardViewModel @Inject constructor(
                 }
 
                 // Load from API in parallel (best-effort)
+                var apiError: String? = null
                 coroutineScope {
-                    async { loadDashboardFromApi() }
-                    async { loadRecentMessages() }
+                    val dashJob = async { loadDashboardFromApi() }
+                    val msgJob = async { loadRecentMessages() }
+                    apiError = dashJob.await()
+                    msgJob.await()
                 }
-                _state.update { it.copy(isLoading = false) }
+                _state.update { it.copy(isLoading = false, error = apiError) }
             } catch (e: Exception) {
                 _state.update { it.copy(isLoading = false, error = e.message ?: "Failed to load data") }
             }
         }
     }
 
-    private suspend fun loadDashboardFromApi() {
+    private suspend fun loadDashboardFromApi(): String? {
         try {
             val response = api.getMemberDashboard()
             if (response.isSuccessful && response.body()?.success == true) {
-                val data = response.body()?.data ?: return
+                val data = response.body()?.data ?: return null
                 val usage = data.usage
                 val sub = data.subscription
                 _state.update {
@@ -155,9 +159,15 @@ class DashboardViewModel @Inject constructor(
                         subscriptionRenewalDate = sub?.renewalDate ?: "",
                     )
                 }
+                return null
+            } else {
+                val errorMsg = response.errorMessage("Failed to load dashboard")
+                android.util.Log.w(TAG, "Dashboard API error: $errorMsg")
+                return errorMsg
             }
         } catch (e: Exception) {
             android.util.Log.w(TAG, "Failed to load dashboard: ${e.message}")
+            return "Network error: ${e.message ?: "Unknown"}"
         }
     }
 
@@ -167,6 +177,8 @@ class DashboardViewModel @Inject constructor(
             if (response.isSuccessful && response.body()?.success == true) {
                 val messages = response.body()?.data?.data ?: emptyList()
                 _state.update { it.copy(recentMessages = messages) }
+            } else {
+                android.util.Log.w(TAG, "Failed to load recent messages: ${response.body()?.error ?: response.code()}")
             }
         } catch (e: Exception) {
             android.util.Log.w(TAG, "Failed to load recent messages: ${e.message}")

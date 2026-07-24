@@ -116,6 +116,7 @@ fun TemplatesScreen(
         TemplateEditDialog(
             existing = state.editingTemplate,
             isSaving = state.isSaving,
+            error = state.error,
             onSave = { name, body, variables ->
                 viewModel.saveTemplate(name, body, variables)
             },

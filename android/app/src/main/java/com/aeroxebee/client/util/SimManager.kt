@@ -21,23 +21,34 @@ class SimManager @Inject constructor(
         val activeList = subManager.activeSubscriptionInfoList
         if (activeList != null) {
             for (sub in activeList) {
+                val phoneNumber = try {
+                    telephonyManager.createForSubscriptionId(sub.subscriptionId).line1Number
+                        ?.takeIf { it.isNotBlank() }
+                } catch (_: Exception) { null }
+
                 slots.add(
                     SimSlot(
                         slotId = sub.simSlotIndex,
                         subscriptionId = sub.subscriptionId,
                         carrierName = sub.carrierName?.toString() ?: "Unknown",
                         displayName = sub.displayName?.toString() ?: "",
+                        phoneNumber = phoneNumber ?: "",
                         isActive = true,
                     )
                 )
             }
         }
         if (slots.isEmpty()) {
+            val phoneNumber = try {
+                telephonyManager.line1Number?.takeIf { it.isNotBlank() }
+            } catch (_: Exception) { null }
+
             slots.add(
                 SimSlot(
                     slotId = 0,
                     subscriptionId = SubscriptionManager.getDefaultSubscriptionId(),
                     carrierName = telephonyManager.networkOperatorName?.takeIf { it.isNotBlank() } ?: "Unknown",
+                    phoneNumber = phoneNumber ?: "",
                     isActive = true,
                 )
             )
@@ -69,6 +80,7 @@ class SimManager @Inject constructor(
         val subscriptionId: Int,
         val carrierName: String,
         val displayName: String = "",
+        val phoneNumber: String = "",
         val isActive: Boolean = false,
     )
 }

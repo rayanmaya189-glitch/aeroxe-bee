@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aeroxebee.client.data.remote.api.AeroXeBeeApi
 import com.aeroxebee.client.data.remote.model.MemberPreferences
+import com.aeroxebee.client.data.remote.model.errorMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,14 +38,14 @@ class PreferencesViewModel @Inject constructor(
             _state.update { it.copy(isLoading = true, error = null) }
             try {
                 val response = api.getMemberPreferences()
-                if (response.isSuccessful) {
+                if (response.isSuccessful && response.body()?.success == true) {
                     val data = response.body()?.data
                     _state.update { it.copy(preferences = data ?: MemberPreferences(), isLoading = false) }
                 } else {
-                    _state.update { it.copy(isLoading = false, error = "Failed to load preferences") }
+                    _state.update { it.copy(isLoading = false, error = response.errorMessage("Failed to load preferences")) }
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(isLoading = false, error = e.message) }
+                _state.update { it.copy(isLoading = false, error = e.message ?: "Network error") }
             }
         }
     }
@@ -79,10 +80,13 @@ class PreferencesViewModel @Inject constructor(
             _state.update { it.copy(isSaving = true, saved = false, error = null) }
             try {
                 val response = api.updateMemberPreferences(_state.value.preferences)
-                if (!response.isSuccessful) throw Exception("Failed to save preferences")
-                _state.update { it.copy(isSaving = false, saved = true) }
+                if (response.isSuccessful && response.body()?.success == true) {
+                    _state.update { it.copy(isSaving = false, saved = true) }
+                } else {
+                    _state.update { it.copy(isSaving = false, error = response.errorMessage("Failed to save preferences")) }
+                }
             } catch (e: Exception) {
-                _state.update { it.copy(isSaving = false, error = e.message) }
+                _state.update { it.copy(isSaving = false, error = e.message ?: "Network error") }
             }
         }
     }

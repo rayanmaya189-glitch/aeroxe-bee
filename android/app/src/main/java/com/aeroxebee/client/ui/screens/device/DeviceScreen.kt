@@ -34,6 +34,7 @@ import com.aeroxebee.client.ui.components.InfoRow
 import com.aeroxebee.client.ui.components.SectionHeader
 import com.aeroxebee.client.ui.components.StatusBadge
 import com.aeroxebee.client.ui.theme.*
+import com.aeroxebee.client.util.SimManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,6 +44,21 @@ fun DeviceScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
     var simMenuExpanded by remember { mutableStateOf(false) }
+    val effectiveSimSlots = remember(state.availableSimSlots, state.deviceInfo.simSlots) {
+        if (state.availableSimSlots.isNotEmpty()) {
+            state.availableSimSlots
+        } else {
+            state.deviceInfo.simSlots.map { slot ->
+                SimManager.SimSlot(
+                    slotId = slot.slot,
+                    subscriptionId = -1,
+                    carrierName = slot.carrier.ifBlank { "Unknown" },
+                    phoneNumber = slot.phoneNumber,
+                    isActive = slot.isAvailable,
+                )
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -52,6 +68,19 @@ fun DeviceScreen(
             .padding(horizontal = AppSpacing.XL),
     ) {
         Spacer(Modifier.height(AppSpacing.XL))
+
+        SectionHeader(icon = Icons.Outlined.PhoneAndroid, title = "Device")
+
+        Spacer(Modifier.height(AppSpacing.MD))
+
+        state.error?.let { error ->
+            Text(
+                text = error,
+                style = AppTypography.Caption,
+                color = AppColors.Error,
+                modifier = Modifier.padding(bottom = AppSpacing.MD),
+            )
+        }
 
         AnimatedVisibility(
             visible = state.isLoading,
@@ -93,7 +122,7 @@ fun DeviceScreen(
 
                 Spacer(Modifier.height(AppSpacing.MD))
 
-                if (state.availableSimSlots.isEmpty()) {
+                if (effectiveSimSlots.isEmpty()) {
                     GlassCard {
                         Box(
                             modifier = Modifier.fillMaxWidth(),
@@ -107,8 +136,8 @@ fun DeviceScreen(
                         }
                     }
                 } else {
-                    val selectedSlot = state.availableSimSlots.find { it.slotId == state.selectedSimSlot }
-                        ?: state.availableSimSlots.firstOrNull()
+                    val selectedSlot = effectiveSimSlots.find { it.slotId == state.selectedSimSlot }
+                        ?: effectiveSimSlots.firstOrNull()
 
                     ExposedDropdownMenuBox(
                         expanded = simMenuExpanded,
@@ -164,7 +193,7 @@ fun DeviceScreen(
                             expanded = simMenuExpanded,
                             onDismissRequest = { simMenuExpanded = false },
                         ) {
-                            state.availableSimSlots.forEach { slot ->
+                            effectiveSimSlots.forEach { slot ->
                                 DropdownMenuItem(
                                     text = {
                                         Column {
@@ -178,6 +207,13 @@ fun DeviceScreen(
                                                 style = AppTypography.Caption,
                                                 color = AppColors.TextMuted,
                                             )
+                                            if (slot.phoneNumber.isNotBlank()) {
+                                                Text(
+                                                    text = slot.phoneNumber,
+                                                    style = AppTypography.Small,
+                                                    color = AppColors.TextDisabled,
+                                                )
+                                            }
                                         }
                                     },
                                     onClick = {

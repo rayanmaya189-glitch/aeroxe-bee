@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.aeroxebee.client.data.remote.api.AeroXeBeeApi
 import com.aeroxebee.client.data.remote.model.CreateWebhookRequest
 import com.aeroxebee.client.data.remote.model.MemberWebhook
+import com.aeroxebee.client.data.remote.model.errorMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -42,14 +43,14 @@ class WebhooksViewModel @Inject constructor(
             _state.update { it.copy(isLoading = true, error = null) }
             try {
                 val response = api.getMemberWebhooks()
-                if (response.isSuccessful) {
-                    val data = response.body()?.data
+                if (response.isSuccessful && response.body()?.success == true) {
+                    val data = response.body()?.data?.data
                     _state.update { it.copy(webhooks = data ?: emptyList(), isLoading = false) }
                 } else {
-                    _state.update { it.copy(isLoading = false, error = "Failed to load webhooks") }
+                    _state.update { it.copy(isLoading = false, error = response.errorMessage("Failed to load webhooks")) }
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(isLoading = false, error = e.message) }
+                _state.update { it.copy(isLoading = false, error = e.message ?: "Network error") }
             }
         }
     }
@@ -60,6 +61,7 @@ class WebhooksViewModel @Inject constructor(
             editingWebhook = null,
             editUrl = "",
             editActive = true,
+            error = null,
         ) }
     }
 
@@ -69,11 +71,12 @@ class WebhooksViewModel @Inject constructor(
             editingWebhook = webhook,
             editUrl = webhook.url,
             editActive = webhook.active,
+            error = null,
         ) }
     }
 
     fun dismissDialog() {
-        _state.update { it.copy(showEditDialog = false, editingWebhook = null, editUrl = "", editActive = true) }
+        _state.update { it.copy(showEditDialog = false, editingWebhook = null, editUrl = "", editActive = true, error = null) }
     }
 
     fun updateEditUrl(url: String) {
@@ -87,24 +90,47 @@ class WebhooksViewModel @Inject constructor(
     fun saveWebhook() {
         val url = _state.value.editUrl.trim()
         if (url.isBlank()) return
-        val request = CreateWebhookRequest(url = url, events = listOf("message.delivered"))
+
+        // Validate URL format
+        val urlError = validateWebhookUrl(url)
+        if (urlError != null) {
+            _state.update { it.copy(error = urlError) }
+            return
+        }
+
+        val request = CreateWebhookRequest(url = url, events = listOf("message.delivered"), active = _state.value.editActive)
         val existing = _state.value.editingWebhook
 
         viewModelScope.launch {
-            _state.update { it.copy(isSaving = true) }
+            _state.update { it.copy(isSaving = true, error = null) }
             try {
-                if (existing != null) {
-                    val response = api.updateMemberWebhook(existing.id, request)
-                    if (!response.isSuccessful) throw Exception("Failed to update webhook")
+                val response = if (existing != null) {
+                    api.updateMemberWebhook(existing.id, request)
                 } else {
-                    val response = api.createMemberWebhook(request)
-                    if (!response.isSuccessful) throw Exception("Failed to create webhook")
+                    api.createMemberWebhook(request)
                 }
-                _state.update { it.copy(isSaving = false, showEditDialog = false, editingWebhook = null) }
-                loadWebhooks()
+                if (response.isSuccessful && response.body()?.success == true) {
+                    _state.update { it.copy(isSaving = false, showEditDialog = false, editingWebhook = null) }
+                    loadWebhooks()
+                } else {
+                    val action = if (existing != null) "update" else "create"
+                    _state.update { it.copy(isSaving = false, error = response.errorMessage("Failed to $action webhook")) }
+                }
             } catch (e: Exception) {
-                _state.update { it.copy(isSaving = false, error = e.message) }
+                _state.update { it.copy(isSaving = false, error = e.message ?: "Network error") }
             }
+        }
+    }
+
+    private fun validateWebhookUrl(url: String): String? {
+        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+            return "URL must start with http:// or https://"
+        }
+        return try {
+            java.net.URL(url)
+            null
+        } catch (_: Exception) {
+            "Invalid URL format"
         }
     }
 
@@ -122,10 +148,13 @@ class WebhooksViewModel @Inject constructor(
             _state.update { it.copy(deleteConfirmId = null) }
             try {
                 val response = api.deleteMemberWebhook(id)
-                if (!response.isSuccessful) throw Exception("Failed to delete webhook")
-                loadWebhooks()
+                if (response.isSuccessful && response.body()?.success == true) {
+                    loadWebhooks()
+                } else {
+                    _state.update { it.copy(error = response.errorMessage("Failed to delete webhook")) }
+                }
             } catch (e: Exception) {
-                _state.update { it.copy(error = e.message) }
+                _state.update { it.copy(error = e.message ?: "Network error") }
             }
         }
     }

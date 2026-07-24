@@ -235,6 +235,7 @@ data class MemberWebhook(
 data class CreateWebhookRequest(
     @SerializedName("url") val url: String,
     @SerializedName("events") val events: List<String>,
+    @SerializedName("active") val active: Boolean = true,
 )
 
 // ─── Member Preferences ─────────────────────────────────────

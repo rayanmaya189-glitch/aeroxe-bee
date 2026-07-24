@@ -59,7 +59,17 @@ class DeviceViewModel @Inject constructor(
                 val batteryGuide = OEMBatteryGuide.find(info.manufacturer)
                 val canScheduleExactAlarms = exactAlarmHandler.canScheduleExactAlarms()
                 val simSlots = simManager.getAvailableSlots()
-                val selectedSlot = tokenManager.getSimSlot()
+                val storedSlot = tokenManager.getSimSlot().coerceAtLeast(0)
+                val normalizedSelectedSlot = when {
+                    simSlots.isEmpty() -> storedSlot
+                    simSlots.any { it.slotId == storedSlot } -> storedSlot
+                    else -> simSlots.first().slotId
+                }
+
+                if (normalizedSelectedSlot != storedSlot) {
+                    tokenManager.saveSimSlot(normalizedSelectedSlot)
+                }
+
                 _state.update {
                     it.copy(
                         deviceInfo = info,
@@ -70,7 +80,7 @@ class DeviceViewModel @Inject constructor(
                         canScheduleExactAlarms = canScheduleExactAlarms,
                         isBatteryOptimized = deviceStateClassifier.isIgnoringBatteryOptimizations(),
                         availableSimSlots = simSlots,
-                        selectedSimSlot = selectedSlot,
+                        selectedSimSlot = normalizedSelectedSlot,
                     )
                 }
             } catch (e: Exception) {
@@ -81,8 +91,14 @@ class DeviceViewModel @Inject constructor(
 
     fun switchSim(slotIndex: Int) {
         viewModelScope.launch {
-            _state.update { it.copy(isSimSwitching = true, simSwitchSuccess = false) }
+            _state.update { it.copy(isSimSwitching = true, simSwitchSuccess = false, error = null) }
             try {
+                val isValidSlot = _state.value.availableSimSlots.isEmpty() || _state.value.availableSimSlots.any { it.slotId == slotIndex }
+                if (!isValidSlot) {
+                    _state.update { it.copy(isSimSwitching = false, error = "Selected SIM is not available on this device") }
+                    return@launch
+                }
+
                 tokenManager.saveSimSlot(slotIndex)
                 _state.update {
                     it.copy(
